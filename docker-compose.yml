@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: griffy_postgres
+    environment:
+      POSTGRES_USER: griffy
+      POSTGRES_PASSWORD: griffy_pass
+      POSTGRES_DB: griffy_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U griffy -d griffy_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: griffy_api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: griffy
+      DB_PASS: griffy_pass
+      DB_NAME: griffy_db
+      JWT_SECRET: ${JWT_SECRET:-griffy_change_in_production}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-griffy-uploads}
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: griffy_web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
