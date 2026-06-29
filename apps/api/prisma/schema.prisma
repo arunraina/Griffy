@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  SERVICE_PROVIDER
+  MATERIAL_SELLER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReviewTargetType {
+  SERVICE_PROVIDER
+  MATERIAL
+}
+
+model User {
+  id          String   @id @default(uuid())
+  supabaseId  String   @unique @map("supabase_id")
+  email       String   @unique
+  name        String
+  phone       String?
+  role        UserRole @default(CUSTOMER)
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  serviceProvider ServiceProvider?
+  materials       Material[]
+  orders          Order[]
+  bookings        Booking[]
+  reviewsGiven    Review[]         @relation("ReviewsGiven")
+
+  @@map("users")
+}
+
+model ServiceProvider {
+  id          String  @id @default(uuid())
+  userId      String  @unique @map("user_id")
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String
+  description String?
+  location    String
+  rating      Float   @default(0)
+  reviewCount Int     @default(0) @map("review_count")
+  isVerified  Boolean @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  bookings Booking[]
+  reviews  Review[]  @relation("ServiceProviderReviews")
+
+  @@map("service_providers")
+}
+
+model Material {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+  unit        String
+  stock       Int     @default(0)
+  imageUrl    String? @map("image_url")
+  sellerId    String  @map("seller_id")
+  seller      User    @relation(fields: [sellerId], references: [id])
+  rating      Float   @default(0)
+  reviewCount Int     @default(0) @map("review_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  orders  Order[]
+  reviews Review[] @relation("MaterialReviews")
+
+  @@map("materials")
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  buyerId           String      @map("buyer_id")
+  buyer             User        @relation(fields: [buyerId], references: [id])
+  materialId        String      @map("material_id")
+  material          Material    @relation(fields: [materialId], references: [id])
+  quantity          Int
+  unitPrice         Decimal     @db.Decimal(10, 2) @map("unit_price")
+  totalAmount       Decimal     @db.Decimal(10, 2) @map("total_amount")
+  status            OrderStatus @default(PENDING)
+  razorpayOrderId   String?     @map("razorpay_order_id")
+  razorpayPaymentId String?     @map("razorpay_payment_id")
+  shippingAddress   String?     @map("shipping_address")
+  notes             String?
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model Booking {
+  id                String        @id @default(uuid())
+  customerId        String        @map("customer_id")
+  customer          User          @relation(fields: [customerId], references: [id])
+  serviceProviderId String        @map("service_provider_id")
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+  scheduledAt       DateTime      @map("scheduled_at")
+  status            BookingStatus @default(PENDING)
+  notes             String?
+  amount            Decimal       @db.Decimal(10, 2)
+  razorpayOrderId   String?       @map("razorpay_order_id")
+  razorpayPaymentId String?       @map("razorpay_payment_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@map("bookings")
+}
+
+model Review {
+  id                String           @id @default(uuid())
+  reviewerId        String           @map("reviewer_id")
+  reviewer          User             @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  targetType        ReviewTargetType @map("target_type")
+  rating            Int
+  comment           String?
+  serviceProviderId String?          @map("service_provider_id")
+  serviceProvider   ServiceProvider? @relation("ServiceProviderReviews", fields: [serviceProviderId], references: [id])
+  materialId        String?          @map("material_id")
+  material          Material?        @relation("MaterialReviews", fields: [materialId], references: [id])
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@map("reviews")
+}

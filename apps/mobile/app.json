@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Griffy",
+    "slug": "griffy",
+    "version": "1.0.0",
+    "scheme": "constructionpartner",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.constructionpartner.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.constructionpartner.app"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}
