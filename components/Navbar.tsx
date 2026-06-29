@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, HardHat, ChevronDown } from "lucide-react";
+import { Menu, X, HardHat, ChevronDown, ShoppingCart } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 
 const navLinks = [
   {
@@ -21,6 +22,7 @@ const navLinks = [
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { count } = useCart();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-100 shadow-sm">
@@ -79,6 +81,14 @@ export default function Navbar() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
+            <Link href="/cart" className="relative p-2 text-stone-600 hover:text-orange-500 transition-colors">
+              <ShoppingCart className="w-5 h-5" />
+              {count > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
+            </Link>
             <Link href="/login" className="text-stone-600 hover:text-stone-900 font-medium px-3 py-2 transition-colors">
               Sign In
             </Link>
