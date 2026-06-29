@@ -134,6 +134,17 @@ model Booking {
   @@map("bookings")
 }
 
+model WhatsappOtp {
+  id        String   @id @default(uuid())
+  phone     String
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("whatsapp_otps")
+}
+
 model Review {
   id                String           @id @default(uuid())
   reviewerId        String           @map("reviewer_id")
