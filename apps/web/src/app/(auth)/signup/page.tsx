@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase';
 
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';
-type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 type Mode = 'options' | 'email' | 'wp-phone' | 'wp-otp' | 'verify-choice';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -17,7 +17,10 @@ const PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; i
   { value: 'SERVICE_PROVIDER', label: 'Labour / Mistri',  sublabel: 'Skilled Worker',     desc: 'Mason, carpenter, painter or daily wage worker',      icon: '👷' },
   { value: 'SERVICE_PROVIDER', label: 'Service Expert',   sublabel: 'Specialist',         desc: 'Electrician, plumber, AC technician or specialist',    icon: '⚡' },
   { value: 'MATERIAL_SELLER',  label: 'Material Supplier',sublabel: 'Seller',             desc: 'Sell cement, steel, tiles or building materials',       icon: '🧱' },
-  { value: 'LAND_OWNER',       label: 'Land Owner',       sublabel: 'Property Owner',     desc: 'List land or plots for sale or rent',                  icon: '🌍' },
+  { value: 'LAND_OWNER',       label: 'Land Owner',       sublabel: 'Plot / Land',        desc: 'List land or plots for sale or rent',                  icon: '🌍' },
+  { value: 'PROPERTY_SELLER',  label: 'Property Seller',  sublabel: 'Home / Flat',        desc: 'Sell or rent out your home, flat or villa',            icon: '🏠' },
+  { value: 'BUILDER',          label: 'Builder / Developer', sublabel: 'New Projects',    desc: 'Launch new construction projects or housing societies', icon: '🏢' },
+  { value: 'PROPERTY_AGENT',   label: 'Property Agent',   sublabel: 'Broker / Agent',     desc: 'Help buyers and renters find the right property',      icon: '🤝' },
   { value: 'ADMIN',            label: 'Admin',            sublabel: 'Griffy Team',        desc: 'Internal team access only',                            icon: '⚙️', team: true },
 ];
 

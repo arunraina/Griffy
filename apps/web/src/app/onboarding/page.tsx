@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
-type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 
 interface HomeownerData {
   projectType: string;
@@ -53,6 +53,39 @@ interface LandOwnerData {
   description: string;
 }
 
+interface PropertySellerData {
+  propertyType: string;
+  bhk: string;
+  listingPurpose: string;
+  city: string;
+  locality: string;
+  pincode: string;
+  price: string;
+  amenities: string[];
+  description: string;
+}
+
+interface BuilderData {
+  companyName: string;
+  projectName: string;
+  projectStage: string;
+  bhkOptions: string[];
+  city: string;
+  locality: string;
+  pincode: string;
+  totalUnits: string;
+  website: string;
+  reraNumber: string;
+}
+
+interface PropertyAgentData {
+  agencyName: string;
+  licenseNumber: string;
+  specialization: string[];
+  serviceCities: string[];
+  experience: string;
+}
+
 const PROJECT_TYPES = [
   { value: 'new_construction', label: 'New Construction', icon: '🏗️', desc: 'Build from the ground up' },
   { value: 'renovation',       label: 'Renovation',       icon: '🔧', desc: 'Upgrade an existing space' },
@@ -96,6 +129,15 @@ const INDIAN_STATES = [
   'Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','Uttarakhand','West Bengal',
 ];
 
+const PROPERTY_TYPES = ['Apartment / Flat', 'Independent House', 'Villa', 'Builder Floor', 'Studio', 'Row House', 'Penthouse'];
+const PROPERTY_AMENITIES = ['Car Parking', 'Lift', 'Swimming Pool', 'Gym', 'Security', 'Power Backup', 'Club House', 'Garden'];
+const BHK_OPTIONS = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK+', 'Villa'];
+const PROJECT_STAGES = [
+  { value: 'new_launch', icon: '🚀', label: 'New Launch' },
+  { value: 'under_construction', icon: '🏗️', label: 'Under Construction' },
+  { value: 'ready_to_move', icon: '✅', label: 'Ready to Move' },
+];
+
 const MATERIAL_CATEGORIES = [
   { value: 'cement_steel',   label: 'Cement & Steel',  icon: '🏗️' },
   { value: 'tiles_flooring', label: 'Tiles & Flooring', icon: '🟫' },
@@ -137,6 +179,23 @@ export default function OnboardingPage() {
     listingType: '', landType: '', areaValue: '', areaUnit: 'sq ft',
     state: '', city: '', pincode: '', locality: '',
     price: '', priceNegotiable: false, amenities: [], description: '',
+  });
+
+  // Property seller state
+  const [ps, setPs] = useState<PropertySellerData>({
+    propertyType: '', bhk: '', listingPurpose: '', city: '', locality: '',
+    pincode: '', price: '', amenities: [], description: '',
+  });
+
+  // Builder state
+  const [bu, setBu] = useState<BuilderData>({
+    companyName: '', projectName: '', projectStage: '', bhkOptions: [],
+    city: '', locality: '', pincode: '', totalUnits: '', website: '', reraNumber: '',
+  });
+
+  // Property agent state
+  const [pa, setPa] = useState<PropertyAgentData>({
+    agencyName: '', licenseNumber: '', specialization: [], serviceCities: [], experience: '',
   });
 
   useEffect(() => {
@@ -185,6 +244,21 @@ export default function OnboardingPage() {
         setError('Please fill all required fields.'); setSubmitting(false); return;
       }
       formData = { ...formData, ...lo };
+    } else if (role === 'PROPERTY_SELLER') {
+      if (!ps.propertyType || !ps.bhk || !ps.listingPurpose || !ps.city || !ps.pincode || !ps.price) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...ps };
+    } else if (role === 'BUILDER') {
+      if (!bu.companyName || !bu.projectName || !bu.projectStage || !bu.city || !bu.pincode) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...bu };
+    } else if (role === 'PROPERTY_AGENT') {
+      if (!pa.experience || !pa.serviceCities.length) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...pa };
     }
 
     const { error } = await supabase.auth.updateUser({ data: formData });
@@ -258,6 +332,9 @@ export default function OnboardingPage() {
     role === 'CUSTOMER'         ? 'Homeowner'        :
     role === 'SERVICE_PROVIDER' ? 'Contractor'       :
     role === 'LAND_OWNER'       ? 'Land Owner'       :
+    role === 'PROPERTY_SELLER'  ? 'Property Seller'  :
+    role === 'BUILDER'          ? 'Builder / Developer' :
+    role === 'PROPERTY_AGENT'   ? 'Property Agent'   :
     'Material Seller';
 
   return (
@@ -275,12 +352,20 @@ export default function OnboardingPage() {
 
           {/* DEV: role switcher — remove before prod */}
           <div className="flex gap-2 mb-6 p-1 bg-[#F0E8E2] rounded-xl flex-wrap">
-            {(['CUSTOMER', 'SERVICE_PROVIDER', 'MATERIAL_SELLER', 'LAND_OWNER'] as Role[]).map(r => (
+            {([
+              ['CUSTOMER', '🏠 Home'],
+              ['SERVICE_PROVIDER', '🔨 Contractor'],
+              ['MATERIAL_SELLER', '📦 Seller'],
+              ['LAND_OWNER', '🌍 Land'],
+              ['PROPERTY_SELLER', '🏠 Prop Seller'],
+              ['BUILDER', '🏢 Builder'],
+              ['PROPERTY_AGENT', '🤝 Agent'],
+            ] as [Role, string][]).map(([r, label]) => (
               <button key={r} type="button" onClick={() => setRole(r)}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors min-w-[80px] ${
                   role === r ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
                 }`}>
-                {r === 'CUSTOMER' ? '🏠 Home' : r === 'SERVICE_PROVIDER' ? '🔨 Contractor' : r === 'MATERIAL_SELLER' ? '📦 Seller' : '🌍 Land'}
+                {label}
               </button>
             ))}
           </div>
@@ -590,6 +675,200 @@ export default function OnboardingPage() {
                     placeholder="e.g. North-facing corner plot with road access on two sides. Located near upcoming metro station…"
                     className={`${inp} resize-none`} />
                 </Field>
+              </Section>
+            </>
+          )}
+
+          {/* ── PROPERTY SELLER FORM ── */}
+          {role === 'PROPERTY_SELLER' && (
+            <>
+              <Section title="What are you listing?" hint="Tell us about the property">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {PROPERTY_TYPES.map(pt => (
+                    <RadioCard key={pt} icon="🏠" label={pt}
+                      selected={ps.propertyType === pt}
+                      onClick={() => setPs(p => ({ ...p, propertyType: pt }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Configuration">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {BHK_OPTIONS.map(b => (
+                    <RadioCard key={b} icon="" label={b}
+                      selected={ps.bhk === b}
+                      onClick={() => setPs(p => ({ ...p, bhk: b }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Listing purpose">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[{ v: 'for_sale', l: 'For Sale', i: '🏷️' }, { v: 'for_rent', l: 'For Rent', i: '📋' }, { v: 'both', l: 'Sale or Rent', i: '🔄' }].map(x => (
+                    <RadioCard key={x.v} icon={x.i} label={x.l}
+                      selected={ps.listingPurpose === x.v}
+                      onClick={() => setPs(p => ({ ...p, listingPurpose: x.v }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Location">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City *">
+                      <input type="text" value={ps.city}
+                        onChange={e => setPs(p => ({ ...p, city: e.target.value }))}
+                        placeholder="e.g. Gurgaon" className={inp} required />
+                    </Field>
+                    <Field label="Pincode *">
+                      <input type="text" value={ps.pincode}
+                        onChange={e => setPs(p => ({ ...p, pincode: e.target.value }))}
+                        placeholder="e.g. 122001" maxLength={6} className={inp} required />
+                    </Field>
+                  </div>
+                  <Field label="Locality / Society name">
+                    <input type="text" value={ps.locality}
+                      onChange={e => setPs(p => ({ ...p, locality: e.target.value }))}
+                      placeholder="e.g. DLF Phase 2, Sector 45" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Price">
+                <Field label="Expected price (₹) *">
+                  <input type="number" value={ps.price} min="0"
+                    onChange={e => setPs(p => ({ ...p, price: e.target.value }))}
+                    placeholder="e.g. 7500000" className={inp} required />
+                </Field>
+              </Section>
+
+              <Section title="Amenities" hint="Select all that are available">
+                <ChipGroup options={PROPERTY_AMENITIES} selected={ps.amenities}
+                  onToggle={v => setPs(p => ({ ...p, amenities: toggle(p.amenities, v) }))} />
+              </Section>
+
+              <Section title="Description (optional)">
+                <Field label="Description">
+                  <textarea value={ps.description} rows={3}
+                    onChange={e => setPs(p => ({ ...p, description: e.target.value }))}
+                    placeholder="e.g. Well-maintained 3BHK in a gated society. Walking distance from metro station…"
+                    className={`${inp} resize-none`} />
+                </Field>
+              </Section>
+            </>
+          )}
+
+          {/* ── BUILDER / DEVELOPER FORM ── */}
+          {role === 'BUILDER' && (
+            <>
+              <Section title="Company details">
+                <div className="space-y-3">
+                  <Field label="Company / Developer name *">
+                    <input type="text" value={bu.companyName}
+                      onChange={e => setBu(p => ({ ...p, companyName: e.target.value }))}
+                      placeholder="e.g. Prestige Group" className={inp} required />
+                  </Field>
+                  <Field label="Project name *">
+                    <input type="text" value={bu.projectName}
+                      onChange={e => setBu(p => ({ ...p, projectName: e.target.value }))}
+                      placeholder="e.g. Prestige Sunrise Park" className={inp} required />
+                  </Field>
+                  <Field label="RERA registration number (optional)">
+                    <input type="text" value={bu.reraNumber}
+                      onChange={e => setBu(p => ({ ...p, reraNumber: e.target.value }))}
+                      placeholder="e.g. P52100012345" className={inp} />
+                  </Field>
+                  <Field label="Website (optional)">
+                    <input type="url" value={bu.website}
+                      onChange={e => setBu(p => ({ ...p, website: e.target.value }))}
+                      placeholder="https://yourproject.com" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Project stage">
+                <div className="grid grid-cols-3 gap-3">
+                  {PROJECT_STAGES.map(s => (
+                    <RadioCard key={s.value} icon={s.icon} label={s.label}
+                      selected={bu.projectStage === s.value}
+                      onClick={() => setBu(p => ({ ...p, projectStage: s.value }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Available configurations">
+                <ChipGroup options={BHK_OPTIONS} selected={bu.bhkOptions}
+                  onToggle={v => setBu(p => ({ ...p, bhkOptions: toggle(p.bhkOptions, v) }))} />
+              </Section>
+
+              <Section title="Project location">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City *">
+                      <input type="text" value={bu.city}
+                        onChange={e => setBu(p => ({ ...p, city: e.target.value }))}
+                        placeholder="e.g. Hyderabad" className={inp} required />
+                    </Field>
+                    <Field label="Pincode *">
+                      <input type="text" value={bu.pincode}
+                        onChange={e => setBu(p => ({ ...p, pincode: e.target.value }))}
+                        placeholder="e.g. 500081" maxLength={6} className={inp} required />
+                    </Field>
+                  </div>
+                  <Field label="Locality / Area">
+                    <input type="text" value={bu.locality}
+                      onChange={e => setBu(p => ({ ...p, locality: e.target.value }))}
+                      placeholder="e.g. Gachibowli, Nanakramguda" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Total units">
+                <Field label="Number of units in this project">
+                  <input type="number" value={bu.totalUnits} min="1"
+                    onChange={e => setBu(p => ({ ...p, totalUnits: e.target.value }))}
+                    placeholder="e.g. 240" className={inp} />
+                </Field>
+              </Section>
+            </>
+          )}
+
+          {/* ── PROPERTY AGENT FORM ── */}
+          {role === 'PROPERTY_AGENT' && (
+            <>
+              <Section title="Agency details">
+                <div className="space-y-3">
+                  <Field label="Agency / Brokerage name">
+                    <input type="text" value={pa.agencyName}
+                      onChange={e => setPa(p => ({ ...p, agencyName: e.target.value }))}
+                      placeholder="e.g. PropConnect Realty" className={inp} />
+                  </Field>
+                  <Field label="RERA agent license number (optional)">
+                    <input type="text" value={pa.licenseNumber}
+                      onChange={e => setPa(p => ({ ...p, licenseNumber: e.target.value }))}
+                      placeholder="e.g. A51800012345" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Specialization" hint="What types of transactions do you handle?">
+                <ChipGroup options={['Residential Sale', 'Residential Rent', 'Commercial Sale', 'Commercial Rent', 'New Projects', 'Luxury Homes']}
+                  selected={pa.specialization}
+                  onToggle={v => setPa(p => ({ ...p, specialization: toggle(p.specialization, v) }))} />
+              </Section>
+
+              <Section title="Cities you serve">
+                <ChipGroup options={SERVICE_CITIES} selected={pa.serviceCities}
+                  onToggle={v => setPa(p => ({ ...p, serviceCities: toggle(p.serviceCities, v) }))} />
+              </Section>
+
+              <Section title="Years of experience">
+                <Select value={pa.experience} onChange={v => setPa(p => ({ ...p, experience: v }))} placeholder="Select experience">
+                  <option value="0_2">0 – 2 years</option>
+                  <option value="2_5">2 – 5 years</option>
+                  <option value="5_10">5 – 10 years</option>
+                  <option value="10_plus">10+ years</option>
+                </Select>
               </Section>
             </>
           )}

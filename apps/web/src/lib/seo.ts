@@ -461,4 +461,62 @@ export const SEO_KEYWORDS = {
     'carpenter Srinagar',
     'painter Srinagar',
   ],
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PROPERTY — BUY / RENT
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  property_keywords: [
+    'buy house India',
+    'buy flat India',
+    'buy apartment India',
+    'property for sale India',
+    'house for sale India',
+    'flat for sale India',
+    '2BHK flat for sale',
+    '3BHK flat for sale',
+    'villa for sale India',
+    'independent house for sale',
+    'new project launch India',
+    'ready to move flat',
+    'under construction property',
+    'property in Delhi',
+    'property in Mumbai',
+    'property in Bangalore',
+    'property in Gurgaon',
+    'property in Noida',
+    'property in Hyderabad',
+    'property in Pune',
+    'house for sale near me',
+    'flat for sale near me',
+    'property search India',
+    'real estate India',
+    'home buying India',
+    'property marketplace India',
+  ],
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // RENTAL SEARCHES
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  rental_keywords: [
+    'house for rent India',
+    'flat for rent India',
+    'apartment for rent India',
+    'PG for rent India',
+    '1BHK for rent',
+    '2BHK for rent',
+    '3BHK for rent',
+    'rent flat near me',
+    'house for rent near me',
+    'rental property India',
+    'house on rent Delhi',
+    'flat on rent Mumbai',
+    'apartment on rent Bangalore',
+    'house for rent Gurgaon',
+    'furnished flat for rent',
+    'semi-furnished flat for rent',
+    'flat rent Noida',
+    'flat rent Hyderabad',
+    'flat rent Pune',
+    'rental apartment India',
+  ],
 } as const;

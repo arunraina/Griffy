@@ -51,6 +51,8 @@ export default function HomePage() {
               { label: 'Book Experts',     href: '/service-experts' },
               { label: 'Materials',        href: '/materials' },
               { label: 'Land',             href: '/land' },
+              { label: 'Buy Home',         href: '/properties?tab=buy' },
+              { label: 'Rent',             href: '/properties?tab=rent' },
             ].map((link, i, arr) => (
               <span key={link.label} className="flex items-center gap-3">
                 <Link href={link.href} className="hover:text-[#C0593A] transition-colors font-medium">
@@ -94,12 +96,10 @@ export default function HomePage() {
               <ServiceCard key={card.title} {...card} />
             ))}
           </div>
-          {/* Row 2: 2 cards centered */}
-          <div className="flex flex-col sm:flex-row gap-5 justify-center">
+          {/* Row 2: 3 cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {SERVICE_CARDS.slice(3).map(card => (
-              <div key={card.title} className="w-full sm:w-[calc(33.333%-10px)]">
-                <ServiceCard {...card} />
-              </div>
+              <ServiceCard key={card.title} {...card} />
             ))}
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function HomePage() {
       {/* ── SECTION 6: TRUST BAR ── */}
       <section className="bg-[#C0593A] px-6 py-14">
         <div className="max-w-[1200px] mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-white text-center divide-y md:divide-y-0 divide-white/20">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 text-white text-center divide-y md:divide-y-0 divide-white/20">
             {STATS.map(s => (
               <div key={s.label}>
                 <p className="text-4xl mb-2">{s.icon}</p>
@@ -194,15 +194,28 @@ export default function HomePage() {
         <div className="max-w-[1200px] mx-auto">
           <p className="text-xs font-bold text-[#C0593A] uppercase tracking-widest mb-2">Pan India</p>
           <h2 className="text-2xl font-bold text-[#2C1810] mb-2" style={{ fontFamily: 'Georgia, serif' }}>
-            Find Contractors & Materials in Your City
+            Find Contractors, Materials & Properties in Your City
           </h2>
-          <p className="text-sm text-[#6B5248] mb-8">Verified professionals and suppliers in 100+ cities</p>
-          <div className="flex flex-wrap gap-3">
+          <p className="text-sm text-[#6B5248] mb-6">Verified professionals, suppliers and real estate listings in 100+ cities</p>
+
+          <p className="text-xs font-semibold text-[#A08070] uppercase tracking-wider mb-3">Contractors & Labour</p>
+          <div className="flex flex-wrap gap-3 mb-6">
             {CITIES.map(c => (
               <Link key={c.name} href={`/contractors?city=${encodeURIComponent(c.name)}`}
                 className="group flex items-center gap-2 bg-white border border-[#EBE0D8] hover:border-[#C0593A] rounded-xl px-4 py-2.5 text-sm font-medium text-[#3D2B22] hover:text-[#C0593A] transition-all shadow-sm">
                 <span>{c.flag}</span> {c.name}
                 <span className="text-xs text-[#A08070] group-hover:text-[#C0593A]">{c.count}</span>
+              </Link>
+            ))}
+          </div>
+
+          <p className="text-xs font-semibold text-[#A08070] uppercase tracking-wider mb-3">Properties for Sale & Rent</p>
+          <div className="flex flex-wrap gap-3">
+            {PROPERTY_CITIES.map(c => (
+              <Link key={c.name} href={`/properties?city=${encodeURIComponent(c.name)}`}
+                className="group flex items-center gap-2 bg-white border border-[#EBE0D8] hover:border-[#C0593A] rounded-xl px-4 py-2.5 text-sm font-medium text-[#3D2B22] hover:text-[#C0593A] transition-all shadow-sm">
+                <span>{c.flag}</span> {c.name}
+                <span className="text-xs text-[#A08070] group-hover:text-[#C0593A]">{c.props}</span>
               </Link>
             ))}
           </div>
@@ -249,7 +262,7 @@ export default function HomePage() {
       <section className="px-6 py-14">
         <div className="max-w-[1200px] mx-auto">
           <div className="bg-[#2C1810] rounded-2xl px-8 py-14 text-center">
-            <p className="text-white/60 text-sm font-medium mb-3">Are you a contractor or supplier?</p>
+            <p className="text-white/60 text-sm font-medium mb-3">Are you a contractor, supplier or property professional?</p>
             <h2 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Georgia, serif' }}>
               Join Griffy and grow your business
             </h2>
@@ -257,13 +270,17 @@ export default function HomePage() {
               Get discovered by thousands of homeowners. List your services, manage bookings, and get paid — all in one place. Free to join.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link href="/signup"
+              <Link href="/signup?type=professional"
                 className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-sm px-8 py-3.5 rounded-xl transition-colors">
                 Join as Professional →
               </Link>
-              <Link href="/signup"
+              <Link href="/signup?type=professional"
                 className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-8 py-3.5 rounded-xl transition-colors border border-white/20">
                 List Your Materials
+              </Link>
+              <Link href="/signup?type=professional"
+                className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-8 py-3.5 rounded-xl transition-colors border border-white/20">
+                List a Property
               </Link>
             </div>
           </div>
@@ -312,6 +329,13 @@ const SERVICE_CARDS = [
     stats: '1,000+ land listings',
     href: '/land',
   },
+  {
+    icon: '🏠',
+    title: 'Buy / Rent Homes',
+    desc: 'Apartments, villas, independent houses — ready to move or under construction',
+    stats: '5,000+ properties listed',
+    href: '/properties',
+  },
 ];
 
 function ServiceCard({ icon, title, desc, stats, href }: {
@@ -354,6 +378,7 @@ const STATS = [
   { icon: '👷', value: '2,000+',  label: 'Skilled Workers' },
   { icon: '🧱', value: '10,000+', label: 'Materials Listed' },
   { icon: '🌍', value: '1,000+',  label: 'Land Listings' },
+  { icon: '🏠', value: '5,000+',  label: 'Properties' },
 ];
 
 const CITIES = [
@@ -372,6 +397,19 @@ const CITIES = [
   { name: 'Lucknow',     flag: '🕌', count: '28+ pros' },
   { name: 'Dehradun',    flag: '🏕️', count: '22+ pros' },
   { name: 'Shimla',      flag: '⛷️', count: '15+ pros' },
+];
+
+const PROPERTY_CITIES = [
+  { name: 'Delhi NCR',  flag: '🏙️', props: '1,200+ props' },
+  { name: 'Mumbai',     flag: '🌆', props: '980+ props' },
+  { name: 'Bangalore',  flag: '🌇', props: '860+ props' },
+  { name: 'Hyderabad',  flag: '🏛️', props: '720+ props' },
+  { name: 'Pune',       flag: '🏘️', props: '540+ props' },
+  { name: 'Chennai',    flag: '🌊', props: '480+ props' },
+  { name: 'Srinagar',   flag: '🏔️', props: '180+ props' },
+  { name: 'Jaipur',     flag: '🏯', props: '260+ props' },
+  { name: 'Chandigarh', flag: '🌳', props: '210+ props' },
+  { name: 'Lucknow',    flag: '🕌', props: '190+ props' },
 ];
 
 const PROVIDERS = [

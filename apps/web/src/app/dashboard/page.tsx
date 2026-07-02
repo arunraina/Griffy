@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
 
-type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 
 interface UserInfo {
   name: string;
@@ -67,13 +67,16 @@ export default function DashboardPage() {
 
         {/* DEV: switchers — remove before prod */}
         <div className="space-y-2 mb-6">
-          <div className="flex gap-2 p-1 bg-[#F0E8E2] rounded-xl max-w-lg flex-wrap">
-            {(['CUSTOMER', 'SERVICE_PROVIDER', 'MATERIAL_SELLER', 'LAND_OWNER', 'ADMIN'] as Role[]).map(r => (
+          <div className="flex gap-2 p-1 bg-[#F0E8E2] rounded-xl max-w-2xl flex-wrap">
+            {([
+              ['CUSTOMER', '🏠'], ['SERVICE_PROVIDER', '🔨'], ['MATERIAL_SELLER', '📦'],
+              ['LAND_OWNER', '🌍'], ['PROPERTY_SELLER', '🏠S'], ['BUILDER', '🏢'], ['PROPERTY_AGENT', '🤝'], ['ADMIN', '⚙️'],
+            ] as [Role, string][]).map(([r, icon]) => (
               <button key={r} type="button" onClick={() => setDevRole(r)}
                 className={`flex-1 py-1 text-[10px] font-semibold rounded-lg transition-colors min-w-[40px] ${
                   role === r ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
                 }`}>
-                {r === 'CUSTOMER' ? '🏠' : r === 'SERVICE_PROVIDER' ? '🔨' : r === 'MATERIAL_SELLER' ? '📦' : r === 'LAND_OWNER' ? '🌍' : '⚙️'}
+                {icon}
               </button>
             ))}
           </div>
@@ -114,6 +117,9 @@ export default function DashboardPage() {
         />}
         {role === 'MATERIAL_SELLER'  && <SellerDashboard name={user?.name ?? ''} />}
         {role === 'LAND_OWNER'       && <LandOwnerDashboard name={user?.name ?? ''} />}
+        {role === 'PROPERTY_SELLER'  && <PropertySellerDashboard name={user?.name ?? ''} />}
+        {role === 'BUILDER'          && <BuilderDashboard name={user?.name ?? ''} />}
+        {role === 'PROPERTY_AGENT'   && <PropertyAgentDashboard name={user?.name ?? ''} />}
         {role === 'ADMIN'            && <AdminDashboard />}
 
       </main>
@@ -137,10 +143,12 @@ function HomeownerDashboard({ name }: { name: string }) {
       ]} />
 
       <QuickActions actions={[
-        { label: 'Find Contractors', href: '/contractors', icon: '🔨' },
-        { label: 'Browse Materials', href: '/materials',   icon: '🧱' },
-        { label: 'Book a Service',   href: '/providers',   icon: '📅' },
-        { label: 'Hire Labour',      href: '/labour',      icon: '👷' },
+        { label: 'Find Contractors', href: '/contractors',         icon: '🔨' },
+        { label: 'Browse Materials', href: '/materials',           icon: '🧱' },
+        { label: 'Book a Service',   href: '/service-experts',     icon: '📅' },
+        { label: 'Hire Labour',      href: '/labour',              icon: '👷' },
+        { label: 'Buy Home',         href: '/properties?tab=buy',  icon: '🏠' },
+        { label: 'Rent a Home',      href: '/properties?tab=rent', icon: '🔑' },
       ]} />
 
       <RecentSection title="Recent Activity">
@@ -323,14 +331,112 @@ function AdminDashboard() {
       <StatGrid stats={[
         { icon: '👥', value: '0', label: 'Total Users' },
         { icon: '🔨', value: '0', label: 'Contractors' },
-        { icon: '📦', value: '0', label: 'Providers' },
+        { icon: '🏠', value: '0', label: 'Properties' },
+        { icon: '🌍', value: '0', label: 'Land Listings' },
         { icon: '🛒', value: '0', label: 'Orders' },
       ]} />
 
       <QuickActions actions={[
-        { label: 'Manage Users',  href: '/admin/users',   icon: '👥' },
-        { label: 'View Reports',  href: '/admin/reports', icon: '📊' },
+        { label: 'Manage Users',       href: '/admin/users',       icon: '👥' },
+        { label: 'Manage Properties',  href: '/admin/properties',  icon: '🏠' },
+        { label: 'View Reports',       href: '/admin/reports',     icon: '📊' },
       ]} />
+    </div>
+  );
+}
+
+// ── PROPERTY SELLER DASHBOARD ─────────────────────────────────────────────────
+
+function PropertySellerDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="🏠" title={`Welcome, ${name}`} subtitle="Manage your property listings and leads." />
+
+      <StatGrid stats={[
+        { icon: '📋', value: '0', label: 'Active Listings' },
+        { icon: '💬', value: '0', label: 'Enquiries Received' },
+        { icon: '👁️', value: '0', label: 'Profile Views' },
+        { icon: '📞', value: '0', label: 'Contact Requests' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Add Property',    href: '/properties/new', icon: '➕' },
+        { label: 'View Enquiries',  href: '/enquiries',      icon: '💬' },
+        { label: 'Browse Properties', href: '/properties',   icon: '🔍' },
+      ]} />
+
+      <RecentSection title="Your Listings">
+        <EmptyState
+          icon="🏠"
+          message="No listings yet. Add your first property to start receiving enquiries!"
+          cta="Add Property"
+          href="/properties/new"
+        />
+      </RecentSection>
+    </div>
+  );
+}
+
+// ── BUILDER DASHBOARD ─────────────────────────────────────────────────────────
+
+function BuilderDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="🏢" title={`Welcome, ${name}`} subtitle="Manage your projects, units and buyer enquiries." />
+
+      <StatGrid stats={[
+        { icon: '🏗️', value: '0', label: 'Active Projects' },
+        { icon: '🏠', value: '0', label: 'Units Listed' },
+        { icon: '💬', value: '0', label: 'Buyer Enquiries' },
+        { icon: '✅', value: '0', label: 'Units Sold' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Add Project',       href: '/projects/new',   icon: '➕' },
+        { label: 'View Enquiries',    href: '/enquiries',      icon: '💬' },
+        { label: 'Browse Properties', href: '/properties',     icon: '🔍' },
+      ]} />
+
+      <RecentSection title="Your Projects">
+        <EmptyState
+          icon="🏢"
+          message="No projects yet. Add your first project to attract buyers!"
+          cta="Add Project"
+          href="/projects/new"
+        />
+      </RecentSection>
+    </div>
+  );
+}
+
+// ── PROPERTY AGENT DASHBOARD ──────────────────────────────────────────────────
+
+function PropertyAgentDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="🤝" title={`Welcome, ${name}`} subtitle="Track your leads, listings and commissions." />
+
+      <StatGrid stats={[
+        { icon: '📋', value: '0', label: 'Active Listings' },
+        { icon: '💬', value: '0', label: 'Active Leads' },
+        { icon: '✅', value: '0', label: 'Deals Closed' },
+        { icon: '₹',  value: '₹0', label: 'Commission Earned' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Add Listing',       href: '/properties/new', icon: '➕' },
+        { label: 'View Leads',        href: '/leads',          icon: '💬' },
+        { label: 'Browse Properties', href: '/properties',     icon: '🔍' },
+      ]} />
+
+      <RecentSection title="Your Listings">
+        <EmptyState
+          icon="🤝"
+          message="No listings yet. Add properties you're representing to generate leads!"
+          cta="Add Listing"
+          href="/properties/new"
+        />
+      </RecentSection>
     </div>
   );
 }

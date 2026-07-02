@@ -82,7 +82,7 @@ const LISTINGS: LandListing[] = [
   {
     id: 'l6', title: 'Industrial Plot — MIDC Zone', type: 'Industrial',
     city: 'Pune', locality: 'Chakan', state: 'Maharashtra',
-    area: 2000, areaUnit: 'sqmt', price: 12000, priceUnit: 'per_sqft',
+    area: 2000, areaUnit: 'sqft', price: 12000, priceUnit: 'per_sqft',
     facing: 'East', road: '80ft', approved: true, fencing: true, water: true, electricity: true,
     featured: false, postedDaysAgo: 4, ownerName: 'PunePlots Pvt Ltd', ownerType: 'Dealer',
     imageUrl: 'https://images.unsplash.com/photo-1565793979618-a3a4f9bc5a0a?w=600&h=400&fit=crop&q=80',
@@ -129,7 +129,7 @@ const LISTINGS: LandListing[] = [
   {
     id: 'l11', title: 'Commercial Showroom Plot — MG Road', type: 'Commercial Plot',
     city: 'Bangalore', locality: 'MG Road', state: 'Karnataka',
-    area: 80, areaUnit: 'sqmt', price: 95000, priceUnit: 'per_sqft',
+    area: 80, areaUnit: 'sqft', price: 95000, priceUnit: 'per_sqft',
     facing: 'West', road: '100ft', approved: true, fencing: true, water: true, electricity: true,
     featured: false, postedDaysAgo: 3, ownerName: 'Agarwal Commercial', ownerType: 'Dealer',
     imageUrl: 'https://images.unsplash.com/photo-1565793979618-a3a4f9bc5a0a?w=600&h=400&fit=crop&q=80',
@@ -300,6 +300,19 @@ function LandInner() {
           <h1 className="text-2xl font-bold text-[#2C1810]" style={{ fontFamily: 'Georgia, serif' }}>Land & Plots</h1>
           <p className="text-sm text-[#6B5248] mt-0.5">{listings.length} listings across India</p>
         </div>
+
+        {/* Cross-promotion banner */}
+        <Link href="/properties?tab=buy"
+          className="flex items-center justify-between gap-4 bg-[#FAEEE9] border border-[#E8C4B0] rounded-xl px-5 py-3.5 hover:bg-[#F5E0D4] transition-colors group">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏠</span>
+            <div>
+              <p className="text-sm font-semibold text-[#2C1810]">Looking for ready homes too?</p>
+              <p className="text-xs text-[#6B5248]">Browse apartments, villas and independent houses for sale or rent</p>
+            </div>
+          </div>
+          <span className="text-sm font-semibold text-[#C0593A] whitespace-nowrap group-hover:underline">Browse Properties →</span>
+        </Link>
 
         {/* Search + sort */}
         <div className="flex gap-3">

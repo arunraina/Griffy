@@ -12,7 +12,7 @@ const NAV_LINKS = [
   { href: '/labour',         label: 'Labour' },
   { href: '/service-experts',label: 'Service Experts' },
   { href: '/materials',      label: 'Materials' },
-  { href: '/land',           label: 'Land' },
+  { href: '/properties',     label: 'Properties' },
 ];
 
 export default function Navbar() {
