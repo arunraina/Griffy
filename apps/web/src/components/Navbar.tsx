@@ -8,11 +8,11 @@ import { createClient } from '@/lib/supabase';
 interface UserInfo { name: string }
 
 const NAV_LINKS = [
-  { href: '/contractors',             label: 'Find Contractors' },
-  { href: '/materials',               label: 'Materials' },
-  { href: '/land',                    label: 'Land' },
-  { href: '/providers',               label: 'Services' },
-  { href: '/contractors?type=labour', label: 'Hire Labour' },
+  { href: '/contractors',    label: 'Find Contractors' },
+  { href: '/labour',         label: 'Labour' },
+  { href: '/service-experts',label: 'Service Experts' },
+  { href: '/materials',      label: 'Materials' },
+  { href: '/land',           label: 'Land' },
 ];
 
 export default function Navbar() {
