@@ -1,9 +1,437 @@
-import { apiFetch } from '@/lib/api';
+'use client';
 
-export default async function DashboardPage() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase';
+
+
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
+
+interface UserInfo {
+  name: string;
+  role: Role;
+  contractorType: string;
+  contractorStatus: string;
+  contractorVerified: boolean;
+  contractorFeatured: boolean;
+  rejectionReason: string;
+}
+
+export default function DashboardPage() {
+  const router   = useRouter();
+  const supabase = createClient();
+
+  const [user, setUser]       = useState<UserInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // DEV: overrides for testing — remove before prod
+  const [devRole,             setDevRole]             = useState<Role | null>(null);
+  const [devContractorType,   setDevContractorType]   = useState<string>('labour');
+  const [devContractorStatus, setDevContractorStatus] = useState<string>('pending');
+  const role              = devRole ?? user?.role ?? 'CUSTOMER';
+  const contractorType    = devRole === 'SERVICE_PROVIDER' ? devContractorType   : (user?.contractorType   ?? 'labour');
+  const contractorStatus  = devRole === 'SERVICE_PROVIDER' ? devContractorStatus : (user?.contractorStatus ?? 'pending');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      // TODO: restore redirects before prod — bypassed for testing
+      setUser({
+        name:               u?.user_metadata?.name ?? u?.email?.split('@')[0] ?? 'Guest',
+        role:               (u?.user_metadata?.role ?? 'CUSTOMER') as Role,
+        contractorType:     u?.user_metadata?.contractor_type     ?? '',
+        contractorStatus:   u?.user_metadata?.contractor_status   ?? 'pending',
+        contractorVerified: u?.user_metadata?.contractor_verified ?? false,
+        contractorFeatured: u?.user_metadata?.contractor_featured ?? false,
+        rejectionReason:    u?.user_metadata?.rejection_reason    ?? '',
+      });
+      setLoading(false);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
+        <svg className="animate-spin h-7 w-7 text-[#C0593A]" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+      </div>
+    );
+  }
+
   return (
-    <main>
-      <h1>Dashboard</h1>
-    </main>
+    <div className="min-h-screen bg-[#FDF8F5]">
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
+
+        {/* DEV: switchers — remove before prod */}
+        <div className="space-y-2 mb-6">
+          <div className="flex gap-2 p-1 bg-[#F0E8E2] rounded-xl max-w-lg flex-wrap">
+            {(['CUSTOMER', 'SERVICE_PROVIDER', 'MATERIAL_SELLER', 'LAND_OWNER', 'ADMIN'] as Role[]).map(r => (
+              <button key={r} type="button" onClick={() => setDevRole(r)}
+                className={`flex-1 py-1 text-[10px] font-semibold rounded-lg transition-colors min-w-[40px] ${
+                  role === r ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
+                }`}>
+                {r === 'CUSTOMER' ? '🏠' : r === 'SERVICE_PROVIDER' ? '🔨' : r === 'MATERIAL_SELLER' ? '📦' : r === 'LAND_OWNER' ? '🌍' : '⚙️'}
+              </button>
+            ))}
+          </div>
+          {role === 'SERVICE_PROVIDER' && (
+            <>
+              <div className="flex gap-2 p-1 bg-[#F0E8E2] rounded-xl max-w-sm">
+                {['labour', 'sub_contractor', 'full_contractor'].map(ct => (
+                  <button key={ct} type="button" onClick={() => setDevContractorType(ct)}
+                    className={`flex-1 py-1 text-[10px] font-semibold rounded-lg transition-colors ${
+                      contractorType === ct ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248]'
+                    }`}>
+                    {ct === 'labour' ? '👷 Labour' : ct === 'sub_contractor' ? '🏗️ Sub' : '🏢 Full'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 p-1 bg-[#F0E8E2] rounded-xl max-w-sm">
+                {['pending', 'approved', 'rejected', 'suspended'].map(s => (
+                  <button key={s} type="button" onClick={() => setDevContractorStatus(s)}
+                    className={`flex-1 py-1 text-[10px] font-semibold rounded-lg transition-colors ${
+                      contractorStatus === s ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248]'
+                    }`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {role === 'CUSTOMER'         && <HomeownerDashboard name={user?.name ?? ''} />}
+        {role === 'SERVICE_PROVIDER' && <ContractorDashboard
+          name={user?.name ?? ''}
+          contractorType={contractorType}
+          status={contractorStatus}
+          verified={user?.contractorVerified ?? false}
+          featured={user?.contractorFeatured ?? false}
+          rejectionReason={user?.rejectionReason ?? ''}
+        />}
+        {role === 'MATERIAL_SELLER'  && <SellerDashboard name={user?.name ?? ''} />}
+        {role === 'LAND_OWNER'       && <LandOwnerDashboard name={user?.name ?? ''} />}
+        {role === 'ADMIN'            && <AdminDashboard />}
+
+      </main>
+    </div>
+  );
+}
+
+// ── HOMEOWNER DASHBOARD ───────────────────────────────────────────────────────
+
+function HomeownerDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="👋" title={`Welcome back, ${name}`} subtitle="Here's what's happening with your projects." />
+
+      <StatGrid stats={[
+        { icon: '🏗️', value: '0', label: 'Active Projects' },
+        { icon: '📅', value: '0', label: 'Pending Bookings' },
+        { icon: '📦', value: '0', label: 'Material Orders' },
+        { icon: '👷', value: '0', label: 'Labour Hired' },
+        { icon: '₹',  value: '₹0', label: 'Total Spent' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Find Contractors', href: '/contractors', icon: '🔨' },
+        { label: 'Browse Materials', href: '/materials',   icon: '🧱' },
+        { label: 'Book a Service',   href: '/providers',   icon: '📅' },
+        { label: 'Hire Labour',      href: '/labour',      icon: '👷' },
+      ]} />
+
+      <RecentSection title="Recent Activity">
+        <EmptyState icon="🏗️" message="No activity yet. Start by finding a contractor!" cta="Find Contractors" href="/contractors" />
+      </RecentSection>
+    </div>
+  );
+}
+
+// ── CONTRACTOR DASHBOARD ──────────────────────────────────────────────────────
+
+function ContractorDashboard({ name, contractorType, status, verified, featured, rejectionReason }: {
+  name: string; contractorType: string; status: string;
+  verified: boolean; featured: boolean; rejectionReason: string;
+}) {
+  const isLabour = contractorType === 'labour';
+  return (
+    <div className="space-y-6">
+
+      {/* Status banners */}
+      {status === 'pending' && (
+        <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-200 rounded-2xl px-5 py-4">
+          <span className="text-xl flex-shrink-0">⏳</span>
+          <div>
+            <p className="text-sm font-semibold text-yellow-800">Profile under review</p>
+            <p className="text-xs text-yellow-700 mt-0.5">
+              Our team will review and approve your profile within 24–48 hours. You'll receive a WhatsApp notification once approved.
+            </p>
+          </div>
+        </div>
+      )}
+      {status === 'rejected' && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+          <span className="text-xl flex-shrink-0">❌</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">Profile not approved</p>
+            {rejectionReason && <p className="text-xs text-red-700 mt-0.5">Reason: {rejectionReason}</p>}
+            <Link href="/profile"
+              className="inline-block mt-2 text-xs font-semibold text-red-700 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-100 transition-colors">
+              Update Profile
+            </Link>
+          </div>
+        </div>
+      )}
+      {status === 'suspended' && (
+        <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
+          <span className="text-xl flex-shrink-0">⛔</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-700">Profile suspended</p>
+            <p className="text-xs text-gray-500 mt-0.5">Your profile has been suspended. Please contact support for details.</p>
+          </div>
+        </div>
+      )}
+      {status === 'approved' && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {verified && (
+            <span className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              ✅ Verified Contractor
+            </span>
+          )}
+          {featured && (
+            <span className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              ⭐ Featured
+            </span>
+          )}
+          {!verified && !featured && (
+            <span className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              ✅ Profile Approved
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-8">
+      <WelcomeHeader
+        emoji={isLabour ? '👷' : '🏗️'}
+        title={`Welcome, ${name}`}
+        subtitle={isLabour ? 'Find daily work, track your jobs and earnings.' : 'Manage your leads, bookings and earnings.'}
+      />
+
+      {/* Available for Work toggle — labour only */}
+      {isLabour && <AvailableToggle />}
+
+      <StatGrid stats={isLabour ? [
+        { icon: '📢', value: '0', label: 'Job Requests' },
+        { icon: '🕐', value: '0', label: 'Active Jobs' },
+        { icon: '✅', value: '0', label: 'Completed Jobs' },
+        { icon: '₹',  value: '₹0', label: 'Total Earned' },
+      ] : [
+        { icon: '📢', value: '0', label: 'New Leads' },
+        { icon: '📅', value: '0', label: 'Active Bookings' },
+        { icon: '✅', value: '0', label: 'Completed Jobs' },
+        { icon: '₹',  value: '₹0', label: 'Total Earnings' },
+      ]} />
+
+      <QuickActions actions={isLabour ? [
+        { label: 'Browse Jobs',    href: '/jobs',    icon: '🔍' },
+        { label: 'My Schedule',   href: '/schedule', icon: '📅' },
+        { label: 'Update Skills', href: '/profile',  icon: '✏️' },
+      ] : [
+        { label: 'Update Profile', href: '/profile',  icon: '✏️' },
+        { label: 'View Bookings',  href: '/bookings', icon: '📅' },
+      ]} />
+
+      <RecentSection title={isLabour ? 'Recent Jobs' : 'Recent Leads'}>
+        <EmptyState
+          icon={isLabour ? '👷' : '📢'}
+          message={isLabour ? 'No jobs yet. Browse open requests and apply!' : 'No leads yet. Complete your profile to get discovered!'}
+          cta={isLabour ? 'Browse Jobs' : 'Update Profile'}
+          href={isLabour ? '/jobs' : '/profile'}
+        />
+      </RecentSection>
+      </div>
+    </div>
+  );
+}
+
+function AvailableToggle() {
+  const supabase = createClient();
+  const [available, setAvailable] = useState(false);
+  const [saving, setSaving]       = useState(false);
+
+  async function toggle() {
+    setSaving(true);
+    const next = !available;
+    await supabase.auth.updateUser({ data: { available: next } });
+    setAvailable(next);
+    setSaving(false);
+  }
+
+  return (
+    <div className="bg-white border border-[#EBE0D8] rounded-2xl p-4 flex items-center justify-between shadow-sm">
+      <div>
+        <p className="text-sm font-semibold text-[#1a1a1a]">Available for Work</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {available ? 'Customers can see and contact you' : 'You are hidden from job requests'}
+        </p>
+      </div>
+      <button type="button" onClick={toggle} disabled={saving}
+        className={`relative w-12 h-6 rounded-full transition-colors ${available ? 'bg-[#C0593A]' : 'bg-gray-200'}`}>
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${available ? 'translate-x-6' : ''}`} />
+      </button>
+    </div>
+  );
+}
+
+// ── MATERIAL SELLER DASHBOARD ─────────────────────────────────────────────────
+
+function SellerDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="🏪" title={`Welcome, ${name}`} subtitle="Track your listings, orders and revenue." />
+
+      <StatGrid stats={[
+        { icon: '📋', value: '0', label: 'Active Listings' },
+        { icon: '🕐', value: '0', label: 'Pending Orders' },
+        { icon: '✅', value: '0', label: 'Completed Orders' },
+        { icon: '₹',  value: '₹0', label: 'Total Revenue' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Add Listing', href: '/listings/new', icon: '➕' },
+        { label: 'View Orders', href: '/orders',       icon: '📦' },
+      ]} />
+
+      <RecentSection title="Recent Orders">
+        <EmptyState icon="📦" message="No orders yet. Add your first material listing!" cta="Add Listing" href="/listings/new" />
+      </RecentSection>
+    </div>
+  );
+}
+
+// ── ADMIN DASHBOARD ───────────────────────────────────────────────────────────
+
+function AdminDashboard() {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="⚙️" title="Admin Panel" subtitle="Monitor platform activity and manage users." />
+
+      <StatGrid stats={[
+        { icon: '👥', value: '0', label: 'Total Users' },
+        { icon: '🔨', value: '0', label: 'Contractors' },
+        { icon: '📦', value: '0', label: 'Providers' },
+        { icon: '🛒', value: '0', label: 'Orders' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Manage Users',  href: '/admin/users',   icon: '👥' },
+        { label: 'View Reports',  href: '/admin/reports', icon: '📊' },
+      ]} />
+    </div>
+  );
+}
+
+// ── LAND OWNER DASHBOARD ─────────────────────────────────────────────────────
+
+function LandOwnerDashboard({ name }: { name: string }) {
+  return (
+    <div className="space-y-8">
+      <WelcomeHeader emoji="🌍" title={`Welcome, ${name}`} subtitle="Manage your land listings, enquiries and profile." />
+
+      <StatGrid stats={[
+        { icon: '📋', value: '0', label: 'Active Listings' },
+        { icon: '💬', value: '0', label: 'Enquiries Received' },
+        { icon: '👁️', value: '0', label: 'Profile Views' },
+        { icon: '📐', value: '0 sq ft', label: 'Total Listed Area' },
+      ]} />
+
+      <QuickActions actions={[
+        { label: 'Add New Listing', href: '/land/new',    icon: '➕' },
+        { label: 'View Enquiries',  href: '/enquiries',   icon: '💬' },
+      ]} />
+
+      <RecentSection title="Your Listings">
+        <EmptyState
+          icon="🌍"
+          message="No listings yet. Add your first land or plot listing to start receiving enquiries!"
+          cta="Add New Listing"
+          href="/land/new"
+        />
+      </RecentSection>
+    </div>
+  );
+}
+
+// ── Shared components ─────────────────────────────────────────────────────────
+
+function WelcomeHeader({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) {
+  return (
+    <div>
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a]" style={{ fontFamily: 'Georgia, serif' }}>
+        {title} {emoji}
+      </h1>
+      <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+    </div>
+  );
+}
+
+function StatGrid({ stats }: { stats: { icon: string; value: string; label: string }[] }) {
+  return (
+    <div className={`grid gap-4 grid-cols-2 ${stats.length === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
+      {stats.map(s => (
+        <div key={s.label} className="bg-white rounded-2xl shadow-sm border border-[#EBE0D8] p-5 flex flex-col gap-3">
+          <span className="text-2xl">{s.icon}</span>
+          <div>
+            <p className="text-2xl font-bold text-[#1a1a1a]">{s.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuickActions({ actions }: { actions: { label: string; href: string; icon: string }[] }) {
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">Quick Actions</h2>
+      <div className="flex flex-wrap gap-3">
+        {actions.map(a => (
+          <Link key={a.href} href={a.href}
+            className="flex items-center gap-2 bg-[#C0593A] hover:bg-[#9E3F24] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
+            <span>{a.icon}</span>
+            {a.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecentSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">{title}</h2>
+      <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon, message, cta, href }: { icon: string; message: string; cta: string; href: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+      <span className="text-4xl mb-3">{icon}</span>
+      <p className="text-sm text-gray-500 mb-4 max-w-xs">{message}</p>
+      <Link href={href}
+        className="text-sm font-semibold text-[#C0593A] border border-[#C0593A] px-4 py-2 rounded-lg hover:bg-[#FAEEE9] transition-colors">
+        {cta}
+      </Link>
+    </div>
   );
 }

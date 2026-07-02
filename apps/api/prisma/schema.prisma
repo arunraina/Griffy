@@ -145,6 +145,38 @@ model WhatsappOtp {
   @@map("whatsapp_otps")
 }
 
+model ContractorProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  contractorType  String    @map("contractor_type")
+  tradeSkills     String[]  @map("trade_skills")
+  experience      String
+  serviceCities   String[]  @map("service_cities")
+  licenseNumber   String?   @map("license_number")
+  dailyRate       Float?    @map("daily_rate")
+  projectRate     Float?    @map("project_rate")
+  availability    Boolean   @default(true)
+  bio             String?
+  portfolioImages String[]  @map("portfolio_images")
+
+  status          String    @default("pending")
+  verified        Boolean   @default(false)
+  featured        Boolean   @default(false)
+  rejectionReason String?   @map("rejection_reason")
+  approvedAt      DateTime? @map("approved_at")
+  approvedBy      String?   @map("approved_by")
+
+  totalJobs       Int       @default(0) @map("total_jobs")
+  completionRate  Float     @default(0) @map("completion_rate")
+  avgRating       Float     @default(0) @map("avg_rating")
+  totalReviews    Int       @default(0) @map("total_reviews")
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("contractor_profiles")
+}
+
 model Review {
   id                String           @id @default(uuid())
   reviewerId        String           @map("reviewer_id")

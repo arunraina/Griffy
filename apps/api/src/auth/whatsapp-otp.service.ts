@@ -16,7 +16,7 @@ export class WhatsappOtpService {
     await this.prisma.whatsappOtp.deleteMany({ where: { phone } });
     await this.prisma.whatsappOtp.create({ data: { phone, otp, expiresAt } });
 
-    await this.callMsg91(phone, otp);
+    await this.sendViaTwilio(phone, otp);
   }
 
   async verifyWhatsappOtp(phone: string, otp: string): Promise<void> {
@@ -36,29 +36,32 @@ export class WhatsappOtpService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async callMsg91(phone: string, otp: string): Promise<void> {
-    const apiKey     = this.config.getOrThrow('MSG91_API_KEY');
-    const templateId = this.config.getOrThrow('MSG91_TEMPLATE_ID');
+  private async sendViaTwilio(phone: string, otp: string): Promise<void> {
+    const accountSid = this.config.getOrThrow('TWILIO_ACCOUNT_SID');
+    const authToken  = this.config.getOrThrow('TWILIO_AUTH_TOKEN');
+    const from       = this.config.getOrThrow('TWILIO_WHATSAPP_FROM');
 
-    const mobile = phone.startsWith('+91') ? phone.slice(1) : phone.startsWith('91') ? phone : `91${phone}`;
+    const to = `whatsapp:${phone.startsWith('+') ? phone : `+91${phone}`}`;
 
-    const res = await fetch('https://api.msg91.com/api/v5/flow/', {
-      method: 'POST',
-      headers: {
-        authkey: apiKey,
-        'content-type': 'application/json',
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          From: from,
+          To: to,
+          Body: `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`,
+        }).toString(),
       },
-      body: JSON.stringify({
-        flow_id: templateId,
-        sender: 'GRIFFY',
-        mobiles: mobile,
-        OTP: otp,
-      }),
-    });
+    );
 
     if (!res.ok) {
       const body = await res.text();
-      throw new BadRequestException(`MSG91 error: ${body}`);
+      throw new BadRequestException(`Twilio error: ${body}`);
     }
   }
 }

@@ -1,7 +1,714 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase';
+
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
+
+interface HomeownerData {
+  projectType: string;
+  city: string;
+  pincode: string;
+  budget: string;
+  timeline: string;
+}
+
+interface ContractorData {
+  contractorType: string;
+  // Labour-specific
+  tradeSkills: string[];
+  availabilityType: string;
+  dailyRate: string;
+  languages: string[];
+  // Sub/Full contractor
+  teamSize: string;
+  trades: string[];
+  licenseNumber: string;
+  // Common
+  experience: string;
+  serviceCities: string[];
+}
+
+interface SellerData {
+  category: string;
+  businessName: string;
+  gstNumber: string;
+  city: string;
+  pincode: string;
+}
+
+interface LandOwnerData {
+  listingType: string;
+  landType: string;
+  areaValue: string;
+  areaUnit: string;
+  state: string;
+  city: string;
+  pincode: string;
+  locality: string;
+  price: string;
+  priceNegotiable: boolean;
+  amenities: string[];
+  description: string;
+}
+
+const PROJECT_TYPES = [
+  { value: 'new_construction', label: 'New Construction', icon: '🏗️', desc: 'Build from the ground up' },
+  { value: 'renovation',       label: 'Renovation',       icon: '🔧', desc: 'Upgrade an existing space' },
+  { value: 'interior_design',  label: 'Interior Design',  icon: '🛋️', desc: 'Style & furnish interiors' },
+];
+
+const TRADES       = ['Civil', 'Electrical', 'Plumbing', 'Carpentry', 'Painting', 'All'];
+const TRADE_SKILLS = ['Mason', 'Carpenter', 'Electrician', 'Plumber', 'Painter', 'Helper'];
+const LANGUAGES    = ['Hindi', 'Urdu', 'Punjabi', 'English', 'Kashmiri'];
+const TEAM_SIZES   = [
+  { value: 'just_me', label: 'Just me' },
+  { value: '2_5',     label: '2 – 5' },
+  { value: '5_15',    label: '5 – 15' },
+  { value: '15_50',   label: '15 – 50' },
+  { value: '50_plus', label: '50+' },
+];
+const CONTRACTOR_TYPES = [
+  { value: 'labour',          icon: '👷', label: 'Skilled Labour',   desc: 'Mason, Carpenter, Electrician etc — daily/weekly hire' },
+  { value: 'sub_contractor',  icon: '🏗️', label: 'Sub-Contractor',   desc: 'Takes up project work with a team' },
+  { value: 'full_contractor', icon: '🏢', label: 'Full Contractor',  desc: 'End-to-end construction company' },
+];
+
+const SERVICE_CITIES = ['Delhi', 'Mumbai', 'Bangalore', 'Gurgaon', 'Noida', 'Pune', 'Hyderabad'];
+
+const LISTING_TYPES = [
+  { value: 'for_sale',          icon: '🏷️', label: 'For Sale',           desc: 'One-time sale' },
+  { value: 'for_rent',          icon: '📋', label: 'For Rent / Lease',   desc: 'Monthly or annual lease' },
+  { value: 'joint_development', icon: '🤝', label: 'Joint Development',  desc: 'Partner to develop the land' },
+];
+const LAND_TYPES = [
+  { value: 'residential',  icon: '🏡', label: 'Residential Plot' },
+  { value: 'agricultural', icon: '🌾', label: 'Agricultural' },
+  { value: 'commercial',   icon: '🏢', label: 'Commercial' },
+  { value: 'industrial',   icon: '🏭', label: 'Industrial' },
+];
+const AREA_UNITS = ['sq ft', 'sq yards', 'acres', 'bigha'];
+const LAND_AMENITIES = ['Road Access', 'Water Connection', 'Electricity', 'Boundary Wall', 'Corner Plot', 'RERA Registered'];
+const INDIAN_STATES = [
+  'Andhra Pradesh','Assam','Bihar','Chandigarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh',
+  'Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Odisha','Punjab',
+  'Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','Uttarakhand','West Bengal',
+];
+
+const MATERIAL_CATEGORIES = [
+  { value: 'cement_steel',   label: 'Cement & Steel',  icon: '🏗️' },
+  { value: 'tiles_flooring', label: 'Tiles & Flooring', icon: '🟫' },
+  { value: 'sanitary_ware',  label: 'Sanitary Ware',   icon: '🚿' },
+  { value: 'electricals',    label: 'Electricals',      icon: '⚡' },
+  { value: 'all_materials',  label: 'All Materials',    icon: '📦' },
+];
+
 export default function OnboardingPage() {
+  const router   = useRouter();
+  const supabase = createClient();
+
+  const [role, setRole]       = useState<Role | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [submitting, setSubmitting]   = useState(false);
+  const [error, setError]             = useState('');
+  const [contractorSubmitted, setContractorSubmitted] = useState(false);
+
+  // Homeowner state
+  const [hw, setHw] = useState<HomeownerData>({
+    projectType: '', city: '', pincode: '', budget: '', timeline: '',
+  });
+
+  // Contractor state
+  const [co, setCo] = useState<ContractorData>({
+    contractorType: '',
+    tradeSkills: [], availabilityType: '', dailyRate: '', languages: [],
+    teamSize: '', trades: [], licenseNumber: '',
+    experience: '', serviceCities: [],
+  });
+
+  // Material seller state
+  const [ms, setMs] = useState<SellerData>({
+    category: '', businessName: '', gstNumber: '', city: '', pincode: '',
+  });
+
+  // Land owner state
+  const [lo, setLo] = useState<LandOwnerData>({
+    listingType: '', landType: '', areaValue: '', areaUnit: 'sq ft',
+    state: '', city: '', pincode: '', locality: '',
+    price: '', priceNegotiable: false, amenities: [], description: '',
+  });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      // TODO: restore login redirect before prod — bypassed for testing
+      const r = (user?.user_metadata?.role ?? 'CUSTOMER') as Role;
+      if (r === 'ADMIN') { router.replace('/dashboard'); return; }
+      setRole(r);
+      setPageLoading(false);
+    });
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(''); setSubmitting(true);
+
+    let formData: Record<string, unknown> = { onboarded: true };
+
+    if (role === 'CUSTOMER') {
+      if (!hw.projectType || !hw.city || !hw.pincode || !hw.budget || !hw.timeline) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...hw };
+    } else if (role === 'SERVICE_PROVIDER') {
+      if (!co.contractorType) { setError('Please select your contractor type.'); setSubmitting(false); return; }
+      if (co.contractorType === 'labour') {
+        if (!co.tradeSkills.length || !co.availabilityType || !co.dailyRate) {
+          setError('Please fill all required fields.'); setSubmitting(false); return;
+        }
+      } else {
+        if (!co.teamSize || !co.trades.length) {
+          setError('Please fill all required fields.'); setSubmitting(false); return;
+        }
+      }
+      if (!co.experience || !co.serviceCities.length) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, contractor_type: co.contractorType, ...co };
+    } else if (role === 'MATERIAL_SELLER') {
+      if (!ms.category || !ms.businessName || !ms.city || !ms.pincode) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...ms };
+    } else if (role === 'LAND_OWNER') {
+      if (!lo.listingType || !lo.landType || !lo.areaValue || !lo.state || !lo.city || !lo.pincode || !lo.price) {
+        setError('Please fill all required fields.'); setSubmitting(false); return;
+      }
+      formData = { ...formData, ...lo };
+    }
+
+    const { error } = await supabase.auth.updateUser({ data: formData });
+    setSubmitting(false);
+    if (error) { setError(error.message); return; }
+    if (role === 'SERVICE_PROVIDER') {
+      setContractorSubmitted(true);
+      return;
+    }
+    router.push('/dashboard');
+  }
+
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
+        <SpinSvg className="h-7 w-7 text-[#C0593A]" />
+      </div>
+    );
+  }
+
+  // Contractor profile submitted — show success screen
+  if (contractorSubmitted) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center py-10 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+            ✅
+          </div>
+          <h1 className="text-2xl font-bold text-[#2C1810] mb-3" style={{ fontFamily: 'Georgia, serif' }}>
+            Profile submitted!
+          </h1>
+          <p className="text-[#6B5248] text-sm leading-relaxed mb-2">
+            Our team will review and approve your profile within <strong>24–48 hours</strong>.
+          </p>
+          <p className="text-[#6B5248] text-sm mb-8">
+            You'll receive a <strong>WhatsApp notification</strong> once approved.
+          </p>
+          <div className="bg-white border border-[#EBE0D8] rounded-2xl p-5 mb-6 text-left space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🔍</span>
+              <div>
+                <p className="text-sm font-semibold text-[#2C1810]">Profile under review</p>
+                <p className="text-xs text-[#A08070]">Our team verifies credentials and experience</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💬</span>
+              <div>
+                <p className="text-sm font-semibold text-[#2C1810]">WhatsApp notification</p>
+                <p className="text-xs text-[#A08070]">You'll be notified once approved or if more info is needed</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🚀</span>
+              <div>
+                <p className="text-sm font-semibold text-[#2C1810]">Go live</p>
+                <p className="text-xs text-[#A08070]">Once approved, your profile appears in search results</p>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => router.push('/dashboard')}
+            className="w-full bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm py-3.5 rounded-xl transition-colors">
+            Go to Dashboard →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const roleLabel =
+    role === 'CUSTOMER'         ? 'Homeowner'        :
+    role === 'SERVICE_PROVIDER' ? 'Contractor'       :
+    role === 'LAND_OWNER'       ? 'Land Owner'       :
+    'Material Seller';
+
   return (
-    <main className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
-      <p className="text-[#6B5248] text-sm">Onboarding — coming soon</p>
-    </main>
+    <div className="min-h-screen bg-[#FDF8F5] py-10 px-4">
+      <div className="max-w-[600px] mx-auto">
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="w-8 h-8 bg-[#C0593A] rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">G</span>
+            </div>
+            <span className="text-[#2C1810] text-base font-bold tracking-tight">Griffy</span>
+          </div>
+
+          {/* DEV: role switcher — remove before prod */}
+          <div className="flex gap-2 mb-6 p-1 bg-[#F0E8E2] rounded-xl flex-wrap">
+            {(['CUSTOMER', 'SERVICE_PROVIDER', 'MATERIAL_SELLER', 'LAND_OWNER'] as Role[]).map(r => (
+              <button key={r} type="button" onClick={() => setRole(r)}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors min-w-[80px] ${
+                  role === r ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
+                }`}>
+                {r === 'CUSTOMER' ? '🏠 Home' : r === 'SERVICE_PROVIDER' ? '🔨 Contractor' : r === 'MATERIAL_SELLER' ? '📦 Seller' : '🌍 Land'}
+              </button>
+            ))}
+          </div>
+
+          <h1 className="text-2xl font-bold text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>
+            Set up your profile
+          </h1>
+          <p className="text-sm text-[#6B5248]">
+            Tell us a bit more so we can personalise your experience as a{' '}
+            <span className="font-semibold text-[#C0593A]">{roleLabel}</span>.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* ── HOMEOWNER FORM ── */}
+          {role === 'CUSTOMER' && (
+            <>
+              <Section title="What are you planning?" hint="Choose the type of project you have in mind">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {PROJECT_TYPES.map(pt => (
+                    <RadioCard
+                      key={pt.value}
+                      icon={pt.icon}
+                      label={pt.label}
+                      desc={pt.desc}
+                      selected={hw.projectType === pt.value}
+                      onClick={() => setHw(p => ({ ...p, projectType: pt.value }))}
+                    />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Project location" hint="Where will the work happen?">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="City *">
+                    <input type="text" value={hw.city} onChange={e => setHw(p => ({ ...p, city: e.target.value }))}
+                      placeholder="e.g. Gurgaon" className={inp} required />
+                  </Field>
+                  <Field label="Pincode *">
+                    <input type="text" value={hw.pincode} onChange={e => setHw(p => ({ ...p, pincode: e.target.value }))}
+                      placeholder="e.g. 122001" maxLength={6} className={inp} required />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Budget range" hint="Approximate total budget for the project">
+                <Select value={hw.budget} onChange={v => setHw(p => ({ ...p, budget: v }))} placeholder="Select budget">
+                  <option value="under_10l">Under ₹10L</option>
+                  <option value="10l_25l">₹10L – ₹25L</option>
+                  <option value="25l_50l">₹25L – ₹50L</option>
+                  <option value="above_50l">Above ₹50L</option>
+                </Select>
+              </Section>
+
+              <Section title="Timeline" hint="When do you want to get started?">
+                <Select value={hw.timeline} onChange={v => setHw(p => ({ ...p, timeline: v }))} placeholder="Select timeline">
+                  <option value="0_3m">0 – 3 months</option>
+                  <option value="3_6m">3 – 6 months</option>
+                  <option value="6_12m">6 – 12 months</option>
+                  <option value="not_decided">Not decided yet</option>
+                </Select>
+              </Section>
+            </>
+          )}
+
+          {/* ── CONTRACTOR FORM ── */}
+          {role === 'SERVICE_PROVIDER' && (
+            <>
+              {/* 1. Contractor type */}
+              <Section title="What type of contractor are you?" hint="This helps match you with the right customers">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {CONTRACTOR_TYPES.map(ct => (
+                    <RadioCard key={ct.value} icon={ct.icon} label={ct.label} desc={ct.desc}
+                      selected={co.contractorType === ct.value}
+                      onClick={() => setCo(p => ({ ...p, contractorType: ct.value }))} />
+                  ))}
+                </div>
+              </Section>
+
+              {/* 2a. Skilled Labour fields */}
+              {co.contractorType === 'labour' && (
+                <>
+                  <Section title="Trade skill" hint="Select your primary skill(s)">
+                    <ChipGroup options={TRADE_SKILLS} selected={co.tradeSkills}
+                      onToggle={v => setCo(p => ({ ...p, tradeSkills: toggle(p.tradeSkills, v) }))} />
+                  </Section>
+
+                  <Section title="Availability type">
+                    <div className="grid grid-cols-3 gap-3">
+                      {['Daily Wage', 'Weekly', 'Monthly Contract'].map(a => (
+                        <RadioCard key={a} icon="" label={a}
+                          selected={co.availabilityType === a}
+                          onClick={() => setCo(p => ({ ...p, availabilityType: a }))} />
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section title="Expected daily rate">
+                    <Field label="Daily rate (₹) *">
+                      <input type="number" value={co.dailyRate} min="0"
+                        onChange={e => setCo(p => ({ ...p, dailyRate: e.target.value }))}
+                        placeholder="e.g. 800" className={inp} />
+                    </Field>
+                  </Section>
+
+                  <Section title="Languages spoken">
+                    <ChipGroup options={LANGUAGES} selected={co.languages}
+                      onToggle={v => setCo(p => ({ ...p, languages: toggle(p.languages, v) }))} />
+                  </Section>
+                </>
+              )}
+
+              {/* 2b. Sub / Full contractor fields */}
+              {(co.contractorType === 'sub_contractor' || co.contractorType === 'full_contractor') && (
+                <>
+                  <Section title="Team size">
+                    <Select value={co.teamSize} onChange={v => setCo(p => ({ ...p, teamSize: v }))} placeholder="Select team size">
+                      {TEAM_SIZES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </Select>
+                  </Section>
+
+                  <Section title="Trade type(s)" hint="Select all that apply">
+                    <ChipGroup options={TRADES} selected={co.trades}
+                      onToggle={v => setCo(p => ({ ...p, trades: toggle(p.trades, v) }))} />
+                  </Section>
+
+                  <Section title="License number" hint="Optional — adds a verified badge to your profile">
+                    <Field label="License / Registration number">
+                      <input type="text" value={co.licenseNumber}
+                        onChange={e => setCo(p => ({ ...p, licenseNumber: e.target.value }))}
+                        placeholder="e.g. DL-CONT-2024-XXXXX" className={inp} />
+                    </Field>
+                  </Section>
+                </>
+              )}
+
+              {/* 3. Common fields — shown after type is selected */}
+              {co.contractorType && (
+                <>
+                  <Section title="Years of experience">
+                    <Select value={co.experience} onChange={v => setCo(p => ({ ...p, experience: v }))} placeholder="Select experience">
+                      <option value="0_2">0 – 2 years</option>
+                      <option value="2_5">2 – 5 years</option>
+                      <option value="5_10">5 – 10 years</option>
+                      <option value="10_plus">10+ years</option>
+                    </Select>
+                  </Section>
+
+                  <Section title="Cities you serve" hint="Select all cities where you take work">
+                    <ChipGroup options={SERVICE_CITIES} selected={co.serviceCities}
+                      onToggle={v => setCo(p => ({ ...p, serviceCities: toggle(p.serviceCities, v) }))} />
+                  </Section>
+                </>
+              )}
+            </>
+          )}
+
+          {/* ── MATERIAL SELLER FORM ── */}
+          {role === 'MATERIAL_SELLER' && (
+            <>
+              <Section title="Primary material category" hint="What do you mainly sell?">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {MATERIAL_CATEGORIES.map(cat => (
+                    <RadioCard
+                      key={cat.value}
+                      icon={cat.icon}
+                      label={cat.label}
+                      selected={ms.category === cat.value}
+                      onClick={() => setMs(p => ({ ...p, category: cat.value }))}
+                    />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Business details">
+                <div className="space-y-3">
+                  <Field label="Business name *">
+                    <input type="text" value={ms.businessName}
+                      onChange={e => setMs(p => ({ ...p, businessName: e.target.value }))}
+                      placeholder="e.g. Sharma Building Materials" className={inp} required />
+                  </Field>
+                  <Field label="GST number (optional)">
+                    <input type="text" value={ms.gstNumber}
+                      onChange={e => setMs(p => ({ ...p, gstNumber: e.target.value }))}
+                      placeholder="e.g. 07AABCU9603R1ZX" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Business location">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="City *">
+                    <input type="text" value={ms.city}
+                      onChange={e => setMs(p => ({ ...p, city: e.target.value }))}
+                      placeholder="e.g. Delhi" className={inp} required />
+                  </Field>
+                  <Field label="Pincode *">
+                    <input type="text" value={ms.pincode}
+                      onChange={e => setMs(p => ({ ...p, pincode: e.target.value }))}
+                      placeholder="e.g. 110001" maxLength={6} className={inp} required />
+                  </Field>
+                </div>
+              </Section>
+            </>
+          )}
+
+          {/* ── LAND OWNER FORM ── */}
+          {role === 'LAND_OWNER' && (
+            <>
+              <Section title="Listing type" hint="How do you want to offer this land?">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {LISTING_TYPES.map(lt => (
+                    <RadioCard key={lt.value} icon={lt.icon} label={lt.label} desc={lt.desc}
+                      selected={lo.listingType === lt.value}
+                      onClick={() => setLo(p => ({ ...p, listingType: lt.value }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Land type">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {LAND_TYPES.map(lt => (
+                    <RadioCard key={lt.value} icon={lt.icon} label={lt.label}
+                      selected={lo.landType === lt.value}
+                      onClick={() => setLo(p => ({ ...p, landType: lt.value }))} />
+                  ))}
+                </div>
+              </Section>
+
+              <Section title="Area" hint="Total land area">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Field label="Area *">
+                      <input type="number" value={lo.areaValue} min="0"
+                        onChange={e => setLo(p => ({ ...p, areaValue: e.target.value }))}
+                        placeholder="e.g. 2400" className={inp} required />
+                    </Field>
+                  </div>
+                  <div className="w-36">
+                    <Field label="Unit">
+                      <select value={lo.areaUnit} onChange={e => setLo(p => ({ ...p, areaUnit: e.target.value }))}
+                        className={`${inp} appearance-none`}>
+                        {AREA_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Location">
+                <div className="space-y-3">
+                  <Field label="State *">
+                    <select value={lo.state} onChange={e => setLo(p => ({ ...p, state: e.target.value }))}
+                      required className={`${inp} appearance-none`}>
+                      <option value="" disabled>Select state</option>
+                      {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City *">
+                      <input type="text" value={lo.city}
+                        onChange={e => setLo(p => ({ ...p, city: e.target.value }))}
+                        placeholder="e.g. Gurgaon" className={inp} required />
+                    </Field>
+                    <Field label="Pincode *">
+                      <input type="text" value={lo.pincode}
+                        onChange={e => setLo(p => ({ ...p, pincode: e.target.value }))}
+                        placeholder="e.g. 122001" maxLength={6} className={inp} required />
+                    </Field>
+                  </div>
+                  <Field label="Locality / Area name">
+                    <input type="text" value={lo.locality}
+                      onChange={e => setLo(p => ({ ...p, locality: e.target.value }))}
+                      placeholder="e.g. Sector 45, DLF Phase 1" className={inp} />
+                  </Field>
+                </div>
+              </Section>
+
+              <Section title="Price">
+                <div className="space-y-3">
+                  <Field label="Total price (₹) *">
+                    <input type="number" value={lo.price} min="0"
+                      onChange={e => setLo(p => ({ ...p, price: e.target.value }))}
+                      placeholder="e.g. 5000000" className={inp} required />
+                  </Field>
+                  <label className="flex items-center justify-between cursor-pointer bg-white border border-[#EBE0D8] rounded-lg px-4 py-3">
+                    <span className="text-sm text-[#2C1810]">Price is negotiable</span>
+                    <button type="button" role="switch" aria-checked={lo.priceNegotiable}
+                      onClick={() => setLo(p => ({ ...p, priceNegotiable: !p.priceNegotiable }))}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${lo.priceNegotiable ? 'bg-[#C0593A]' : 'bg-gray-200'}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${lo.priceNegotiable ? 'translate-x-5' : ''}`} />
+                    </button>
+                  </label>
+                </div>
+              </Section>
+
+              <Section title="Amenities" hint="Select all that apply">
+                <ChipGroup options={LAND_AMENITIES} selected={lo.amenities}
+                  onToggle={v => setLo(p => ({ ...p, amenities: toggle(p.amenities, v) }))} />
+              </Section>
+
+              <Section title="Description" hint="Describe the land — key features, access, surroundings">
+                <Field label="Description">
+                  <textarea value={lo.description} rows={4}
+                    onChange={e => setLo(p => ({ ...p, description: e.target.value }))}
+                    placeholder="e.g. North-facing corner plot with road access on two sides. Located near upcoming metro station…"
+                    className={`${inp} resize-none`} />
+                </Field>
+              </Section>
+            </>
+          )}
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3">
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm py-3.5 rounded-xl transition-colors disabled:opacity-60">
+            {submitting ? <><SpinSvg className="h-4 w-4" />Saving…</> : 'Complete setup →'}
+          </button>
+
+        </form>
+
+        <p className="text-center text-xs text-[#A08070] mt-6">
+          You can update these details anytime from your profile.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function toggle(arr: string[], v: string) {
+  return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+}
+
+// ── Reusable sub-components ──────────────────────────────────────────────────
+
+const inp = 'w-full bg-white border border-[#EBE0D8] rounded-lg px-4 py-2.5 text-sm text-[#2C1810] placeholder-[#A08070] outline-none focus:border-[#C0593A] transition-colors';
+
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="text-base font-semibold text-[#2C1810]">{title}</h2>
+        {hint && <p className="text-xs text-[#A08070] mt-0.5">{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-[#6B5248] mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Select({ value, onChange, placeholder, children }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} required
+      className={`${inp} appearance-none bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A08070' d='M6 8L1 3h10z'/%3E%3C/svg%3E")] bg-no-repeat bg-[right_1rem_center] pr-8`}>
+      <option value="" disabled>{placeholder}</option>
+      {children}
+    </select>
+  );
+}
+
+function RadioCard({ icon, label, desc, selected, onClick }: {
+  icon: string; label: string; desc?: string; selected: boolean; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex flex-col items-center text-center gap-2 p-4 rounded-xl border-2 transition-all ${
+        selected
+          ? 'border-[#C0593A] bg-[#FAEEE9] shadow-sm'
+          : 'border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9]'
+      }`}>
+      <span className="text-2xl">{icon}</span>
+      <div>
+        <p className="text-xs font-semibold text-[#2C1810]">{label}</p>
+        {desc && <p className="text-[10px] text-[#A08070] mt-0.5 leading-tight">{desc}</p>}
+      </div>
+    </button>
+  );
+}
+
+function ChipGroup({ options, selected, onToggle }: {
+  options: string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => {
+        const active = selected.includes(opt);
+        return (
+          <button key={opt} type="button" onClick={() => onToggle(opt)}
+            className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all ${
+              active
+                ? 'bg-[#C0593A] border-[#C0593A] text-white'
+                : 'bg-white border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A]'
+            }`}>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SpinSvg({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+    </svg>
   );
 }

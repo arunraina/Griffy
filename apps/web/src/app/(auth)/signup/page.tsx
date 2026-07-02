@@ -1,59 +1,105 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
-type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER';
+type Side = 'homeowner' | 'professional' | null;
+type FlowStep = 'side' | 'role' | 'auth';
+type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN';
 type Mode = 'options' | 'email' | 'wp-phone' | 'wp-otp' | 'verify-choice';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-const ROLES: { value: Role; label: string; desc: string; icon: string }[] = [
-  { value: 'CUSTOMER',         label: 'Homeowner',         desc: 'I want to build or renovate my space',  icon: '🏠' },
-  { value: 'SERVICE_PROVIDER', label: 'Contractor',        desc: 'I offer professional construction work', icon: '🔨' },
-  { value: 'MATERIAL_SELLER',  label: 'Material Supplier', desc: 'I sell building materials & supplies',  icon: '📦' },
+const PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; icon: string; team?: boolean }[] = [
+  { value: 'SERVICE_PROVIDER', label: 'Contractor',       sublabel: 'Builder / Designer', desc: 'Architect, designer, civil or renovation contractor', icon: '🏗️' },
+  { value: 'SERVICE_PROVIDER', label: 'Labour / Mistri',  sublabel: 'Skilled Worker',     desc: 'Mason, carpenter, painter or daily wage worker',      icon: '👷' },
+  { value: 'SERVICE_PROVIDER', label: 'Service Expert',   sublabel: 'Specialist',         desc: 'Electrician, plumber, AC technician or specialist',    icon: '⚡' },
+  { value: 'MATERIAL_SELLER',  label: 'Material Supplier',sublabel: 'Seller',             desc: 'Sell cement, steel, tiles or building materials',       icon: '🧱' },
+  { value: 'LAND_OWNER',       label: 'Land Owner',       sublabel: 'Property Owner',     desc: 'List land or plots for sale or rent',                  icon: '🌍' },
+  { value: 'ADMIN',            label: 'Admin',            sublabel: 'Griffy Team',        desc: 'Internal team access only',                            icon: '⚙️', team: true },
 ];
 
 export default function SignupPage() {
-  const [step, setStep]     = useState<1 | 2>(1);
-  const [role, setRole]     = useState<Role | null>(null);
-  const [mode, setMode]     = useState<Mode>('options');
+  return <Suspense><SignupInner /></Suspense>;
+}
+
+function SignupInner() {
+  const params   = useSearchParams();
+  const router   = useRouter();
+  const supabase = createClient();
+
+  const [side,      setSide]      = useState<Side>(null);
+  const [flowStep,  setFlowStep]  = useState<FlowStep>('side');
+  const [role,      setRole]      = useState<Role | null>(null);
+  const [proLabel,  setProLabel]  = useState('');
+  const [mode,      setMode]      = useState<Mode>('options');
 
   // WhatsApp flow
-  const [wpName, setWpName]     = useState('');
-  const [phone, setPhone]       = useState('');
+  const [wpName,   setWpName]   = useState('');
+  const [phone,    setPhone]    = useState('');
   const [wpDigits, setWpDigits] = useState(['', '', '', '', '', '']);
   const wpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Email flow
-  const [name, setName]         = useState('');
-  const [email, setEmail]       = useState('');
+  const [name,       setName]       = useState('');
+  const [email,      setEmail]      = useState('');
   const [emailPhone, setEmailPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm]   = useState('');
-  const [showPw, setShowPw]     = useState(false);
-  const [showCf, setShowCf]     = useState(false);
+  const [password,   setPassword]   = useState('');
+  const [confirm,    setConfirm]    = useState('');
+  const [showPw,     setShowPw]     = useState(false);
+  const [showCf,     setShowCf]     = useState(false);
 
-  const [error, setError]     = useState('');
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  const router   = useRouter();
-  const supabase = createClient();
+  // Read ?type= URL param to pre-select side
+  useEffect(() => {
+    const t = params.get('type');
+    if (t === 'homeowner') {
+      setSide('homeowner');
+      setRole('CUSTOMER');
+      setFlowStep('auth');
+    } else if (t === 'professional') {
+      setSide('professional');
+      setFlowStep('role');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function go(m: Mode) { setMode(m); setError(''); }
 
-  // ── Google ────────────────────────────────────────────────────
+  // ── Side selection ─────────────────────────────────────────────
+  function selectSide(s: Side) {
+    setSide(s);
+    if (s === 'homeowner') {
+      setRole('CUSTOMER');
+      setProLabel('Homeowner');
+      setFlowStep('auth');
+    } else {
+      setRole(null);
+      setFlowStep('role');
+    }
+  }
+
+  // ── Professional role selection ────────────────────────────────
+  function selectProRole(r: typeof PRO_ROLES[number]) {
+    setRole(r.value);
+    setProLabel(r.label);
+    setFlowStep('auth');
+  }
+
+  // ── Google ─────────────────────────────────────────────────────
   async function handleGoogle() {
     if (role) localStorage.setItem('griffy_signup_role', role);
+    if (proLabel) localStorage.setItem('griffy_signup_pro_label', proLabel);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   }
 
-  // ── WhatsApp: send OTP ────────────────────────────────────────
+  // ── WhatsApp: send OTP ─────────────────────────────────────────
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
@@ -63,14 +109,14 @@ export default function SignupPage() {
     go('wp-otp');
   }
 
-  // ── WhatsApp: verify OTP ──────────────────────────────────────
+  // ── WhatsApp: verify OTP ───────────────────────────────────────
   async function verifyWpOtp(token: string) {
     setError(''); setLoading(true);
     const { error } = await supabase.auth.verifyOtp({ phone: fmt(phone), token, type: 'sms' });
-    if (!error) await supabase.auth.updateUser({ data: { name: wpName, role } });
+    if (!error) await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel } });
     setLoading(false);
     if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
-    router.push('/dashboard');
+    router.push('/onboarding');
   }
 
   function handleWpDigit(i: number, val: string) {
@@ -87,7 +133,7 @@ export default function SignupPage() {
     }
   }
 
-  // ── Email signup ──────────────────────────────────────────────
+  // ── Email signup ───────────────────────────────────────────────
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -96,14 +142,14 @@ export default function SignupPage() {
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { name, role } },
+      options: { data: { name, role, pro_label: proLabel } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
     go('verify-choice');
   }
 
-  // ── Verify choice: send via WhatsApp ─────────────────────────
+  // ── Verify via WhatsApp (after email signup) ───────────────────
   async function handleVerifyViaWhatsapp() {
     setError(''); setLoading(true);
     try {
@@ -121,43 +167,101 @@ export default function SignupPage() {
     }
   }
 
+  // ── Step indicator config ──────────────────────────────────────
+  const homeSteps  = ['Side', 'Sign Up', 'Verify'];
+  const proSteps   = ['Side', 'Role', 'Sign Up', 'Verify'];
+  const steps      = side === 'homeowner' ? homeSteps : proSteps;
+  const activeStep = flowStep === 'side' ? 0
+    : flowStep === 'role' ? 1
+    : side === 'homeowner' ? 1
+    : 2;
 
+  // ── Render ─────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full max-w-2xl">
+
       {/* Step indicator */}
-      <div className="flex items-center justify-center gap-3 mb-8">
-        {([1, 2] as const).map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            {i > 0 && <div className="w-8 h-px bg-[#EBE0D8]" />}
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s ? 'bg-[#C0593A] text-white' : 'bg-[#EBE0D8] text-[#A08070]'}`}>{s}</div>
-            <span className={`text-xs font-medium ${step >= s ? 'text-[#C0593A]' : 'text-[#A08070]'}`}>
-              {s === 1 ? 'Choose role' : 'Create account'}
-            </span>
+      <div className="flex items-center justify-center mb-8">
+        {steps.map((label, i) => (
+          <div key={label} className="flex items-center">
+            {i > 0 && (
+              <div className={`h-px w-10 sm:w-16 mx-1 transition-colors ${i <= activeStep ? 'bg-[#C0593A]' : 'bg-gray-200'}`} />
+            )}
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                i < activeStep  ? 'bg-green-500 text-white'
+                : i === activeStep ? 'bg-[#C0593A] text-white'
+                : 'bg-gray-200 text-gray-400'
+              }`}>
+                {i < activeStep ? '✓' : i + 1}
+              </div>
+              <span className={`text-[10px] font-medium whitespace-nowrap ${
+                i === activeStep ? 'text-[#C0593A]' : i < activeStep ? 'text-green-600' : 'text-gray-300'
+              }`}>{label}</span>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* ── STEP 1: Role cards ── */}
-      {step === 1 && (
-        <>
-          <h1 className="text-2xl font-bold text-[#2C1810] text-center mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-            Who are you on Griffy?
+      {/* ── STEP 0: Side selection ── */}
+      {flowStep === 'side' && (
+        <div className="w-full">
+          <h1 className="text-2xl font-bold text-[#2C1810] text-center mb-2" style={{ fontFamily: 'Georgia, serif' }}>
+            Welcome to Griffy
           </h1>
-          <p className="text-sm text-[#6B5248] text-center mb-8">Pick the role that best describes you.</p>
+          <p className="text-sm text-[#6B5248] text-center mb-8">Tell us who you are to get started</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {ROLES.map(r => (
-              <button key={r.value} type="button"
-                onClick={() => { setRole(r.value); setStep(2); }}
-                className={`flex flex-col items-center text-center gap-3 p-6 rounded-2xl border-2 transition-all ${
-                  role === r.value
-                    ? 'border-[#C0593A] bg-[#FAEEE9] shadow-sm'
-                    : 'border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9]'
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <SideCard
+              icon="🏠"
+              title="I want to Hire & Buy"
+              subtitle="I'm a Homeowner"
+              desc="Find contractors, hire labour, book service experts, buy materials or find land"
+              cta="Continue as Homeowner"
+              selected={side === 'homeowner'}
+              onClick={() => selectSide('homeowner')}
+            />
+            <SideCard
+              icon="💼"
+              title="I want to Work & Sell"
+              subtitle="I'm a Professional or Supplier"
+              desc="Offer services, sell materials, list land or find construction work"
+              cta="Continue as Professional"
+              selected={side === 'professional'}
+              onClick={() => selectSide('professional')}
+            />
+          </div>
+
+          <p className="text-center text-sm text-[#6B5248] mt-8">
+            Already have an account?{' '}
+            <Link href="/login" className="text-[#C0593A] font-semibold hover:underline">Sign in</Link>
+          </p>
+        </div>
+      )}
+
+      {/* ── STEP 1: Professional role selection ── */}
+      {flowStep === 'role' && (
+        <div className="w-full">
+          <Back onClick={() => { setFlowStep('side'); setSide(null); }} />
+          <h1 className="text-2xl font-bold text-[#2C1810] text-center mb-2" style={{ fontFamily: 'Georgia, serif' }}>
+            What kind of professional are you?
+          </h1>
+          <p className="text-sm text-[#6B5248] text-center mb-8">Choose the role that best fits your work</p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {PRO_ROLES.map(r => (
+              <button key={r.label} type="button"
+                onClick={() => selectProRole(r)}
+                className={`flex flex-col items-center text-center gap-2.5 p-5 rounded-2xl border-2 transition-all ${
+                  r.team
+                    ? 'border-dashed border-gray-200 bg-gray-50 hover:border-gray-400'
+                    : 'border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9] hover:shadow-sm'
                 }`}>
                 <span className="text-4xl">{r.icon}</span>
                 <div>
-                  <p className="text-sm font-bold text-[#2C1810] mb-1">{r.label}</p>
-                  <p className="text-xs text-[#A08070] leading-snug">{r.desc}</p>
+                  <p className={`text-sm font-bold mb-0.5 ${r.team ? 'text-gray-400' : 'text-[#2C1810]'}`}>{r.label}</p>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1.5 ${r.team ? 'text-gray-300' : 'text-[#C0593A]'}`}>{r.sublabel}</p>
+                  <p className={`text-xs leading-snug ${r.team ? 'text-gray-400' : 'text-[#A08070]'}`}>{r.desc}</p>
                 </div>
               </button>
             ))}
@@ -167,31 +271,38 @@ export default function SignupPage() {
             Already have an account?{' '}
             <Link href="/login" className="text-[#C0593A] font-semibold hover:underline">Sign in</Link>
           </p>
-        </>
+        </div>
       )}
 
-      {/* ── STEP 2: Auth methods ── */}
-      {step === 2 && (
+      {/* ── STEP 2: Auth ── */}
+      {flowStep === 'auth' && (
         <div className="w-full max-w-md mx-auto">
-          {/* Back to role selection */}
           {mode === 'options' && (
-            <button type="button" onClick={() => { setStep(1); setMode('options'); }}
-              className="flex items-center gap-1 text-xs text-[#A08070] hover:text-[#C0593A] transition-colors mb-5">
-              ← Change role
-            </button>
+            <Back onClick={() => {
+              setMode('options'); setError('');
+              if (side === 'homeowner') setFlowStep('side');
+              else setFlowStep('role');
+            }} />
+          )}
+          {mode !== 'options' && mode !== 'verify-choice' && (
+            <Back onClick={() => go('options')} />
           )}
 
-          <h1 className="text-2xl font-bold text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-            Create your account
-          </h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-[#2C1810]" style={{ fontFamily: 'Georgia, serif' }}>
+              Create your account
+            </h1>
+          </div>
           <p className="text-sm text-[#6B5248] mb-6">
             Joining as a{' '}
-            <span className="font-semibold text-[#C0593A]">{ROLES.find(r => r.value === role)?.label}</span>
+            <span className="font-semibold text-[#C0593A]">
+              {side === 'homeowner' ? 'Homeowner' : proLabel}
+            </span>
           </p>
 
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#EBE0D8]">
 
-            {/* ── Auth options ── */}
+            {/* Auth options */}
             {mode === 'options' && (
               <div className="space-y-3">
                 <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
@@ -206,10 +317,9 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* ── WhatsApp: phone ── */}
+            {/* WhatsApp: phone */}
             {mode === 'wp-phone' && (
               <>
-                <Back onClick={() => go('options')} />
                 <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your WhatsApp number</p>
                 <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your WhatsApp</p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
@@ -230,7 +340,7 @@ export default function SignupPage() {
               </>
             )}
 
-            {/* ── WhatsApp: OTP ── */}
+            {/* WhatsApp: OTP */}
             {mode === 'wp-otp' && (
               <>
                 <Back onClick={() => go('wp-phone')} label="← Change number" />
@@ -258,7 +368,7 @@ export default function SignupPage() {
               </>
             )}
 
-            {/* ── Verify choice (after email signup) ── */}
+            {/* Verify choice (after email signup) */}
             {mode === 'verify-choice' && (
               <>
                 <div className="text-center mb-6">
@@ -297,37 +407,34 @@ export default function SignupPage() {
               </>
             )}
 
-            {/* ── Email signup ── */}
+            {/* Email signup */}
             {mode === 'email' && (
-              <>
-                <Back onClick={() => go('options')} />
-                <form onSubmit={handleEmail} className="space-y-4">
-                  <Field label="Full name">
-                    <input type="text" value={name} onChange={e => setName(e.target.value)}
-                      placeholder="Arun Raina" required autoComplete="name" className={inp} />
-                  </Field>
-                  <Field label="Email address">
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="you@example.com" required autoComplete="email" className={inp} />
-                  </Field>
-                  <Field label="Password">
-                    <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
-                  </Field>
-                  <Field label="Confirm password">
-                    <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
-                  </Field>
-                  <Field label="WhatsApp number (optional)">
-                    <div className="flex gap-2">
-                      <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
-                      <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
-                        placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
-                    </div>
-                    <p className="text-xs text-[#A08070] mt-1">Add to verify account via WhatsApp instead of email</p>
-                  </Field>
-                  {error && <ErrBox>{error}</ErrBox>}
-                  <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
-                </form>
-              </>
+              <form onSubmit={handleEmail} className="space-y-4">
+                <Field label="Full name">
+                  <input type="text" value={name} onChange={e => setName(e.target.value)}
+                    placeholder="Arun Raina" required autoComplete="name" className={inp} />
+                </Field>
+                <Field label="Email address">
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com" required autoComplete="email" className={inp} />
+                </Field>
+                <Field label="Password">
+                  <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
+                </Field>
+                <Field label="Confirm password">
+                  <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
+                </Field>
+                <Field label="WhatsApp number (optional)">
+                  <div className="flex gap-2">
+                    <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
+                    <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
+                      placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
+                  </div>
+                  <p className="text-xs text-[#A08070] mt-1">Add to verify account via WhatsApp instead of email</p>
+                </Field>
+                {error && <ErrBox>{error}</ErrBox>}
+                <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
+              </form>
             )}
 
           </div>
@@ -342,7 +449,33 @@ export default function SignupPage() {
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── SideCard ──────────────────────────────────────────────────────────────────
+
+function SideCard({ icon, title, subtitle, desc, cta, selected, onClick }: {
+  icon: string; title: string; subtitle: string; desc: string; cta: string;
+  selected: boolean; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex flex-col items-center text-center gap-4 p-8 rounded-2xl border-2 min-h-[220px] justify-center transition-all hover:shadow-md ${
+        selected ? 'border-[#C0593A] bg-orange-50 shadow-sm' : 'border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9]'
+      }`}>
+      <span className="text-5xl">{icon}</span>
+      <div>
+        <p className="text-lg font-bold text-[#2C1810] mb-0.5">{title}</p>
+        <p className="text-xs font-semibold text-[#C0593A] uppercase tracking-wider mb-2">{subtitle}</p>
+        <p className="text-sm text-[#6B5248] leading-relaxed">{desc}</p>
+      </div>
+      <div className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+        selected ? 'bg-[#C0593A] text-white' : 'bg-[#C0593A] text-white hover:bg-[#9E3F24]'
+      }`}>
+        {cta}
+      </div>
+    </button>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmt = (p: string) => p.startsWith('+') ? p : `+91${p}`;
 const inp  = 'w-full bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg px-4 py-3 text-sm text-[#2C1810] placeholder-[#A08070] outline-none focus:border-[#C0593A] transition-colors';
