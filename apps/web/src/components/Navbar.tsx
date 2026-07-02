@@ -19,8 +19,9 @@ export default function Navbar() {
   const router   = useRouter();
   const supabase = createClient();
 
-  const [user, setUser]         = useState<UserInfo | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [user,       setUser]       = useState<UserInfo | null>(null);
+  const [menuOpen,   setMenuOpen]   = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -82,10 +83,41 @@ export default function Navbar() {
                 className="text-sm font-medium border border-[#C0593A] text-[#C0593A] px-4 py-2 rounded-lg hover:bg-[#FAEEE9] transition-colors">
                 Log in
               </Link>
-              <Link href="/signup"
-                className="text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2 rounded-lg transition-colors">
-                Sign up
-              </Link>
+              <div className="relative"
+                onMouseEnter={() => setSignupOpen(true)}
+                onMouseLeave={() => setSignupOpen(false)}>
+                <button
+                  onClick={() => setSignupOpen(o => !o)}
+                  className="flex items-center gap-1 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2 rounded-lg transition-colors">
+                  Sign up
+                  <svg className={`w-3 h-3 transition-transform ${signupOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {signupOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-[#EBE0D8] rounded-xl shadow-lg overflow-hidden z-50">
+                    <Link href="/signup?type=homeowner"
+                      onClick={() => setSignupOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">🏠</span>
+                      <div>
+                        <p className="font-semibold text-xs">Homeowner</p>
+                        <p className="text-[11px] text-[#A08070]">Hire & buy materials</p>
+                      </div>
+                    </Link>
+                    <div className="h-px bg-[#F0E8E2]" />
+                    <Link href="/signup?type=professional"
+                      onClick={() => setSignupOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">💼</span>
+                      <div>
+                        <p className="font-semibold text-xs">Professional</p>
+                        <p className="text-[11px] text-[#A08070]">Work & sell on Griffy</p>
+                      </div>
+                    </Link>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -126,9 +158,13 @@ export default function Navbar() {
                     className="text-sm font-medium border border-[#C0593A] text-[#C0593A] px-4 py-2.5 rounded-lg text-center">
                     Log in
                   </Link>
-                  <Link href="/signup" onClick={() => setMenuOpen(false)}
-                    className="text-sm font-semibold bg-[#C0593A] text-white px-4 py-2.5 rounded-lg text-center">
-                    Sign up
+                  <Link href="/signup?type=homeowner" onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 text-sm font-semibold bg-[#C0593A] text-white px-4 py-2.5 rounded-lg">
+                    🏠 Sign up as Homeowner
+                  </Link>
+                  <Link href="/signup?type=professional" onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 text-sm font-semibold border-2 border-[#C0593A] text-[#C0593A] px-4 py-2.5 rounded-lg">
+                    💼 Sign up as Professional
                   </Link>
                 </>
               )}
