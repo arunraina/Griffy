@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Enquiry, EnquiryStatus } from './enquiry.entity';
@@ -6,6 +6,7 @@ import { CreateEnquiryDto } from './dto/create-enquiry.dto';
 import { ReplyEnquiryDto } from './dto/reply-enquiry.dto';
 import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
+import { getContactInfoViolation } from '../common/utils/content-moderation';
 
 @Injectable()
 export class EnquiriesService {
@@ -16,6 +17,14 @@ export class EnquiriesService {
   ) {}
 
   async create(dto: CreateEnquiryDto, senderId: string): Promise<Enquiry> {
+    const textToCheck = [dto.message, dto.projectDescription].filter(Boolean).join(' ');
+    const violation = getContactInfoViolation(textToCheck);
+    if (violation) {
+      throw new BadRequestException(
+        `Sharing ${violation}s is not allowed. Keep conversations on Griffy for your protection.`,
+      );
+    }
+
     let recipientId: string;
 
     if (dto.recipientType === 'contractor') {
@@ -72,6 +81,13 @@ export class EnquiriesService {
   async reply(id: string, dto: ReplyEnquiryDto, userId: string): Promise<Enquiry> {
     const enquiry = await this.findOne(id);
     if (enquiry.recipientId !== userId) throw new ForbiddenException('Not your enquiry to reply to');
+
+    const violation = getContactInfoViolation(dto.reply);
+    if (violation) {
+      throw new BadRequestException(
+        `Sharing ${violation}s is not allowed. Keep conversations on Griffy for your protection.`,
+      );
+    }
 
     enquiry.reply = dto.reply;
     enquiry.status = (dto.status as EnquiryStatus) ?? EnquiryStatus.REPLIED;

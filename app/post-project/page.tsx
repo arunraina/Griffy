@@ -1,68 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, CheckCircle2, ArrowRight, MapPin, Calendar, IndianRupee, FileText, Users } from "lucide-react";
+import {
+  ChevronRight, CheckCircle2, ArrowRight, MapPin, Calendar, IndianRupee, FileText,
+} from "lucide-react";
+import { createProject, getMe } from "@/lib/api";
 
 const PROJECT_TYPES = [
-  { id: "new_home", label: "New Home Construction", emoji: "🏠" },
-  { id: "renovation", label: "Renovation / Remodelling", emoji: "🔧" },
-  { id: "extension", label: "Floor Extension", emoji: "🏗️" },
+  { id: "civil", label: "Civil / Structure", emoji: "🏗️" },
+  { id: "electrical", label: "Electrical", emoji: "⚡" },
+  { id: "plumbing", label: "Plumbing", emoji: "🔧" },
   { id: "interior", label: "Interior Work", emoji: "🛋️" },
-  { id: "repair", label: "Repair & Maintenance", emoji: "🪛" },
-  { id: "commercial", label: "Commercial Space", emoji: "🏢" },
+  { id: "structural", label: "Structural", emoji: "🏛️" },
+  { id: "painting", label: "Painting", emoji: "🎨" },
+  { id: "architecture", label: "Architecture", emoji: "📐" },
+  { id: "other", label: "Other", emoji: "🔨" },
 ];
 
-const BUDGET_RANGES = [
-  "Under ₹5 Lakh", "₹5–10 Lakh", "₹10–25 Lakh", "₹25–50 Lakh", "₹50 Lakh – 1 Crore", "Above ₹1 Crore",
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Assam", "Bihar", "Delhi", "Goa", "Gujarat", "Haryana",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Odisha", "Punjab",
+  "Rajasthan", "Tamil Nadu", "Telangana", "Uttar Pradesh", "West Bengal", "Other",
 ];
 
 const TIMELINES = [
-  "ASAP (within a week)", "1–2 months", "2–4 months", "4–6 months", "6+ months", "Not decided yet",
+  "ASAP (within 1 week)", "1–2 months", "2–4 months", "4–6 months", "6+ months", "Not decided yet",
 ];
 
-const SERVICES_NEEDED = [
-  "Civil Contractor", "Architect", "Structural Engineer", "Interior Designer",
-  "Electrician", "Plumber", "Painter", "Tiles & Flooring", "Waterproofing",
-];
-
-const INDIAN_CITIES = [
-  "Bengaluru", "Mumbai", "Delhi", "Hyderabad", "Chennai", "Pune", "Kolkata",
-  "Ahmedabad", "Jaipur", "Lucknow", "Kochi", "Coimbatore", "Mysuru", "Surat", "Other",
+const steps = [
+  { label: "Project Details", icon: FileText },
+  { label: "Location & Budget", icon: MapPin },
+  { label: "Review & Post", icon: CheckCircle2 },
 ];
 
 export default function PostProjectPage() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     projectType: "",
     title: "",
     description: "",
     city: "",
-    area: "",
-    budget: "",
+    state: "",
+    budgetMin: "",
+    budgetMax: "",
     timeline: "",
-    services: [] as string[],
-    name: "",
-    phone: "",
-    email: "",
   });
 
-  function toggleService(s: string) {
-    setForm((f) => ({
-      ...f,
-      services: f.services.includes(s) ? f.services.filter((x) => x !== s) : [...f.services, s],
-    }));
+  useEffect(() => {
+    getMe().catch(() => router.replace("/auth/login?redirect=/post-project")).finally(() => setAuthChecked(true));
+  }, [router]);
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+      </div>
+    );
   }
 
-  function nextStep() { setStep((s) => Math.min(s + 1, 3)); }
-  function prevStep() { setStep((s) => Math.max(s - 1, 1)); }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await new Promise((r) => setTimeout(r, 1200));
-    setSubmitted(true);
+  async function handleSubmit() {
+    setSubmitting(true);
+    setError("");
+    try {
+      await createProject({
+        title: form.title,
+        description: form.description,
+        projectType: form.projectType,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
+        budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
+        timeline: form.timeline || undefined,
+      });
+      setSubmitted(true);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to post project. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -73,33 +96,33 @@ export default function PostProjectPage() {
             <CheckCircle2 className="w-10 h-10 text-green-500" />
           </div>
           <h1 className="text-2xl font-extrabold text-stone-900 mb-2">Project Posted!</h1>
-          <p className="text-stone-500 mb-2">Your project "<strong className="text-stone-800">{form.title || "New Project"}</strong>" is live.</p>
-          <p className="text-sm text-stone-400 mb-6">Verified contractors in your area will send you quotes within 24 hours. You can compare and pick the best fit.</p>
-
+          <p className="text-stone-500 mb-2">
+            Your project <strong className="text-stone-800">&ldquo;{form.title}&rdquo;</strong> is now live.
+          </p>
+          <p className="text-sm text-stone-400 mb-6">
+            Verified contractors can now submit bids. You&apos;ll manage bids from your dashboard.
+          </p>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-6 text-left space-y-2 text-sm text-stone-600">
-            <div className="flex items-center gap-2"><Users className="w-4 h-4 text-orange-500" /><span>Estimated <strong>3–8 quotes</strong> expected</span></div>
-            <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-orange-500" /><span>Quotes arrive within <strong>24 hours</strong></span></div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-orange-500" /><span>Only <strong>verified contractors</strong> can bid</span></div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-orange-500" />
+              <span>Only <strong>verified contractors</strong> can bid</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-orange-500" />
+              <span>Review bids from your <strong>dashboard</strong></span>
+            </div>
           </div>
-
           <div className="flex flex-col gap-3">
-            <Link href="/feed" className="btn-primary justify-center">Go to Feed</Link>
-            <Link href="/contractors" className="btn-secondary justify-center">Browse Contractors</Link>
+            <Link href="/dashboard" className="btn-primary justify-center">Go to Dashboard</Link>
+            <Link href="/projects" className="btn-secondary justify-center">Browse All Projects</Link>
           </div>
         </div>
       </div>
     );
   }
 
-  const steps = [
-    { label: "Project Details", icon: FileText },
-    { label: "Location & Budget", icon: MapPin },
-    { label: "Contact Info", icon: Users },
-  ];
-
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Breadcrumb */}
       <div className="bg-white border-b border-stone-100">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <nav className="flex items-center gap-2 text-sm text-stone-500">
@@ -111,10 +134,9 @@ export default function PostProjectPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold text-stone-900 mb-2">Post Your Project</h1>
-          <p className="text-stone-500">Get quotes from verified contractors in your city within 24 hours. It's free!</p>
+          <p className="text-stone-500">Get bids from verified contractors. It&apos;s free!</p>
         </div>
 
         {/* Step bar */}
@@ -147,16 +169,16 @@ export default function PostProjectPage() {
 
               <div>
                 <label className="block text-sm font-bold text-stone-700 mb-3">Project Type *</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {PROJECT_TYPES.map((pt) => (
                     <button
                       key={pt.id}
                       type="button"
                       onClick={() => setForm({ ...form, projectType: pt.id })}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-semibold ${form.projectType === pt.id ? "border-orange-400 bg-orange-50 text-orange-700" : "border-stone-200 text-stone-600 hover:border-stone-300"}`}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-semibold ${form.projectType === pt.id ? "border-orange-400 bg-orange-50 text-orange-700" : "border-stone-200 text-stone-600 hover:border-stone-300"}`}
                     >
                       <span className="text-2xl">{pt.emoji}</span>
-                      <span className="text-center leading-tight">{pt.label}</span>
+                      <span className="text-center text-xs leading-tight">{pt.label}</span>
                     </button>
                   ))}
                 </div>
@@ -168,7 +190,7 @@ export default function PostProjectPage() {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. 3BHK home construction in HSR Layout"
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
 
@@ -179,29 +201,13 @@ export default function PostProjectPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="Describe your project — size, requirements, special considerations..."
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-3">Services Needed (select all that apply)</label>
-                <div className="flex flex-wrap gap-2">
-                  {SERVICES_NEEDED.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggleService(s)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${form.services.includes(s) ? "bg-orange-500 text-white border-orange-500" : "border-stone-200 text-stone-600 hover:border-stone-400"}`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <button
-                onClick={nextStep}
-                disabled={!form.projectType || !form.title}
+                onClick={() => setStep(2)}
+                disabled={!form.projectType || !form.title.trim()}
                 className="w-full btn-primary justify-center disabled:opacity-50"
               >
                 Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -212,48 +218,60 @@ export default function PostProjectPage() {
           {/* Step 2 */}
           {step === 2 && (
             <div className="space-y-6">
-              <h2 className="font-extrabold text-stone-900 text-lg">Location & Budget</h2>
+              <h2 className="font-extrabold text-stone-900 text-lg">Location &amp; Budget</h2>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-stone-700 mb-1.5">
-                    <MapPin className="w-4 h-4 inline mr-1 text-orange-500" /> City *
+                    <MapPin className="w-4 h-4 inline mr-1 text-orange-500" /> City
                   </label>
-                  <select
+                  <input
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
-                  >
-                    <option value="">Select city</option>
-                    {INDIAN_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                    placeholder="e.g. Bengaluru"
+                    className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-1.5">Plot / Built-up Area</label>
-                  <input
-                    value={form.area}
-                    onChange={(e) => setForm({ ...form, area: e.target.value })}
-                    placeholder="e.g. 1200 sq ft"
-                    className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                  />
+                  <label className="block text-sm font-bold text-stone-700 mb-1.5">State</label>
+                  <select
+                    value={form.state}
+                    onChange={(e) => setForm({ ...form, state: e.target.value })}
+                    className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                  >
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-stone-700 mb-3">
-                  <IndianRupee className="w-4 h-4 inline mr-1 text-orange-500" /> Budget Range *
+                <label className="block text-sm font-bold text-stone-700 mb-1.5">
+                  <IndianRupee className="w-4 h-4 inline mr-1 text-orange-500" /> Budget Range (₹)
                 </label>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {BUDGET_RANGES.map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      onClick={() => setForm({ ...form, budget: b })}
-                      className={`py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all text-left ${form.budget === b ? "border-orange-400 bg-orange-50 text-orange-700" : "border-stone-200 text-stone-600 hover:border-stone-300"}`}
-                    >
-                      {b}
-                    </button>
-                  ))}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">Min ₹</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.budgetMin}
+                      onChange={(e) => setForm({ ...form, budgetMin: e.target.value })}
+                      placeholder="e.g. 500000"
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 pl-14 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">Max ₹</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.budgetMax}
+                      onChange={(e) => setForm({ ...form, budgetMax: e.target.value })}
+                      placeholder="e.g. 2000000"
+                      className="w-full border border-stone-200 rounded-xl px-4 py-3 pl-14 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -276,80 +294,77 @@ export default function PostProjectPage() {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={prevStep} className="flex-1 btn-secondary justify-center">Back</button>
-                <button
-                  onClick={nextStep}
-                  disabled={!form.city || !form.budget}
-                  className="flex-1 btn-primary justify-center disabled:opacity-50"
-                >
+                <button onClick={() => setStep(1)} className="flex-1 btn-secondary justify-center">Back</button>
+                <button onClick={() => setStep(3)} className="flex-1 btn-primary justify-center">
                   Continue <ArrowRight className="w-4 h-4 ml-2" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3 */}
+          {/* Step 3 — Review */}
           {step === 3 && (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <h2 className="font-extrabold text-stone-900 text-lg">Your contact details</h2>
-              <p className="text-sm text-stone-500">Only shared with contractors you approve. Never shown publicly.</p>
+            <div className="space-y-5">
+              <h2 className="font-extrabold text-stone-900 text-lg">Review &amp; Post</h2>
 
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Full Name *</label>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Rajesh Kumar"
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                />
-              </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">{error}</div>
+              )}
 
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Mobile Number *</label>
-                <input
-                  required
-                  type="tel"
-                  pattern="[6-9]\d{9}"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="9876543210"
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-1.5">Email (optional)</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                />
-              </div>
-
-              {/* Summary */}
-              <div className="bg-stone-50 rounded-xl p-4 text-sm space-y-2 text-stone-600">
-                <p className="font-bold text-stone-900">Project Summary</p>
-                <p>📋 {form.title}</p>
-                <p>📍 {form.city} · {form.area || "Area not specified"}</p>
-                <p>💰 {form.budget}</p>
-                <p>📅 {form.timeline || "Timeline not selected"}</p>
-                {form.services.length > 0 && <p>🔧 {form.services.join(", ")}</p>}
+              <div className="bg-stone-50 rounded-xl p-5 space-y-3 text-sm text-stone-700">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">
+                    {PROJECT_TYPES.find((p) => p.id === form.projectType)?.emoji}
+                  </span>
+                  <div>
+                    <p className="font-bold text-stone-900 text-base">{form.title}</p>
+                    <p className="text-stone-500 text-xs mt-0.5">
+                      {PROJECT_TYPES.find((p) => p.id === form.projectType)?.label}
+                    </p>
+                  </div>
+                </div>
+                {form.description && (
+                  <p className="text-stone-600 leading-relaxed">{form.description}</p>
+                )}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-stone-500 text-xs pt-1 border-t border-stone-200">
+                  {(form.city || form.state) && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {[form.city, form.state].filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                  {(form.budgetMin || form.budgetMax) && (
+                    <span className="flex items-center gap-1">
+                      <IndianRupee className="w-3.5 h-3.5" />
+                      {form.budgetMin && `₹${Number(form.budgetMin).toLocaleString("en-IN")}`}
+                      {form.budgetMin && form.budgetMax && " – "}
+                      {form.budgetMax && `₹${Number(form.budgetMax).toLocaleString("en-IN")}`}
+                    </span>
+                  )}
+                  {form.timeline && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {form.timeline}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3">
-                <button type="button" onClick={prevStep} className="flex-1 btn-secondary justify-center">Back</button>
-                <button type="submit" className="flex-1 btn-primary justify-center">
-                  Post Project 🚀
+                <button onClick={() => setStep(2)} className="flex-1 btn-secondary justify-center">Back</button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex-1 btn-primary justify-center disabled:opacity-50"
+                >
+                  {submitting ? "Posting..." : "Post Project 🚀"}
                 </button>
               </div>
 
               <p className="text-xs text-stone-400 text-center">
-                By posting, you agree to Griffy's Terms of Service. Contractors will contact you only after your approval.
+                By posting, you agree to Griffy&apos;s Terms of Service. Your contact details remain private.
               </p>
-            </form>
+            </div>
           )}
         </div>
       </div>

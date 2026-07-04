@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X, Send, IndianRupee } from "lucide-react";
+import { X, Send, IndianRupee, AlertTriangle } from "lucide-react";
 import { createEnquiry, CreateEnquiryPayload } from "@/lib/api";
+
+const CONTACT_RE = /(?:\+91[\s-]?)?[6-9]\d{9}|\b\d{10}\b|\b\d{5}[\s-]\d{5}\b|(?:instagram\.com\/|@)[a-zA-Z0-9_.]{3,}|(?:facebook\.com|fb\.com|fb\.gg)\/[a-zA-Z0-9.?=&_-]+|(?:wa\.me|whatsapp\.com\/send)[^\s]*/i;
+
+function detectContactInfo(text: string): string | null {
+  if (/(?:\+91[\s-]?)?[6-9]\d{9}|\b\d{10}\b|\b\d{5}[\s-]\d{5}\b/.test(text)) return "phone number";
+  if (/(?:instagram\.com\/|@)[a-zA-Z0-9_.]{3,}/i.test(text)) return "Instagram handle";
+  if (/(?:facebook\.com|fb\.com|fb\.gg)\//i.test(text)) return "Facebook link";
+  if (/(?:wa\.me|whatsapp\.com\/send)/i.test(text)) return "WhatsApp link";
+  return null;
+}
 
 interface Props {
   recipientType: "contractor" | "labour";
@@ -19,9 +29,25 @@ export default function EnquiryModal({ recipientType, targetId, recipientName, o
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [contactWarning, setContactWarning] = useState<string | null>(null);
+
+  function handleMessageChange(val: string) {
+    setMessage(val);
+    const combined = [val, projectDescription].join(" ");
+    setContactWarning(detectContactInfo(combined));
+  }
+
+  function handleDescChange(val: string) {
+    setProjectDescription(val);
+    const combined = [message, val].join(" ");
+    setContactWarning(detectContactInfo(combined));
+  }
 
   async function handleSend() {
     if (!message.trim()) { setError("Please write a message."); return; }
+    const combined = [message, projectDescription].join(" ");
+    const v = detectContactInfo(combined);
+    if (v) { setError(`Sharing ${v}s is not allowed. Keep conversations on Griffy for your protection.`); return; }
     setSaving(true);
     setError("");
     try {
@@ -71,12 +97,19 @@ export default function EnquiryModal({ recipientType, targetId, recipientName, o
               <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">{error}</div>
             )}
 
+            {contactWarning && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Sharing a {contactWarning} is not allowed. Please keep all contact on Griffy to stay protected.</span>
+              </div>
+            )}
+
             <div>
               <label className="label-text">Your message *</label>
               <textarea
                 rows={4}
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => handleMessageChange(e.target.value)}
                 placeholder={`Hi ${recipientName.split(" ")[0]}, I'm looking for help with...`}
                 className="input-field resize-none"
               />
@@ -87,7 +120,7 @@ export default function EnquiryModal({ recipientType, targetId, recipientName, o
               <textarea
                 rows={2}
                 value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
+                onChange={(e) => handleDescChange(e.target.value)}
                 placeholder="Briefly describe the project scope, timeline, location..."
                 className="input-field resize-none"
               />

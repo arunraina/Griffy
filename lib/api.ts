@@ -311,3 +311,106 @@ export const replyEnquiry = (id: string, reply: string, status?: string) =>
     method: 'PATCH',
     body: JSON.stringify({ reply, status }),
   });
+
+// ── Admin ──────────────────────────────────────────────────────────────────
+
+export interface AdminStats {
+  totalUsers: number;
+  totalOrders: number;
+  totalContractors: number;
+  pendingVerifications: number;
+  platformRevenue: number;
+}
+
+export const adminGetStats = () => apiFetch<AdminStats>('/admin/stats');
+
+export const adminListUsers = (page = 1, limit = 20, search?: string) =>
+  apiFetch<Paginated<User>>(`/admin/users?page=${page}&limit=${limit}${search ? '&search=' + encodeURIComponent(search) : ''}`);
+
+export const adminUpdateUser = (id: string, data: { isActive?: boolean; role?: string }) =>
+  apiFetch<User>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const adminListContractors = (page = 1, limit = 20, verified?: boolean) =>
+  apiFetch<Paginated<Contractor>>(`/admin/contractors?page=${page}&limit=${limit}${verified !== undefined ? '&verified=' + verified : ''}`);
+
+export const adminVerifyContractor = (id: string) =>
+  apiFetch<Contractor>(`/admin/contractors/${id}/verify`, { method: 'PATCH' });
+
+export const adminListMaterials = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Material>>(`/admin/materials?page=${page}&limit=${limit}`);
+
+export const adminToggleFeatured = (id: string) =>
+  apiFetch<Material>(`/admin/materials/${id}/feature`, { method: 'PATCH' });
+
+export const adminListOrders = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Order & { buyer?: User }>>(`/admin/orders?page=${page}&limit=${limit}`);
+
+// ── Projects ───────────────────────────────────────────────────────────────
+
+export interface Project {
+  id: string;
+  homeownerId: string;
+  homeowner?: { id: string; fullName: string };
+  title: string;
+  description: string;
+  projectType: string;
+  city?: string;
+  state?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  timeline?: string;
+  status: 'open' | 'closed' | 'awarded';
+  bidCount?: number;
+  createdAt: string;
+}
+
+export interface Bid {
+  id: string;
+  projectId: string;
+  contractorId: string;
+  contractor?: Contractor & { user?: { id: string; fullName: string } };
+  bidAmount: number;
+  message: string;
+  status: 'pending' | 'shortlisted' | 'awarded' | 'rejected';
+  createdAt: string;
+}
+
+export interface CreateProjectPayload {
+  title: string;
+  description: string;
+  projectType: string;
+  city?: string;
+  state?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  timeline?: string;
+}
+
+export const createProject = (data: CreateProjectPayload) =>
+  apiFetch<Project>('/projects', { method: 'POST', body: JSON.stringify(data) });
+
+type ProjectsParams = Partial<{ page: number; limit: number; projectType: string; city: string; search: string }>;
+
+export function listProjects(params: ProjectsParams = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)])
+  ).toString();
+  return apiFetch<Paginated<Project>>(`/projects${qs ? '?' + qs : ''}`);
+}
+
+export const listMyProjects = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Project>>(`/projects/my?page=${page}&limit=${limit}`);
+
+export const getProject = (id: string) => apiFetch<Project>(`/projects/${id}`);
+
+export const closeProject = (id: string) =>
+  apiFetch<Project>(`/projects/${id}/close`, { method: 'PATCH' });
+
+export const submitBid = (projectId: string, data: { bidAmount: number; message: string }) =>
+  apiFetch<Bid>(`/projects/${projectId}/bids`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getProjectBids = (projectId: string) =>
+  apiFetch<Bid[]>(`/projects/${projectId}/bids`);
+
+export const updateBidStatus = (projectId: string, bidId: string, status: string) =>
+  apiFetch<Bid>(`/projects/${projectId}/bids/${bidId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
