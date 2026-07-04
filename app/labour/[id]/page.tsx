@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Star, MapPin, CheckCircle2, Phone, Calendar, Shield, Clock, Award, ChevronRight, MessageSquare, Wrench } from "lucide-react";
 import { getLabour, Labour } from "@/lib/api";
 import { TRADE_LABEL, TRADE_EMOJI } from "@/lib/constants";
+import ReviewsList from "@/components/ReviewsList";
 
 function Skeleton() {
   return (
@@ -148,6 +149,8 @@ export default function LabourDetailPage() {
                 )}
               </div>
             )}
+
+            <ReviewsList targetType="labour" targetId={worker.id} rating={worker.rating} reviewCount={worker.reviewCount} />
           </div>
 
           {/* Sidebar */}

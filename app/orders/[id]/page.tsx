@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Package, Truck, CheckCircle2, Clock, MapPin, Phone, MessageSquare, Download, XCircle, AlertCircle } from "lucide-react";
-import { getOrder, Order } from "@/lib/api";
+import { ChevronRight, Package, Truck, CheckCircle2, Clock, MapPin, MessageSquare, Download, XCircle, AlertCircle, Star, Loader2 } from "lucide-react";
+import { getOrder, Order, createReview, getMyReviewForOrder, Review } from "@/lib/api";
 import { ORDER_STATUS, formatDate } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import StarRating from "@/components/StarRating";
 
 const TYPE_EMOJI: Record<string, string> = {
   material: "📦",
@@ -47,6 +48,11 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [existingReview, setExistingReview] = useState<Review | null | undefined>(undefined);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -57,10 +63,35 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     getOrder(id)
-      .then(setOrder)
+      .then((o) => {
+        setOrder(o);
+        if (o.status === "completed") {
+          getMyReviewForOrder(o.id)
+            .then((r) => setExistingReview(r))
+            .catch(() => setExistingReview(null));
+        }
+      })
       .catch((e) => setError(e.message ?? "Order not found"))
       .finally(() => setLoading(false));
   }, [id, isAuthenticated]);
+
+  async function submitReview() {
+    if (!order) return;
+    setReviewSubmitting(true);
+    try {
+      await createReview({
+        orderId: order.id,
+        targetType: order.type as "material" | "contractor" | "labour",
+        targetId: order.itemId,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      setReviewDone(true);
+    } catch {
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
 
   if (loading || authLoading) return <div className="min-h-screen bg-stone-50"><Skeleton /></div>;
 
@@ -201,6 +232,53 @@ export default function OrderDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Review section — only for completed orders */}
+            {order.status === "completed" && (
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
+                <h2 className="font-bold text-stone-900 text-lg mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" /> Leave a Review
+                </h2>
+                {reviewDone || (existingReview !== undefined && existingReview !== null) ? (
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-green-800 text-sm">Review submitted — thank you!</p>
+                      {(existingReview?.comment || (reviewDone && reviewComment)) && (
+                        <p className="text-green-600 text-sm mt-0.5 italic">"{existingReview?.comment ?? reviewComment}"</p>
+                      )}
+                    </div>
+                  </div>
+                ) : existingReview === undefined ? (
+                  <div className="animate-pulse h-24 bg-stone-100 rounded-xl" />
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-700 mb-2">Your rating</p>
+                      <StarRating value={reviewRating} onChange={setReviewRating} size="lg" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-stone-700 mb-1.5">Comment <span className="text-stone-400 font-normal">(optional)</span></label>
+                      <textarea
+                        rows={3}
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your experience…"
+                        className="w-full border border-stone-200 rounded-xl px-4 py-3 text-stone-700 text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 resize-none"
+                      />
+                    </div>
+                    <button
+                      onClick={submitReview}
+                      disabled={reviewSubmitting}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
+                    >
+                      {reviewSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
+                      {reviewSubmitting ? "Submitting…" : "Submit Review"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Delivery address */}
             {order.deliveryAddress && (

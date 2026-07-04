@@ -10,6 +10,7 @@ import {
 import { getMaterial, Material } from "@/lib/api";
 import { CATEGORY_EMOJI, CATEGORY_LABEL } from "@/lib/constants";
 import { useCart } from "@/context/CartContext";
+import ReviewsList from "@/components/ReviewsList";
 
 function Skeleton() {
   return (
@@ -280,6 +281,8 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
             )}
+
+            <ReviewsList targetType="material" targetId={material.id} rating={material.rating} reviewCount={material.reviewCount} />
           </div>
 
           {/* Sidebar */}

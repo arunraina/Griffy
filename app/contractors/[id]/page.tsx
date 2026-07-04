@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Star, MapPin, CheckCircle2, Phone, Calendar, Shield, Clock, Award, ChevronRight, MessageSquare } from "lucide-react";
 import { getContractor, Contractor } from "@/lib/api";
 import { SPECIALTY_LABEL } from "@/lib/constants";
+import ReviewsList from "@/components/ReviewsList";
 
 function Skeleton() {
   return (
@@ -148,6 +149,8 @@ export default function ContractorDetailPage() {
                 </div>
               </div>
             )}
+
+            <ReviewsList targetType="contractor" targetId={contractor.id} rating={contractor.rating} reviewCount={contractor.reviewCount} />
           </div>
 
           {/* Sidebar — Book / Contact */}

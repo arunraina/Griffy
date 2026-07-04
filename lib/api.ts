@@ -225,3 +225,33 @@ export const getMyLabourProfile = () => apiFetch<Labour | null>('/labour/my');
 
 export const listMyMaterials = (page = 1, limit = 20) =>
   apiFetch<Paginated<Material>>(`/materials/my?page=${page}&limit=${limit}`);
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+
+export interface Review {
+  id: string;
+  orderId?: string;
+  targetType: 'material' | 'contractor' | 'labour';
+  targetId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  reviewer?: { id: string; fullName: string };
+}
+
+export interface CreateReviewPayload {
+  orderId?: string;
+  targetType: 'material' | 'contractor' | 'labour';
+  targetId: string;
+  rating: number;
+  comment?: string;
+}
+
+export const createReview = (data: CreateReviewPayload) =>
+  apiFetch<Review>('/reviews', { method: 'POST', body: JSON.stringify(data) });
+
+export const listReviews = (targetType: string, targetId: string, page = 1, limit = 20) =>
+  apiFetch<Paginated<Review>>(`/reviews?targetType=${targetType}&targetId=${targetId}&page=${page}&limit=${limit}`);
+
+export const getMyReviewForOrder = (orderId: string) =>
+  apiFetch<Review | null>(`/reviews/my-review?orderId=${orderId}`);
