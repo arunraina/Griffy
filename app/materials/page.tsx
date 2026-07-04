@@ -162,9 +162,6 @@ export default function MaterialsPage() {
                   {m.isFeatured && (
                     <span className="absolute top-3 left-3 badge bg-orange-100 text-orange-700 text-xs">Featured</span>
                   )}
-                  {m.isAvailable && (
-                    <span className="absolute top-3 right-3 badge bg-green-100 text-green-700 text-xs">✓ Available</span>
-                  )}
                 </div>
 
                 <div className="p-4">
