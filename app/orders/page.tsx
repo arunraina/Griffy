@@ -8,11 +8,6 @@ import { ORDER_STATUS, formatDate } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
-export const metadata = {
-  title: "My Orders | Griffy",
-  description: "Track and manage your material orders and bookings on Griffy.",
-};
-
 const STATUS_ICONS: Record<string, any> = {
   pending: Clock,
   accepted: CheckCircle2,

@@ -1,13 +1,14 @@
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import Razorpay from 'razorpay';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Razorpay = require('razorpay');
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 
 @Injectable()
 export class PaymentsService {
-  private readonly razorpay: Razorpay;
+  private readonly razorpay: any;
   private readonly keySecret: string;
 
   constructor(private readonly config: ConfigService) {
