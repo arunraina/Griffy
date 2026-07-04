@@ -8,6 +8,7 @@ import {
   Plus, Clock, CheckCircle2, Truck, XCircle, AlertCircle,
   Briefcase, Wrench, LayoutGrid, Edit2, Loader2, Save,
   ToggleLeft, ToggleRight, Trash2, X, MessageSquare, Send,
+  BarChart2, Eye, Copy, Check, Gift, Users,
 } from "lucide-react";
 import {
   listMyOrders, listIncomingOrders, updateOrderStatus,
@@ -15,7 +16,8 @@ import {
   updateMyContractorProfile, updateMyLabourProfile,
   createMaterial, updateMaterial, deleteMaterial,
   listSentEnquiries, listReceivedEnquiries, replyEnquiry,
-  Order, Contractor, Labour, Material, Enquiry,
+  getMyAnalytics, getReferralStats,
+  Order, Contractor, Labour, Material, Enquiry, MyAnalytics, ReferralStats,
 } from "@/lib/api";
 import {
   ORDER_STATUS, formatDate, initials,
@@ -123,6 +125,7 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
     businessName: "", specialty: "civil", experienceYears: 0,
     licenseNumber: "", priceRangeMin: 0, priceRangeMax: 0, priceUnit: "per project",
     bio: "", skills: [] as string[], city: "", state: "", isAvailable: true, avatarUrl: "",
+    portfolioImages: [] as string[],
   };
   const [form, setForm] = useState({ ...blank, ...(profile ?? {}) });
   const [saving, setSaving] = useState(false);
@@ -153,6 +156,7 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
         ...(form.priceRangeMax ? { priceRangeMax: Number(form.priceRangeMax) } : {}),
         ...(form.priceUnit ? { priceUnit: form.priceUnit } : {}),
         ...(form.avatarUrl ? { avatarUrl: form.avatarUrl } : {}),
+        ...(form.portfolioImages?.length > 0 ? { portfolioImages: form.portfolioImages } : {}),
       };
       const updated = await updateMyContractorProfile(payload);
       onSaved(updated);
@@ -255,6 +259,17 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
             maxFiles={1}
             folder="avatars"
             label="Upload Profile Photo"
+          />
+        </div>
+
+        <div>
+          <label className="label-text">Portfolio Photos <span className="text-stone-400 font-normal">(up to 8 — show your past work)</span></label>
+          <ImageUpload
+            value={(form as any).portfolioImages ?? []}
+            onChange={(urls) => set("portfolioImages", urls)}
+            maxFiles={8}
+            folder="portfolio"
+            label="Upload Portfolio Images"
           />
         </div>
       </div>
@@ -754,7 +769,7 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
 
 // ── Pro dashboard ──────────────────────────────────────────────────────────
 
-type ProTab = "overview" | "bookings" | "listings" | "enquiries";
+type ProTab = "overview" | "bookings" | "listings" | "enquiries" | "analytics";
 
 function ProDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<ProTab>("overview");
@@ -769,6 +784,10 @@ function ProDashboard({ user }: { user: any }) {
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replyStatus, setReplyStatus] = useState<Record<string, string>>({});
+  const [analytics, setAnalytics] = useState<MyAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [referral, setReferral] = useState<ReferralStats | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const isContractor = user.role === "contractor";
   const isLabour = user.role === "labour";
@@ -794,7 +813,24 @@ function ProDashboard({ user }: { user: any }) {
       setEnquiriesLoading(true);
       listReceivedEnquiries(1, 50).then((r) => setEnquiries(r.data)).catch(() => {}).finally(() => setEnquiriesLoading(false));
     }
+
+    getReferralStats().then(setReferral).catch(() => undefined);
   }, [isContractor, isLabour, isSupplier]);
+
+  function handleTabChange(tab: ProTab) {
+    setActiveTab(tab);
+    if (tab === "analytics" && !analytics && !analyticsLoading) {
+      setAnalyticsLoading(true);
+      getMyAnalytics().then(setAnalytics).catch(() => undefined).finally(() => setAnalyticsLoading(false));
+    }
+  }
+
+  function copyReferralCode() {
+    if (!referral?.code) return;
+    navigator.clipboard.writeText(referral.code).catch(() => undefined);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   async function submitReply(enquiryId: string) {
     const text = replyText[enquiryId];
@@ -836,13 +872,14 @@ function ProDashboard({ user }: { user: any }) {
     ...(isContractor || isLabour
       ? [{ id: "enquiries" as ProTab, label: `Enquiries${pendingEnquiries > 0 ? ` (${pendingEnquiries})` : ""}` }]
       : []),
+    { id: "analytics", label: "Analytics" },
   ];
 
   return (
     <div>
-      <div className="flex gap-1 mb-8 bg-stone-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 mb-8 bg-stone-100 p-1 rounded-xl w-fit flex-wrap">
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => setActiveTab(t.id)}
+          <button key={t.id} onClick={() => handleTabChange(t.id)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === t.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
             {t.label}
           </button>
@@ -944,6 +981,35 @@ function ProDashboard({ user }: { user: any }) {
               variant="blue"
               secondary={{ label: "View listings", href: "/materials" }}
             />
+          )}
+
+          {/* Referral card */}
+          {referral?.code && (
+            <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl border border-orange-100 p-5">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Gift className="w-5 h-5 text-orange-500" />
+                    <p className="font-bold text-stone-900">Refer &amp; Grow</p>
+                  </div>
+                  <p className="text-sm text-stone-500 mb-3">Share your referral code and help your network join Griffy.</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-orange-200">
+                      <span className="font-mono font-bold text-orange-600 text-lg tracking-widest">{referral.code}</span>
+                    </div>
+                    <button onClick={copyReferralCode}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${copied ? "bg-green-50 border-green-300 text-green-700" : "bg-white border-stone-200 text-stone-700 hover:border-orange-300 hover:text-orange-500"}`}>
+                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied ? "Copied!" : "Copy Code"}
+                    </button>
+                  </div>
+                </div>
+                <div className="text-center bg-white rounded-xl border border-orange-100 px-5 py-3 shrink-0">
+                  <p className="text-2xl font-extrabold text-orange-500">{referral.referralCount}</p>
+                  <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5"><Users className="w-3 h-3" /> People referred</p>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1135,6 +1201,94 @@ function ProDashboard({ user }: { user: any }) {
               profile={profile as Labour | null}
               onSaved={(p) => setProfile(p)}
             />
+          )}
+        </div>
+      )}
+
+      {/* Analytics tab */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6">
+          <h2 className="font-extrabold text-stone-900 text-lg">My Analytics</h2>
+          {analyticsLoading ? (
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded-2xl border border-stone-100 h-28 animate-pulse" />)}
+            </div>
+          ) : !analytics ? (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
+              <BarChart2 className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+              <p className="text-stone-500">No analytics data yet. Complete more jobs to see insights.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-stone-900">{analytics.profileViews.toLocaleString("en-IN")}</p>
+                  <p className="text-sm text-stone-500 mt-0.5">Profile views</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-3">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-stone-900">{analytics.enquiryCount}</p>
+                  <p className="text-sm text-stone-500 mt-0.5">Enquiries received</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 col-span-2 sm:col-span-1">
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-3">
+                    <IndianRupee className="w-5 h-5" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-stone-900">
+                    {analytics.totalEarnings >= 100000
+                      ? `₹${(analytics.totalEarnings / 100000).toFixed(1)}L`
+                      : `₹${analytics.totalEarnings.toLocaleString("en-IN")}`}
+                  </p>
+                  <p className="text-sm text-stone-500 mt-0.5">Total earnings</p>
+                </div>
+              </div>
+
+              {analytics.weeklyEarnings.length > 0 && (
+                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
+                  <h3 className="font-bold text-stone-900 mb-5">Earnings — Last 6 Weeks</h3>
+                  {(() => {
+                    const maxVal = Math.max(...analytics.weeklyEarnings.map((w) => w.earnings), 1);
+                    return (
+                      <div className="flex items-end gap-3 h-32">
+                        {analytics.weeklyEarnings.map((week, i) => {
+                          const pct = Math.max((week.earnings / maxVal) * 100, 2);
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                              <span className="text-xs text-stone-500 font-medium">
+                                {week.earnings > 0
+                                  ? week.earnings >= 1000
+                                    ? `₹${(week.earnings / 1000).toFixed(0)}k`
+                                    : `₹${week.earnings}`
+                                  : "—"}
+                              </span>
+                              <div className="w-full rounded-t-lg bg-orange-400 transition-all" style={{ height: `${pct}%` }} />
+                              <span className="text-[10px] text-stone-400 text-center leading-tight">{week.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {analytics.profileViews > 0 && analytics.enquiryCount > 0 && (
+                <div className="bg-stone-50 rounded-2xl border border-stone-100 p-5">
+                  <p className="text-sm font-semibold text-stone-700 mb-1">Enquiry conversion</p>
+                  <p className="text-stone-500 text-sm">
+                    {((analytics.enquiryCount / analytics.profileViews) * 100).toFixed(1)}% of profile views turn into enquiries.{" "}
+                    {analytics.enquiryCount / analytics.profileViews >= 0.1
+                      ? "Great engagement!"
+                      : "Add more photos and a detailed bio to improve this."}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

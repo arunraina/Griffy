@@ -10,6 +10,7 @@ import ReviewsList from "@/components/ReviewsList";
 import EnquiryModal from "@/components/EnquiryModal";
 import TierBadge from "@/components/TierBadge";
 import AchievementBadges from "@/components/AchievementBadges";
+import SaveButton from "@/components/SaveButton";
 import { getTier, getContractorBadges } from "@/lib/gamification";
 
 function Skeleton() {
@@ -161,6 +162,19 @@ export default function ContractorDetailPage() {
               </div>
             )}
 
+            {contractor.portfolioImages && contractor.portfolioImages.length > 0 && (
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
+                <h2 className="font-bold text-stone-900 text-lg mb-4">Portfolio</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {contractor.portfolioImages.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-xl overflow-hidden bg-stone-100 block">
+                      <img src={url} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {badges.length > 0 && <AchievementBadges badges={badges} title="Badges" />}
 
             <ReviewsList targetType="contractor" targetId={contractor.id} rating={contractor.rating} reviewCount={contractor.reviewCount} />
@@ -198,6 +212,12 @@ export default function ContractorDetailPage() {
                 ))}
               </div>
 
+              <div className="flex items-center justify-between mb-4">
+                <SaveButton type="contractor" targetId={contractor.id} />
+                {contractor.profileViews != null && (
+                  <span className="text-xs text-stone-400">{contractor.profileViews} views</span>
+                )}
+              </div>
               <button onClick={() => setShowEnquiry(true)} className="w-full btn-primary justify-center mb-3">
                 <MessageSquare className="w-4 h-4" /> Request a Quote
               </button>

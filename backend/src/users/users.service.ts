@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { User } from './user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -12,9 +13,32 @@ export class UsersService {
     private readonly repo: Repository<User>,
   ) {}
 
+  private generateReferralCode(name: string): string {
+    const prefix = name.replace(/\s+/g, '').slice(0, 3).toUpperCase().padEnd(3, 'G');
+    return prefix + randomBytes(3).toString('hex').toUpperCase();
+  }
+
+  async findByReferralCode(code: string): Promise<User | null> {
+    return this.repo.findOne({ where: { referralCode: code } });
+  }
+
+  async getReferralStats(userId: string): Promise<{ code: string; referralCount: number }> {
+    const user = await this.findById(userId);
+    const referralCount = await this.repo.count({ where: { referredBy: userId } });
+    return { code: user.referralCode ?? '', referralCount };
+  }
+
   async create(dto: CreateUserDto): Promise<User> {
     const hashed = await bcrypt.hash(dto.password, 12);
-    const user = this.repo.create({ ...dto, password: hashed });
+    const referralCode = this.generateReferralCode(dto.fullName);
+
+    let referredBy: string | undefined;
+    if (dto.referralCode) {
+      const referrer = await this.findByReferralCode(dto.referralCode);
+      if (referrer) referredBy = referrer.id;
+    }
+
+    const user = this.repo.create({ ...dto, password: hashed, referralCode, referredBy });
     return this.repo.save(user);
   }
 

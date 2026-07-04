@@ -78,6 +78,12 @@ export class Contractor {
   @Column({ nullable: true })
   avatarUrl: string;
 
+  @Column({ type: 'text', array: true, nullable: true, default: [] })
+  portfolioImages: string[];
+
+  @Column({ default: 0 })
+  profileViews: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

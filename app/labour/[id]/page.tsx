@@ -10,6 +10,7 @@ import ReviewsList from "@/components/ReviewsList";
 import EnquiryModal from "@/components/EnquiryModal";
 import TierBadge from "@/components/TierBadge";
 import AchievementBadges from "@/components/AchievementBadges";
+import SaveButton from "@/components/SaveButton";
 import { getTier, getLabourBadges } from "@/lib/gamification";
 
 function Skeleton() {
@@ -202,6 +203,12 @@ export default function LabourDetailPage() {
                 ))}
               </div>
 
+              <div className="flex items-center justify-between mb-4">
+                <SaveButton type="labour" targetId={worker.id} />
+                {worker.profileViews != null && (
+                  <span className="text-xs text-stone-400">{worker.profileViews} views</span>
+                )}
+              </div>
               <button onClick={() => setShowEnquiry(true)} className="w-full btn-primary justify-center flex mb-3">
                 <MessageSquare className="w-4 h-4" /> Send Enquiry
               </button>

@@ -53,9 +53,10 @@ export class ContractorsService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findById(id: string): Promise<Contractor> {
+  async findById(id: string, incrementView = false): Promise<Contractor> {
     const contractor = await this.repo.findOne({ where: { id }, relations: ['user'] });
     if (!contractor) throw new NotFoundException('Contractor not found');
+    if (incrementView) this.repo.increment({ id }, 'profileViews', 1).catch(() => undefined);
     return contractor;
   }
 

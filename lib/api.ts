@@ -75,6 +75,8 @@ export interface Contractor {
   isAvailable: boolean;
   isVerified: boolean;
   avatarUrl?: string;
+  portfolioImages?: string[];
+  profileViews?: number;
   user?: { id: string; fullName: string };
 }
 
@@ -95,6 +97,7 @@ export interface Labour {
   isAvailable: boolean;
   isVerified: boolean;
   avatarUrl?: string;
+  profileViews?: number;
   user?: { id: string; fullName: string };
 }
 
@@ -440,3 +443,47 @@ export const getProjectBids = (projectId: string) =>
 
 export const updateBidStatus = (projectId: string, bidId: string, status: string) =>
   apiFetch<Bid>(`/projects/${projectId}/bids/${bidId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+// ── Saved / Bookmarks ──────────────────────────────────────────────────────
+
+export type SavedType = 'contractor' | 'labour' | 'material';
+
+export interface SavedItem {
+  id: string;
+  userId: string;
+  type: SavedType;
+  targetId: string;
+  createdAt: string;
+}
+
+export const saveItem = (type: SavedType, targetId: string) =>
+  apiFetch<SavedItem>('/saved', { method: 'POST', body: JSON.stringify({ type, targetId }) });
+
+export const unsaveItem = (type: SavedType, targetId: string) =>
+  apiFetch<void>(`/saved/${type}/${targetId}`, { method: 'DELETE' });
+
+export const listSaved = (type?: SavedType) =>
+  apiFetch<SavedItem[]>(`/saved${type ? '?type=' + type : ''}`);
+
+export const isSaved = (type: SavedType, targetId: string) =>
+  apiFetch<boolean>(`/saved/${type}/${targetId}`);
+
+// ── Analytics ──────────────────────────────────────────────────────────────
+
+export interface MyAnalytics {
+  profileViews: number;
+  enquiryCount: number;
+  totalEarnings: number;
+  weeklyEarnings: { label: string; earnings: number }[];
+}
+
+export const getMyAnalytics = () => apiFetch<MyAnalytics>('/analytics/my');
+
+// ── Referral ───────────────────────────────────────────────────────────────
+
+export interface ReferralStats {
+  code: string;
+  referralCount: number;
+}
+
+export const getReferralStats = () => apiFetch<ReferralStats>('/users/me/referral');

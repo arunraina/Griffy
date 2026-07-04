@@ -16,6 +16,11 @@ export class UsersController {
     return this.usersService.updateMe(req.user.id, body);
   }
 
+  @Get('me/referral')
+  getReferralStats(@Request() req: any) {
+    return this.usersService.getReferralStats(req.user.id);
+  }
+
   @Get()
   findAll(@Query('page') page: number, @Query('limit') limit: number) {
     return this.usersService.findAll(page, limit);

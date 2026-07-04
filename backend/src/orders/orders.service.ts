@@ -7,6 +7,8 @@ import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
 import { Material } from '../materials/material.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class OrdersService {
@@ -16,6 +18,8 @@ export class OrdersService {
     @InjectRepository(Labour) private readonly labourRepo: Repository<Labour>,
     @InjectRepository(Material) private readonly materialRepo: Repository<Material>,
     private readonly notifications: NotificationsService,
+    private readonly email: EmailService,
+    private readonly users: UsersService,
   ) {}
 
   async create(dto: CreateOrderDto, buyerId: string): Promise<Order> {
@@ -43,6 +47,13 @@ export class OrdersService {
         body: 'You have a new order. Check your dashboard to confirm it.',
         link: '/dashboard',
       }).catch(() => undefined);
+
+      Promise.all([this.users.findById(buyerId), this.users.findById(sellerId)])
+        .then(([buyer, seller]) => Promise.all([
+          this.email.sendOrderConfirmed(buyer.email, dto.type, Number(dto.amount)),
+          this.email.sendNewOrderReceived(seller.email, buyer.fullName, Number(dto.amount)),
+        ]))
+        .catch(() => undefined);
     }
 
     return saved;

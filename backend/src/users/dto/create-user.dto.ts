@@ -36,4 +36,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

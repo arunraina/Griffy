@@ -47,7 +47,7 @@ export class LabourController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.labourService.findById(id);
+    return this.labourService.findById(id, true);
   }
 
   @Post()

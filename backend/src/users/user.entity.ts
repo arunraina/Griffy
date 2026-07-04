@@ -46,6 +46,12 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ unique: true, nullable: true })
+  referralCode: string;
+
+  @Column({ nullable: true })
+  referredBy: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

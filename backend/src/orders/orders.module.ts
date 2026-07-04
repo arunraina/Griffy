@@ -7,9 +7,11 @@ import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
 import { Material } from '../materials/material.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, Contractor, Labour, Material]), NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Order, Contractor, Labour, Material]), NotificationsModule, EmailModule, UsersModule],
   providers: [OrdersService],
   controllers: [OrdersController],
   exports: [OrdersService],

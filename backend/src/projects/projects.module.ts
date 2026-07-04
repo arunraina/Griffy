@@ -6,9 +6,11 @@ import { Project } from './project.entity';
 import { Bid } from './bid.entity';
 import { Contractor } from '../contractors/contractor.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmailModule } from '../email/email.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, Bid, Contractor]), NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Project, Bid, Contractor]), NotificationsModule, EmailModule, UsersModule],
   providers: [ProjectsService],
   controllers: [ProjectsController],
 })

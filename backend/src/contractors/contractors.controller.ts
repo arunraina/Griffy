@@ -46,7 +46,7 @@ export class ContractorsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.contractorsService.findById(id);
+    return this.contractorsService.findById(id, true);
   }
 
   @Post()

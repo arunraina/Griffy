@@ -10,6 +10,8 @@ import { CreateBidDto } from './dto/create-bid.dto';
 import { Contractor } from '../contractors/contractor.entity';
 import { getContactInfoViolation } from '../common/utils/content-moderation';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ProjectsService {
@@ -18,6 +20,8 @@ export class ProjectsService {
     @InjectRepository(Bid) private readonly bidRepo: Repository<Bid>,
     @InjectRepository(Contractor) private readonly contractorRepo: Repository<Contractor>,
     private readonly notifications: NotificationsService,
+    private readonly email: EmailService,
+    private readonly users: UsersService,
   ) {}
 
   async create(dto: CreateProjectDto, homeownerId: string): Promise<Project> {
@@ -124,6 +128,17 @@ export class ProjectsService {
       body: `A contractor submitted a bid on "${project.title}". Review it in your dashboard.`,
       link: `/projects/${projectId}`,
     }).catch(() => undefined);
+
+    Promise.all([this.users.findById(project.homeownerId), this.users.findById(userId)])
+      .then(([homeowner, bidder]) =>
+        this.email.sendBidReceived(
+          homeowner.email,
+          contractor.businessName ?? bidder.fullName,
+          project.title,
+          Number(dto.amount),
+        ),
+      )
+      .catch(() => undefined);
 
     return saved;
   }

@@ -8,6 +8,8 @@ import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
 import { getContactInfoViolation } from '../common/utils/content-moderation';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class EnquiriesService {
@@ -16,6 +18,8 @@ export class EnquiriesService {
     @InjectRepository(Contractor) private readonly contractorRepo: Repository<Contractor>,
     @InjectRepository(Labour) private readonly labourRepo: Repository<Labour>,
     private readonly notifications: NotificationsService,
+    private readonly email: EmailService,
+    private readonly users: UsersService,
   ) {}
 
   async create(dto: CreateEnquiryDto, senderId: string): Promise<Enquiry> {
@@ -58,6 +62,12 @@ export class EnquiriesService {
       body: 'Someone has sent you an enquiry. Reply from your dashboard.',
       link: '/dashboard',
     }).catch(() => undefined);
+
+    Promise.all([this.users.findById(senderId), this.users.findById(recipientId)])
+      .then(([sender, recipient]) =>
+        this.email.sendEnquiryReceived(recipient.email, sender.fullName, dto.message),
+      )
+      .catch(() => undefined);
 
     return saved;
   }
@@ -113,6 +123,12 @@ export class EnquiriesService {
       body: 'The professional you contacted has replied to your enquiry.',
       link: '/dashboard',
     }).catch(() => undefined);
+
+    Promise.all([this.users.findById(enquiry.senderId), this.users.findById(userId)])
+      .then(([homeowner, pro]) =>
+        this.email.sendEnquiryReplied(homeowner.email, pro.fullName, dto.reply),
+      )
+      .catch(() => undefined);
 
     return saved;
   }

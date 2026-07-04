@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, HardHat, ChevronDown, ShoppingCart, LogOut, User, Package, LayoutDashboard, Briefcase } from "lucide-react";
+import { Menu, X, HardHat, ChevronDown, ShoppingCart, LogOut, User, Package, LayoutDashboard, Briefcase, Bookmark } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { initials } from "@/lib/constants";
@@ -148,6 +148,9 @@ export default function Navbar() {
                     <Link href="/orders" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
                       <Package className="w-4 h-4" /> My Orders
                     </Link>
+                    <Link href="/saved" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
+                      <Bookmark className="w-4 h-4" /> Saved
+                    </Link>
                     <div className="border-t border-stone-100 mt-1 pt-1">
                       <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 text-red-600 transition-colors text-sm">
                         <LogOut className="w-4 h-4" /> Sign Out
@@ -207,6 +210,7 @@ export default function Navbar() {
               <>
                 <Link href="/dashboard" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>Dashboard</Link>
                 <Link href="/orders" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>My Orders</Link>
+                <Link href="/saved" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>Saved</Link>
                 <button onClick={() => { logout(); setMobileOpen(false); router.push("/"); }} className="text-red-600 font-semibold text-sm py-2">
                   Sign Out
                 </button>

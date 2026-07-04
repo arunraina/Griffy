@@ -57,9 +57,10 @@ export class LabourService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findById(id: string): Promise<Labour> {
+  async findById(id: string, incrementView = false): Promise<Labour> {
     const labour = await this.repo.findOne({ where: { id }, relations: ['user'] });
     if (!labour) throw new NotFoundException('Labour not found');
+    if (incrementView) this.repo.increment({ id }, 'profileViews', 1).catch(() => undefined);
     return labour;
   }
 

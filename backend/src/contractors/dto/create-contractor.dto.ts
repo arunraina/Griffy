@@ -65,4 +65,8 @@ export class CreateContractorDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  portfolioImages?: string[];
 }

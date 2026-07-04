@@ -73,6 +73,9 @@ export class Labour {
   @Column({ nullable: true })
   avatarUrl: string;
 
+  @Column({ default: 0 })
+  profileViews: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
