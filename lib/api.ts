@@ -270,3 +270,44 @@ export const listReviews = (targetType: string, targetId: string, page = 1, limi
 
 export const getMyReviewForOrder = (orderId: string) =>
   apiFetch<Review | null>(`/reviews/my-review?orderId=${orderId}`);
+
+// ── Enquiries ──────────────────────────────────────────────────────────────
+
+export interface Enquiry {
+  id: string;
+  senderId: string;
+  sender?: { id: string; fullName: string };
+  recipientId: string;
+  recipientType: 'contractor' | 'labour';
+  targetId: string;
+  message: string;
+  budget?: number;
+  projectDescription?: string;
+  status: 'pending' | 'replied' | 'accepted' | 'declined';
+  reply?: string;
+  repliedAt?: string;
+  createdAt: string;
+}
+
+export interface CreateEnquiryPayload {
+  recipientType: 'contractor' | 'labour';
+  targetId: string;
+  message: string;
+  budget?: number;
+  projectDescription?: string;
+}
+
+export const createEnquiry = (data: CreateEnquiryPayload) =>
+  apiFetch<Enquiry>('/enquiries', { method: 'POST', body: JSON.stringify(data) });
+
+export const listSentEnquiries = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Enquiry>>(`/enquiries/sent?page=${page}&limit=${limit}`);
+
+export const listReceivedEnquiries = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Enquiry>>(`/enquiries/received?page=${page}&limit=${limit}`);
+
+export const replyEnquiry = (id: string, reply: string, status?: string) =>
+  apiFetch<Enquiry>(`/enquiries/${id}/reply`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reply, status }),
+  });

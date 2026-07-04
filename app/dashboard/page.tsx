@@ -7,14 +7,15 @@ import {
   Package, IndianRupee, TrendingUp, ChevronRight, Star,
   Plus, Clock, CheckCircle2, Truck, XCircle, AlertCircle,
   Briefcase, Wrench, LayoutGrid, Edit2, Loader2, Save,
-  ToggleLeft, ToggleRight, Trash2, X,
+  ToggleLeft, ToggleRight, Trash2, X, MessageSquare, Send,
 } from "lucide-react";
 import {
   listMyOrders, listIncomingOrders, updateOrderStatus,
   getMyContractorProfile, getMyLabourProfile, listMyMaterials,
   updateMyContractorProfile, updateMyLabourProfile,
   createMaterial, updateMaterial, deleteMaterial,
-  Order, Contractor, Labour, Material,
+  listSentEnquiries, listReceivedEnquiries, replyEnquiry,
+  Order, Contractor, Labour, Material, Enquiry,
 } from "@/lib/api";
 import {
   ORDER_STATUS, formatDate, initials,
@@ -677,7 +678,7 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
 
 // ── Pro dashboard ──────────────────────────────────────────────────────────
 
-type ProTab = "overview" | "bookings" | "listings";
+type ProTab = "overview" | "bookings" | "listings" | "enquiries";
 
 function ProDashboard({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<ProTab>("overview");
@@ -687,6 +688,11 @@ function ProDashboard({ user }: { user: any }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [enquiriesLoading, setEnquiriesLoading] = useState(false);
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replyStatus, setReplyStatus] = useState<Record<string, string>>({});
 
   const isContractor = user.role === "contractor";
   const isLabour = user.role === "labour";
@@ -708,7 +714,26 @@ function ProDashboard({ user }: { user: any }) {
       setMaterialsLoading(true);
       listMyMaterials(1, 50).then((r) => setMaterials(r.data)).catch(() => {}).finally(() => setMaterialsLoading(false));
     }
+    if (isContractor || isLabour) {
+      setEnquiriesLoading(true);
+      listReceivedEnquiries(1, 50).then((r) => setEnquiries(r.data)).catch(() => {}).finally(() => setEnquiriesLoading(false));
+    }
   }, [isContractor, isLabour, isSupplier]);
+
+  async function submitReply(enquiryId: string) {
+    const text = replyText[enquiryId];
+    if (!text?.trim()) return;
+    setReplyingId(enquiryId);
+    try {
+      const status = replyStatus[enquiryId] || "replied";
+      const updated = await replyEnquiry(enquiryId, text.trim(), status);
+      setEnquiries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+      setReplyText((prev) => ({ ...prev, [enquiryId]: "" }));
+    } catch {
+    } finally {
+      setReplyingId(null);
+    }
+  }
 
   async function changeStatus(orderId: string, status: string) {
     setUpdatingId(orderId);
@@ -726,10 +751,15 @@ function ProDashboard({ user }: { user: any }) {
   const completedCount = incoming.filter((o) => o.status === "completed").length;
   const earnings = incoming.filter((o) => o.status === "completed").reduce((s, o) => s + Number(o.amount), 0);
 
+  const pendingEnquiries = enquiries.filter((e) => e.status === "pending").length;
+
   const tabs: { id: ProTab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "bookings", label: `Bookings${incoming.length > 0 ? ` (${incoming.length})` : ""}` },
     { id: "listings", label: listingsLabel },
+    ...(isContractor || isLabour
+      ? [{ id: "enquiries" as ProTab, label: `Enquiries${pendingEnquiries > 0 ? ` (${pendingEnquiries})` : ""}` }]
+      : []),
   ];
 
   return (
@@ -938,6 +968,103 @@ function ProDashboard({ user }: { user: any }) {
           )}
         </div>
       )}
+
+      {/* Enquiries tab */}
+      {activeTab === "enquiries" && (
+        <div className="space-y-4">
+          <h2 className="font-extrabold text-stone-900 text-lg">Received Enquiries</h2>
+          {enquiriesLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-stone-100 p-5 animate-pulse">
+                  <div className="h-4 bg-stone-200 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-stone-200 rounded w-full mb-1" />
+                  <div className="h-3 bg-stone-200 rounded w-2/3" />
+                </div>
+              ))}
+            </div>
+          ) : enquiries.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
+              <MessageSquare className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+              <p className="font-semibold text-stone-700 mb-1">No enquiries yet</p>
+              <p className="text-stone-400 text-sm">When homeowners send you a quote request, it will appear here.</p>
+            </div>
+          ) : (
+            enquiries.map((enq) => {
+              const statusColors: Record<string, string> = {
+                pending: "bg-amber-100 text-amber-700",
+                replied: "bg-blue-100 text-blue-700",
+                accepted: "bg-green-100 text-green-700",
+                declined: "bg-red-100 text-red-700",
+              };
+              const isReplied = enq.status !== "pending";
+              return (
+                <div key={enq.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3 border-b border-stone-50">
+                    <div>
+                      <p className="font-bold text-stone-900">{enq.sender?.fullName ?? "Anonymous"}</p>
+                      <p className="text-xs text-stone-400 mt-0.5">{formatDate(enq.createdAt)}</p>
+                    </div>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${statusColors[enq.status] ?? "bg-stone-100 text-stone-600"}`}>
+                      {enq.status}
+                    </span>
+                  </div>
+
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-stone-700 text-sm leading-relaxed">{enq.message}</p>
+                    {enq.projectDescription && (
+                      <p className="text-stone-500 text-xs bg-stone-50 rounded-xl px-3 py-2">{enq.projectDescription}</p>
+                    )}
+                    {enq.budget && (
+                      <p className="text-sm font-semibold text-stone-700">
+                        Budget: <span className="text-green-600">₹{Number(enq.budget).toLocaleString("en-IN")}</span>
+                      </p>
+                    )}
+
+                    {isReplied && enq.reply && (
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                        <p className="text-xs font-semibold text-blue-700 mb-1">Your reply</p>
+                        <p className="text-sm text-blue-900">{enq.reply}</p>
+                      </div>
+                    )}
+
+                    {!isReplied && (
+                      <div className="pt-3 border-t border-stone-100 space-y-2">
+                        <textarea
+                          rows={2}
+                          placeholder="Type your reply..."
+                          value={replyText[enq.id] ?? ""}
+                          onChange={(e) => setReplyText((prev) => ({ ...prev, [enq.id]: e.target.value }))}
+                          className="input-field resize-none"
+                        />
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={replyStatus[enq.id] ?? "replied"}
+                            onChange={(e) => setReplyStatus((prev) => ({ ...prev, [enq.id]: e.target.value }))}
+                            className="input-field w-auto text-xs"
+                          >
+                            <option value="replied">Reply only</option>
+                            <option value="accepted">Accept project</option>
+                            <option value="declined">Decline</option>
+                          </select>
+                          <button
+                            onClick={() => submitReply(enq.id)}
+                            disabled={replyingId === enq.id || !replyText[enq.id]?.trim()}
+                            className="btn-primary text-sm py-2 px-4 disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {replyingId === enq.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                            Send Reply
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1020,9 +1147,11 @@ function OrderList({ orders, loading, emptyText, limit }: { orders: Order[]; loa
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<"overview" | "orders">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "enquiries">("overview");
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [sentEnquiries, setSentEnquiries] = useState<Enquiry[]>([]);
+  const [sentEnquiriesLoading, setSentEnquiriesLoading] = useState(false);
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -1038,7 +1167,14 @@ export default function DashboardPage() {
       .then((r) => setOrders(r.data))
       .catch(() => {})
       .finally(() => setOrdersLoading(false));
-  }, [isAuthenticated]);
+    if (isHomeowner) {
+      setSentEnquiriesLoading(true);
+      listSentEnquiries(1, 50)
+        .then((r) => setSentEnquiries(r.data))
+        .catch(() => {})
+        .finally(() => setSentEnquiriesLoading(false));
+    }
+  }, [isAuthenticated, isHomeowner]);
 
   if (authLoading || !user) {
     return (
@@ -1074,10 +1210,14 @@ export default function DashboardPage() {
 
           {isHomeowner && (
             <div className="flex gap-1 mt-5 bg-stone-100 p-1 rounded-xl w-fit">
-              {(["overview", "orders"] as const).map((t) => (
-                <button key={t} onClick={() => setActiveTab(t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${activeTab === t ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
-                  {t}
+              {([
+                { id: "overview", label: "Overview" },
+                { id: "orders", label: "Orders" },
+                { id: "enquiries", label: `Enquiries${sentEnquiries.length > 0 ? ` (${sentEnquiries.length})` : ""}` },
+              ] as { id: typeof activeTab; label: string }[]).map((t) => (
+                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === t.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
+                  {t.label}
                 </button>
               ))}
             </div>
@@ -1096,6 +1236,70 @@ export default function DashboardPage() {
                 <Link href="/orders" className="block text-center text-sm text-orange-500 hover:text-orange-600 font-semibold py-2">
                   View full order history →
                 </Link>
+              </div>
+            )}
+            {activeTab === "enquiries" && (
+              <div className="space-y-4">
+                <h2 className="font-extrabold text-stone-900 text-lg">Sent Enquiries</h2>
+                {sentEnquiriesLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl border border-stone-100 p-5 animate-pulse">
+                        <div className="h-4 bg-stone-200 rounded w-1/3 mb-2" />
+                        <div className="h-3 bg-stone-200 rounded w-full mb-1" />
+                        <div className="h-3 bg-stone-200 rounded w-2/3" />
+                      </div>
+                    ))}
+                  </div>
+                ) : sentEnquiries.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
+                    <MessageSquare className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+                    <p className="font-semibold text-stone-700 mb-1">No enquiries sent yet</p>
+                    <p className="text-stone-400 text-sm mb-5">Browse contractors and workers, then click "Request a Quote" to get started.</p>
+                    <div className="flex justify-center gap-3">
+                      <Link href="/contractors" className="btn-primary text-sm">Browse Contractors</Link>
+                      <Link href="/labour" className="btn-secondary text-sm">Browse Labour</Link>
+                    </div>
+                  </div>
+                ) : (
+                  sentEnquiries.map((enq) => {
+                    const statusColors: Record<string, string> = {
+                      pending: "bg-amber-100 text-amber-700",
+                      replied: "bg-blue-100 text-blue-700",
+                      accepted: "bg-green-100 text-green-700",
+                      declined: "bg-red-100 text-red-700",
+                    };
+                    return (
+                      <div key={enq.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3 border-b border-stone-50">
+                          <div>
+                            <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-0.5">
+                              {enq.recipientType === "contractor" ? "👷 Contractor" : "🔧 Labour"} enquiry
+                            </p>
+                            <p className="text-xs text-stone-400">{formatDate(enq.createdAt)}</p>
+                          </div>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${statusColors[enq.status] ?? "bg-stone-100 text-stone-600"}`}>
+                            {enq.status}
+                          </span>
+                        </div>
+                        <div className="px-5 py-4 space-y-3">
+                          <p className="text-stone-700 text-sm leading-relaxed">{enq.message}</p>
+                          {enq.budget && (
+                            <p className="text-sm font-semibold text-stone-600">
+                              Budget: <span className="text-green-600">₹{Number(enq.budget).toLocaleString("en-IN")}</span>
+                            </p>
+                          )}
+                          {enq.reply && (
+                            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+                              <p className="text-xs font-semibold text-green-700 mb-1">Their reply</p>
+                              <p className="text-sm text-green-900">{enq.reply}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
           </>

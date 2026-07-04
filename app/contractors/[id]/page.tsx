@@ -7,6 +7,7 @@ import { Star, MapPin, CheckCircle2, Phone, Calendar, Shield, Clock, Award, Chev
 import { getContractor, Contractor } from "@/lib/api";
 import { SPECIALTY_LABEL } from "@/lib/constants";
 import ReviewsList from "@/components/ReviewsList";
+import EnquiryModal from "@/components/EnquiryModal";
 
 function Skeleton() {
   return (
@@ -27,6 +28,7 @@ export default function ContractorDetailPage() {
   const [contractor, setContractor] = useState<Contractor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showEnquiry, setShowEnquiry] = useState(false);
 
   useEffect(() => {
     getContractor(id)
@@ -153,6 +155,15 @@ export default function ContractorDetailPage() {
             <ReviewsList targetType="contractor" targetId={contractor.id} rating={contractor.rating} reviewCount={contractor.reviewCount} />
           </div>
 
+          {showEnquiry && (
+            <EnquiryModal
+              recipientType="contractor"
+              targetId={contractor.id}
+              recipientName={contractor.businessName ?? contractor.user?.fullName ?? "Contractor"}
+              onClose={() => setShowEnquiry(false)}
+            />
+          )}
+
           {/* Sidebar — Book / Contact */}
           <aside className="space-y-5">
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sticky top-24">
@@ -176,14 +187,11 @@ export default function ContractorDetailPage() {
                 ))}
               </div>
 
-              <button className="w-full btn-primary justify-center mb-3">
-                Request a Quote
+              <button onClick={() => setShowEnquiry(true)} className="w-full btn-primary justify-center mb-3">
+                <MessageSquare className="w-4 h-4" /> Request a Quote
               </button>
               <button className="w-full flex items-center justify-center gap-2 border-2 border-stone-200 hover:border-blue-300 text-stone-700 hover:text-blue-600 font-semibold py-3 rounded-xl transition-all">
                 <Phone className="w-4 h-4" /> Call Now
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 mt-2 text-stone-500 hover:text-stone-700 font-medium py-2 transition-colors text-sm">
-                <MessageSquare className="w-4 h-4" /> Send a Message
               </button>
             </div>
           </aside>
