@@ -24,7 +24,7 @@ const ds = new DataSource({
   password: process.env.DB_PASS ?? 'griffy_pass',
   database: process.env.DB_NAME ?? 'griffy_db',
   entities: [User, Material, Contractor, Labour],
-  synchronize: false,
+  synchronize: true,
 });
 
 async function seed() {
