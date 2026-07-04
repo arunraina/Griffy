@@ -8,6 +8,9 @@ import { getContractor, Contractor } from "@/lib/api";
 import { SPECIALTY_LABEL } from "@/lib/constants";
 import ReviewsList from "@/components/ReviewsList";
 import EnquiryModal from "@/components/EnquiryModal";
+import TierBadge from "@/components/TierBadge";
+import AchievementBadges from "@/components/AchievementBadges";
+import { getTier, getContractorBadges } from "@/lib/gamification";
 
 function Skeleton() {
   return (
@@ -53,6 +56,8 @@ export default function ContractorDetailPage() {
   }
 
   const avatarText = (contractor.businessName ?? contractor.user?.fullName ?? "??").slice(0, 2).toUpperCase();
+  const tier = getTier(contractor.completedProjects, contractor.rating);
+  const badges = getContractorBadges(contractor);
   const priceLabel = contractor.priceRangeMin != null && contractor.priceRangeMax != null
     ? `₹${Number(contractor.priceRangeMin).toLocaleString("en-IN")}–${Number(contractor.priceRangeMax).toLocaleString("en-IN")}${contractor.priceUnit ? "/" + contractor.priceUnit : ""}`
     : "Contact for price";
@@ -130,6 +135,7 @@ export default function ContractorDetailPage() {
                         Lic: {contractor.licenseNumber}
                       </span>
                     )}
+                    <TierBadge tier={tier} completedJobs={contractor.completedProjects} rating={contractor.rating} size="sm" />
                   </div>
                 </div>
               </div>
@@ -154,6 +160,8 @@ export default function ContractorDetailPage() {
                 </div>
               </div>
             )}
+
+            {badges.length > 0 && <AchievementBadges badges={badges} title="Badges" />}
 
             <ReviewsList targetType="contractor" targetId={contractor.id} rating={contractor.rating} reviewCount={contractor.reviewCount} />
           </div>

@@ -8,6 +8,9 @@ import { getLabour, Labour } from "@/lib/api";
 import { TRADE_LABEL, TRADE_EMOJI } from "@/lib/constants";
 import ReviewsList from "@/components/ReviewsList";
 import EnquiryModal from "@/components/EnquiryModal";
+import TierBadge from "@/components/TierBadge";
+import AchievementBadges from "@/components/AchievementBadges";
+import { getTier, getLabourBadges } from "@/lib/gamification";
 
 function Skeleton() {
   return (
@@ -55,6 +58,8 @@ export default function LabourDetailPage() {
   const name = worker.user?.fullName ?? "Worker";
   const tradeLabel = TRADE_LABEL[worker.trade] ?? worker.trade;
   const tradeEmoji = TRADE_EMOJI[worker.trade] ?? "🛠️";
+  const tier = getTier(worker.completedJobs, worker.rating);
+  const badges = getLabourBadges(worker);
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -123,6 +128,7 @@ export default function LabourDetailPage() {
                         <Shield className="w-3 h-3" /> ID Verified
                       </span>
                     )}
+                    <TierBadge tier={tier} completedJobs={worker.completedJobs} rating={worker.rating} size="sm" />
                   </div>
                 </div>
               </div>
@@ -154,6 +160,8 @@ export default function LabourDetailPage() {
                 )}
               </div>
             )}
+
+            {badges.length > 0 && <AchievementBadges badges={badges} title="Badges" />}
 
             <ReviewsList targetType="labour" targetId={worker.id} rating={worker.rating} reviewCount={worker.reviewCount} />
           </div>

@@ -18,6 +18,7 @@ const navLinks = [
       { label: "Hire Contractors", href: "/contractors", desc: "Licensed project contractors" },
       { label: "Hire Labour", href: "/labour", desc: "Mistri, electricians, plumbers & more" },
       { label: "Open Projects", href: "/projects", desc: "Browse projects & submit bids" },
+      { label: "Leaderboard", href: "/leaderboard", desc: "Top-rated contractors & labour" },
     ],
   },
   { label: "How It Works", href: "/how-it-works" },
@@ -191,6 +192,9 @@ export default function Navbar() {
           </Link>
           <Link href="/projects" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
             Open Projects
+          </Link>
+          <Link href="/leaderboard" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
+            🏆 Leaderboard
           </Link>
           <Link href="/how-it-works" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
             How It Works

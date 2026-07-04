@@ -26,6 +26,13 @@ import { useAuth } from "@/context/AuthContext";
 import GettingStartedChecklist from "@/components/GettingStartedChecklist";
 import JourneyNudge from "@/components/JourneyNudge";
 import ImageUpload from "@/components/ImageUpload";
+import ProfileStrengthMeter from "@/components/ProfileStrengthMeter";
+import TierBadge from "@/components/TierBadge";
+import AchievementBadges from "@/components/AchievementBadges";
+import {
+  getTier, getContractorBadges, getLabourBadges,
+  getContractorCompletion, getLabourCompletion, getSupplierCompletion,
+} from "@/lib/gamification";
 
 const quickActionsHomeowner = [
   { label: "Buy Materials", href: "/materials", emoji: "🧱", desc: "Sand, cement, steel & more" },
@@ -851,6 +858,53 @@ function ProDashboard({ user }: { user: any }) {
             hasLabourProfile={isLabour && !!profile}
             hasMaterial={isSupplier && materials.length > 0}
           />
+
+          {/* Gamification: Tier + Profile Strength + Achievements */}
+          {(isContractor || isLabour) && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {/* Tier card */}
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5">
+                <p className="text-sm font-semibold text-stone-500 mb-3">Your Tier</p>
+                {profile ? (() => {
+                  const jobs = isContractor ? (profile as Contractor).completedProjects : (profile as Labour).completedJobs;
+                  const tier = getTier(jobs, profile.rating);
+                  return (
+                    <div className="space-y-3">
+                      <TierBadge tier={tier} showProgress completedJobs={jobs} rating={profile.rating} size="lg" />
+                      <p className="text-xs text-stone-400">{tier.description}</p>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-sm text-stone-400">Complete your profile to unlock tiers.</p>
+                )}
+              </div>
+
+              {/* Profile strength */}
+              <ProfileStrengthMeter
+                completion={
+                  isContractor
+                    ? getContractorCompletion(profile as Contractor | null)
+                    : getLabourCompletion(profile as Labour | null)
+                }
+                role={user.role}
+              />
+            </div>
+          )}
+
+          {isSupplier && (
+            <ProfileStrengthMeter
+              completion={getSupplierCompletion(user, materials.length)}
+              role="supplier"
+            />
+          )}
+
+          {/* Achievement badges */}
+          {isContractor && profile && (
+            <AchievementBadges badges={getContractorBadges(profile as Contractor)} />
+          )}
+          {isLabour && profile && (
+            <AchievementBadges badges={getLabourBadges(profile as Labour)} />
+          )}
 
           {/* Verification nudge for contractors */}
           {isContractor && profile && !(profile as Contractor).isVerified && (
