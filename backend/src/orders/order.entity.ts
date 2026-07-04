@@ -64,6 +64,15 @@ export class Order {
   @Column({ nullable: true })
   paymentId: string;
 
+  @Column({ nullable: true })
+  razorpayOrderId: string;
+
+  @Column({ nullable: true })
+  razorpayPaymentId: string;
+
+  @Column({ nullable: true })
+  paymentMethod: string; // 'razorpay' | 'cod'
+
   @Column({ default: false })
   isEscrowReleased: boolean;
 
