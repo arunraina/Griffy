@@ -1,92 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Star, Truck, MapPin, ShieldCheck, ChevronRight, Minus, Plus,
   Heart, Share2, Phone, CheckCircle2, AlertCircle, Package
 } from "lucide-react";
+import { getMaterial, Material } from "@/lib/api";
+import { CATEGORY_EMOJI, CATEGORY_LABEL } from "@/lib/constants";
 import { useCart } from "@/context/CartContext";
 
-const material = {
-  id: "m1",
-  name: "River Sand (Fine Grade)",
-  category: "Sand & Aggregate",
-  emoji: "🏖️",
-  price: 1800,
-  unit: "per ton",
-  minOrder: 5,
-  maxOrder: 500,
-  supplier: "Kaveri Aggregates Pvt Ltd",
-  supplierRating: 4.8,
-  supplierReviews: 892,
-  supplierSince: "2015",
-  location: "Bengaluru, KA",
-  delivery: "Within 24 hours",
-  rating: 4.7,
-  reviews: 234,
-  stock: "Available (500+ tons)",
-  verified: true,
-  brand: "Kaveri Grade A",
-  badge: "Best Seller",
-  description: "Premium quality river sand sourced from certified quarries along the Kaveri river basin. Grade A fine sand, ideal for plastering, RCC work, and brickwork. Sieved and washed to remove clay, silt, and organic material. Meets IS 383:2016 specifications.",
-  specs: [
-    { label: "Grade", value: "Fine Sand (Zone II)" },
-    { label: "IS Standard", value: "IS 383:2016" },
-    { label: "Size", value: "0.075 – 4.75 mm" },
-    { label: "Silt Content", value: "< 3%" },
-    { label: "Moisture", value: "< 5%" },
-    { label: "Source", value: "Kaveri River Basin" },
-  ],
-  uses: ["Plastering", "RCC / Concrete", "Brickwork Mortar", "Block Jointing", "Flooring Screed"],
-  images: ["🏖️", "🏝️", "⛱️"],
-  reviewsList: [
-    { author: "Suresh K", rating: 5, date: "Jun 2025", text: "Excellent quality sand. No silt, clean and properly graded. Delivery was on time.", avatar: "SK" },
-    { author: "Ravi M", rating: 5, date: "May 2025", text: "Used for plastering work — very smooth finish. Will order again.", avatar: "RM" },
-    { author: "Anita P", rating: 4, date: "Apr 2025", text: "Good quality but delivery was delayed by a few hours. Overall satisfied.", avatar: "AP" },
-  ],
-  similarProducts: [
-    { id: "m7", name: "M-Sand (Manufactured Sand)", emoji: "🏜️", price: 1500, unit: "/ton", rating: 4.5 },
-    { id: "m8", name: "Coarse Sand (Plastering)", emoji: "🏖️", price: 1600, unit: "/ton", rating: 4.6 },
-    { id: "m9", name: "P-Sand (Plaster Sand)", emoji: "⛏️", price: 1700, unit: "/ton", rating: 4.7 },
-  ],
-};
+function Skeleton() {
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
+      <div className="grid lg:grid-cols-2 gap-10">
+        <div className="aspect-square bg-stone-200 rounded-3xl" />
+        <div className="space-y-4">
+          <div className="h-4 bg-stone-200 rounded w-1/4" />
+          <div className="h-8 bg-stone-200 rounded w-3/4" />
+          <div className="h-4 bg-stone-200 rounded w-1/3" />
+          <div className="h-24 bg-stone-200 rounded" />
+          <div className="h-12 bg-stone-200 rounded" />
+          <div className="h-12 bg-stone-200 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-export default function MaterialDetailPage({ params }: { params: { id: string } }) {
-  const [qty, setQty] = useState(material.minOrder);
-  const [activeImg, setActiveImg] = useState(0);
+export default function MaterialDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [material, setMaterial] = useState<Material | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [saved, setSaved] = useState(false);
   const { addItem } = useCart();
 
-  const handleAddToCart = () => {
+  useEffect(() => {
+    getMaterial(id)
+      .then((m) => {
+        setMaterial(m);
+        setQty(m.minOrderQuantity ?? 1);
+      })
+      .catch((e) => setError(e.message ?? "Failed to load material"))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <div className="min-h-screen bg-stone-50"><Skeleton /></div>;
+
+  if (error || !material) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <Package className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+          <h2 className="font-bold text-stone-700 mb-2">Material not found</h2>
+          <p className="text-stone-500 text-sm mb-4">{error}</p>
+          <Link href="/materials" className="btn-primary">Browse Materials</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const emoji = CATEGORY_EMOJI[material.category] ?? "📦";
+  const minQ = material.minOrderQuantity ?? 1;
+  const maxQ = material.stockQuantity ?? 9999;
+  const total = (Number(material.pricePerUnit) * qty).toLocaleString("en-IN");
+
+  function handleAddToCart() {
     addItem({
-      id: material.id,
-      name: material.name,
-      emoji: material.emoji,
-      category: material.category,
-      price: material.price,
-      unit: material.unit,
-      supplier: material.supplier,
+      id: material!.id,
+      name: material!.name,
+      emoji,
+      category: material!.category,
+      price: Number(material!.pricePerUnit),
+      unit: material!.unit,
+      supplier: material!.supplier?.fullName ?? "",
       quantity: qty,
-      minOrder: material.minOrder,
+      minOrder: minQ,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2500);
-  };
-
-  const total = (material.price * qty).toLocaleString("en-IN");
+  }
 
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-stone-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-sm text-stone-500">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-sm text-stone-500 flex-wrap">
           <Link href="/" className="hover:text-orange-500">Home</Link>
           <ChevronRight className="w-4 h-4" />
           <Link href="/materials" className="hover:text-orange-500">Materials</Link>
           <ChevronRight className="w-4 h-4" />
-          <Link href="/materials?cat=sand" className="hover:text-orange-500">{material.category}</Link>
+          <Link href={`/materials?category=${material.category}`} className="hover:text-orange-500">
+            {CATEGORY_LABEL[material.category] ?? material.category}
+          </Link>
           <ChevronRight className="w-4 h-4" />
           <span className="text-stone-800 font-medium truncate">{material.name}</span>
         </div>
@@ -94,12 +104,12 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-2 gap-10 mb-12">
-          {/* Images */}
+          {/* Image */}
           <div>
-            <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-3xl flex items-center justify-center text-[120px] mb-4 relative overflow-hidden shadow-sm">
-              {material.images[activeImg]}
-              {material.badge && (
-                <span className="absolute top-4 left-4 badge bg-orange-100 text-orange-700 text-sm">{material.badge}</span>
+            <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-3xl flex items-center justify-center text-[120px] relative overflow-hidden shadow-sm">
+              {emoji}
+              {material.isFeatured && (
+                <span className="absolute top-4 left-4 badge bg-orange-100 text-orange-700 text-sm">Featured</span>
               )}
               <button
                 onClick={() => setSaved(!saved)}
@@ -108,83 +118,84 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
                 <Heart className={`w-5 h-5 ${saved ? "fill-white" : ""}`} />
               </button>
             </div>
-            <div className="flex gap-3">
-              {material.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImg(i)}
-                  className={`flex-1 aspect-square rounded-2xl flex items-center justify-center text-4xl border-2 transition-all ${activeImg === i ? "border-orange-500 bg-orange-50" : "border-stone-200 bg-white"}`}
-                >
-                  {img}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Info + Order */}
           <div>
-            <p className="text-orange-500 text-sm font-semibold mb-1">{material.category}</p>
+            <p className="text-orange-500 text-sm font-semibold mb-1">{CATEGORY_LABEL[material.category] ?? material.category}</p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-stone-900 mb-3">{material.name}</h1>
 
-            {/* Rating */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className={`w-4 h-4 ${i < Math.floor(material.rating) ? "text-yellow-400 fill-yellow-400" : "text-stone-200"}`} />
-                ))}
+            {material.rating > 0 && (
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-4 h-4 ${i < Math.floor(material.rating) ? "text-yellow-400 fill-yellow-400" : "text-stone-200"}`} />
+                  ))}
+                </div>
+                <span className="font-bold text-stone-900">{material.rating.toFixed(1)}</span>
+                <span className="text-stone-500 text-sm">({material.reviewCount} reviews)</span>
               </div>
-              <span className="font-bold text-stone-900">{material.rating}</span>
-              <span className="text-stone-500 text-sm">({material.reviews} reviews)</span>
-            </div>
+            )}
 
             {/* Price */}
             <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-5">
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-extrabold text-stone-900">₹{material.price.toLocaleString("en-IN")}</span>
-                <span className="text-stone-500">{material.unit}</span>
+                <span className="text-4xl font-extrabold text-stone-900">₹{Number(material.pricePerUnit).toLocaleString("en-IN")}</span>
+                <span className="text-stone-500">per {material.unit}</span>
               </div>
-              <p className="text-sm text-stone-500 mt-1">Min. order: {material.minOrder} tons</p>
+              {minQ > 1 && <p className="text-sm text-stone-500 mt-1">Min. order: {minQ} {material.unit}</p>}
             </div>
 
             {/* Supplier */}
-            <div className="flex items-center gap-3 mb-5 p-4 bg-white rounded-2xl border border-stone-100">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0">KA</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-stone-900 text-sm">{material.supplier}</p>
-                <div className="flex items-center gap-2 text-xs text-stone-500">
-                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span>{material.supplierRating} · {material.supplierReviews} ratings</span>
-                  <span>·</span>
-                  <span>Since {material.supplierSince}</span>
+            {material.supplier && (
+              <div className="flex items-center gap-3 mb-5 p-4 bg-white rounded-2xl border border-stone-100">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0">
+                  {material.supplier.fullName.slice(0, 2).toUpperCase()}
                 </div>
-              </div>
-              {material.verified && (
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-stone-900 text-sm">{material.supplier.fullName}</p>
+                  {(material.city || material.state) && (
+                    <p className="text-xs text-stone-500">{[material.city, material.state].filter(Boolean).join(", ")}</p>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 text-green-600 text-xs font-semibold">
                   <ShieldCheck className="w-4 h-4" /> Verified
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Trust chips */}
             <div className="flex flex-wrap gap-2 mb-6">
-              <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
-                <Truck className="w-3.5 h-3.5 text-green-500" /> {material.delivery}
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
-                <MapPin className="w-3.5 h-3.5 text-blue-500" /> {material.location}
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
-                <Package className="w-3.5 h-3.5 text-orange-500" /> {material.stock}
-              </span>
+              {material.deliveryDays && (
+                <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
+                  <Truck className="w-3.5 h-3.5 text-green-500" /> {material.deliveryDays}
+                </span>
+              )}
+              {(material.city || material.state) && (
+                <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
+                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> {[material.city, material.state].filter(Boolean).join(", ")}
+                </span>
+              )}
+              {material.stockQuantity != null && (
+                <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
+                  <Package className="w-3.5 h-3.5 text-orange-500" />
+                  {material.stockQuantity > 0 ? `${material.stockQuantity} ${material.unit} in stock` : "Out of stock"}
+                </span>
+              )}
+              {material.brand && (
+                <span className="flex items-center gap-1.5 text-xs text-stone-600 bg-white border border-stone-200 px-3 py-1.5 rounded-full">
+                  🏷️ {material.brand}
+                </span>
+              )}
             </div>
 
             {/* Quantity selector */}
             <div className="mb-5">
-              <label className="block text-sm font-semibold text-stone-700 mb-2">Quantity (tons)</label>
+              <label className="block text-sm font-semibold text-stone-700 mb-2">Quantity ({material.unit})</label>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-0 border border-stone-200 rounded-xl overflow-hidden">
                   <button
-                    onClick={() => setQty(Math.max(material.minOrder, qty - 1))}
+                    onClick={() => setQty(Math.max(minQ, qty - 1))}
                     className="w-12 h-12 flex items-center justify-center text-stone-600 hover:bg-stone-100 transition-colors"
                   >
                     <Minus className="w-4 h-4" />
@@ -192,13 +203,12 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
                   <input
                     type="number"
                     value={qty}
-                    min={material.minOrder}
-                    max={material.maxOrder}
-                    onChange={(e) => setQty(Math.max(material.minOrder, Number(e.target.value)))}
+                    min={minQ}
+                    onChange={(e) => setQty(Math.max(minQ, Number(e.target.value)))}
                     className="w-16 h-12 text-center font-bold text-stone-900 border-x border-stone-200 focus:outline-none focus:bg-orange-50"
                   />
                   <button
-                    onClick={() => setQty(Math.min(material.maxOrder, qty + 1))}
+                    onClick={() => setQty(Math.min(maxQ, qty + 1))}
                     className="w-12 h-12 flex items-center justify-center text-stone-600 hover:bg-stone-100 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -211,14 +221,12 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
               </div>
             </div>
 
-            {/* CTA buttons */}
+            {/* CTA */}
             <div className="flex gap-3">
               <button
                 onClick={handleAddToCart}
                 className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold transition-all ${
-                  added
-                    ? "bg-green-500 text-white"
-                    : "bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg"
+                  added ? "bg-green-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg"
                 }`}
               >
                 {added ? <><CheckCircle2 className="w-5 h-5" /> Added to Cart!</> : "Add to Cart"}
@@ -241,61 +249,37 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
           </div>
         </div>
 
+        {/* Lower section */}
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Description */}
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
-              <h2 className="font-bold text-stone-900 text-lg mb-3">Product Description</h2>
-              <p className="text-stone-600 leading-relaxed">{material.description}</p>
-              <h3 className="font-bold text-stone-900 mt-5 mb-3">Best Used For</h3>
-              <div className="flex flex-wrap gap-2">
-                {material.uses.map((use) => (
-                  <span key={use} className="px-3 py-1.5 bg-orange-50 text-orange-700 text-sm font-medium rounded-full border border-orange-100">{use}</span>
-                ))}
+            {material.description && (
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
+                <h2 className="font-bold text-stone-900 text-lg mb-3">Product Description</h2>
+                <p className="text-stone-600 leading-relaxed">{material.description}</p>
               </div>
-            </div>
+            )}
 
-            {/* Specifications */}
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
-              <h2 className="font-bold text-stone-900 text-lg mb-4">Specifications</h2>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {material.specs.map((spec) => (
-                  <div key={spec.label} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
-                    <span className="text-sm text-stone-500">{spec.label}</span>
-                    <span className="text-sm font-semibold text-stone-800">{spec.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Reviews */}
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-bold text-stone-900 text-lg">Customer Reviews</h2>
-                <div className="flex items-center gap-2">
-                  <div className="flex">{[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />)}</div>
-                  <span className="font-bold text-stone-900">{material.rating}</span>
-                  <span className="text-stone-500 text-sm">({material.reviews})</span>
+            {/* Info card when no description */}
+            {!material.description && (
+              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
+                <h2 className="font-bold text-stone-900 text-lg mb-4">Product Details</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {[
+                    { label: "Category", value: CATEGORY_LABEL[material.category] ?? material.category },
+                    material.brand && { label: "Brand", value: material.brand },
+                    { label: "Unit", value: material.unit },
+                    material.minOrderQuantity && { label: "Min. Order", value: `${material.minOrderQuantity} ${material.unit}` },
+                    material.deliveryDays && { label: "Delivery", value: material.deliveryDays },
+                    (material.city || material.state) && { label: "Ships From", value: [material.city, material.state].filter(Boolean).join(", ") },
+                  ].filter(Boolean).map((spec: any) => (
+                    <div key={spec.label} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                      <span className="text-sm text-stone-500">{spec.label}</span>
+                      <span className="text-sm font-semibold text-stone-800">{spec.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="space-y-5">
-                {material.reviewsList.map((r, i) => (
-                  <div key={i} className={i < material.reviewsList.length - 1 ? "pb-5 border-b border-stone-50" : ""}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-stone-100 text-stone-600 text-xs font-bold flex items-center justify-center">{r.avatar}</div>
-                        <div>
-                          <p className="font-semibold text-stone-900 text-sm">{r.author}</p>
-                          <p className="text-xs text-stone-400">{r.date}</p>
-                        </div>
-                      </div>
-                      <div className="flex">{[...Array(r.rating)].map((_, j) => <Star key={j} className="w-4 h-4 text-yellow-400 fill-yellow-400" />)}</div>
-                    </div>
-                    <p className="text-stone-600 text-sm leading-relaxed">{r.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -304,8 +288,8 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
               <h3 className="font-bold text-stone-900 mb-3 text-sm">Delivery Info</h3>
               <div className="space-y-3 text-sm">
                 {[
-                  { icon: Truck, color: "text-green-500", label: "Delivery", val: material.delivery },
-                  { icon: MapPin, color: "text-blue-500", label: "Ships from", val: material.location },
+                  { icon: Truck, color: "text-green-500", label: "Delivery", val: material.deliveryDays ?? "Contact supplier" },
+                  { icon: MapPin, color: "text-blue-500", label: "Ships from", val: [material.city, material.state].filter(Boolean).join(", ") || "—" },
                   { icon: ShieldCheck, color: "text-orange-500", label: "Quality check", val: "Before dispatch" },
                   { icon: AlertCircle, color: "text-purple-500", label: "Returns", val: "If quality issue" },
                 ].map((item) => (
@@ -320,19 +304,11 @@ export default function MaterialDetailPage({ params }: { params: { id: string } 
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5">
-              <h3 className="font-bold text-stone-900 mb-3 text-sm">Similar Products</h3>
-              <div className="space-y-3">
-                {material.similarProducts.map((p) => (
-                  <Link key={p.id} href={`/materials/${p.id}`} className="flex items-center gap-3 hover:bg-stone-50 p-2 rounded-xl transition-colors group">
-                    <span className="text-2xl">{p.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-stone-800 group-hover:text-orange-500 transition-colors truncate">{p.name}</p>
-                      <p className="text-xs text-stone-500">₹{p.price.toLocaleString()}{p.unit} · ⭐ {p.rating}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            <div className="bg-stone-50 rounded-2xl border border-stone-100 p-4">
+              <p className="text-sm font-bold text-stone-700 mb-1">Need help ordering?</p>
+              <Link href="/contact" className="text-sm text-orange-500 hover:text-orange-600 font-semibold">
+                Contact Support →
+              </Link>
             </div>
           </aside>
         </div>
