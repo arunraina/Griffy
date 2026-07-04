@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -9,6 +9,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Patch('me')
+  @ApiBearerAuth()
+  updateMe(@Request() req: any, @Body() body: { fullName?: string; phone?: string; city?: string; state?: string }) {
+    return this.usersService.updateMe(req.user.id, body);
+  }
 
   @Get()
   findAll(@Query('page') page: number, @Query('limit') limit: number) {

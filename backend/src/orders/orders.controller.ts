@@ -22,6 +22,11 @@ export class OrdersController {
     return this.ordersService.findForUser(req.user.id, page, limit);
   }
 
+  @Get('incoming')
+  incomingOrders(@Request() req: any, @Query('page') page: number, @Query('limit') limit: number) {
+    return this.ordersService.findIncomingForUser(req.user.id, req.user.role, page, limit);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.ordersService.findById(id);

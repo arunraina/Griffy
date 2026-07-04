@@ -49,6 +49,10 @@ export class ContractorsService {
     return contractor;
   }
 
+  async findByUserId(userId: string): Promise<Contractor | null> {
+    return this.repo.findOne({ where: { userId }, relations: ['user'] });
+  }
+
   async update(id: string, updates: Partial<Contractor>): Promise<Contractor> {
     await this.repo.update(id, updates);
     return this.findById(id);

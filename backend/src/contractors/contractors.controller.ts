@@ -26,6 +26,13 @@ export class ContractorsController {
     return this.contractorsService.findAll({ page, limit, specialty, city, search, available });
   }
 
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  getMyProfile(@Request() req: any) {
+    return this.contractorsService.findByUserId(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.contractorsService.findById(id);

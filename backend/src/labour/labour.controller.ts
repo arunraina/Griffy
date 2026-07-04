@@ -27,6 +27,13 @@ export class LabourController {
     return this.labourService.findAll({ page, limit, trade, city, search, available, maxRate });
   }
 
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  getMyProfile(@Request() req: any) {
+    return this.labourService.findByUserId(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.labourService.findById(id);

@@ -32,6 +32,17 @@ export class MaterialsController {
     return this.materialsService.findAll({ page, limit, category, city, search, minPrice, maxPrice });
   }
 
+  @Get('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  getMyMaterials(
+    @Request() req: any,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
+  ) {
+    return this.materialsService.findBySupplier(req.user.id, page, limit);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.materialsService.findById(id);

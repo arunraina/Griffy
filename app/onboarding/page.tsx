@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowLeft, HardHat, CheckCircle2, MapPin, User, Briefcase, Star } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, ArrowLeft, HardHat, CheckCircle2, MapPin, User, Briefcase, Star, Loader2 } from "lucide-react";
 import {
   HomeownerIllustration,
   ContractorIllustration,
@@ -10,6 +11,8 @@ import {
   SupplierIllustration,
   SuccessIllustration,
 } from "@/components/illustrations/OnboardingIllustrations";
+import { updateMe } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 const TOTAL_STEPS = 5;
 
@@ -27,16 +30,27 @@ const roleFeatures: Record<string, string[]> = {
   supplier: ["List unlimited products", "Reach 1,20,000+ homeowners", "Manage orders & delivery", "Grow your B2B network"],
 };
 
+const STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Jammu & Kashmir",
+  "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+  "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim",
+  "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Delhi", "Chandigarh", "Puducherry",
+];
+
 export default function OnboardingPage() {
+  const { isAuthenticated, refresh } = useAuth();
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState("homeowner");
   const [location, setLocation] = useState({ city: "", state: "", pincode: "" });
   const [profile, setProfile] = useState({
     projectType: "", budget: "", timeline: "",
     businessName: "", experience: "", trade: "",
-    materialCategories: [] as string[],
   });
   const [interests, setInterests] = useState<string[]>([]);
+  const [finishing, setFinishing] = useState(false);
 
   const Illustration = roleIllustrations[role] || HomeownerIllustration;
 
@@ -47,6 +61,26 @@ export default function OnboardingPage() {
     setInterests((prev) =>
       prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
     );
+
+  async function handleFinish() {
+    if (!isAuthenticated) {
+      next();
+      return;
+    }
+    setFinishing(true);
+    try {
+      await updateMe({
+        city: location.city || undefined,
+        state: location.state || undefined,
+      });
+      await refresh();
+    } catch {
+      // non-fatal — still advance to success screen
+    } finally {
+      setFinishing(false);
+    }
+    next();
+  }
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-stone-50 flex flex-col items-center justify-center px-4 py-10">
@@ -150,9 +184,7 @@ export default function OnboardingPage() {
                           className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 bg-white text-stone-700"
                         >
                           <option value="">Select state</option>
-                          {["Andhra Pradesh","Delhi","Gujarat","Karnataka","Kerala","Maharashtra","Punjab","Rajasthan","Tamil Nadu","Telangana","Uttar Pradesh","West Bengal"].map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
+                          {STATES.map((s) => <option key={s}>{s}</option>)}
                         </select>
                       </div>
                       <div>
@@ -287,7 +319,7 @@ export default function OnboardingPage() {
                   <p className="text-stone-500 text-sm mb-7">Select all that apply. We&apos;ll show you relevant results first.</p>
                   <div className="flex flex-wrap gap-2.5">
                     {(role === "homeowner"
-                      ? ["Sand & Aggregate", "Bricks & Blocks", "Cement", "Steel / TMT", "Wood & Timber", "Tiles & Flooring", "Paint", "Glass & Windows", "Civil Contractor", "Structural Engineer", "Electrician", "Plumber", "Carpenter", "Painter", "Interior Designer", "Architect"]
+                      ? ["Sand & Aggregate", "Bricks & Blocks", "Cement", "Steel / TMT", "Wood & Timber", "Tiles & Flooring", "Paint", "Civil Contractor", "Structural Engineer", "Electrician", "Plumber", "Carpenter", "Painter", "Interior Designer", "Architect"]
                       : role === "contractor" || role === "labour"
                       ? ["Residential", "Commercial", "Renovation", "New Construction", "Interior Work", "Electrical", "Plumbing", "Painting", "Waterproofing", "Landscaping"]
                       : ["Sand", "Bricks", "Cement", "Steel", "Wood", "Tiles", "Paint", "Electrical Supplies", "Plumbing Supplies", "Hardware"]
@@ -319,7 +351,11 @@ export default function OnboardingPage() {
                   </div>
                   <h2 className="text-2xl font-extrabold text-stone-900 mb-2">You&apos;re all set! 🎉</h2>
                   <p className="text-stone-500 mb-2">
-                    Your Griffy account is ready.{" "}
+                    {isAuthenticated
+                      ? `Your profile has been updated${location.city ? ` — location set to ${location.city}` : ""}.`
+                      : "Create an account to save your preferences and get started."}
+                  </p>
+                  <p className="text-stone-400 text-sm mb-8">
                     {role === "homeowner"
                       ? "Start browsing materials, contractors and labour near you."
                       : role === "contractor"
@@ -328,13 +364,26 @@ export default function OnboardingPage() {
                       ? "Set your availability and start getting booked."
                       : "List your first product and reach 1,20,000+ homeowners."}
                   </p>
-                  <div className="flex flex-wrap justify-center gap-3 mt-8">
-                    <Link href="/feed" className="btn-primary px-8 py-3">
-                      Go to Dashboard <ArrowRight className="w-4 h-4" />
-                    </Link>
-                    <Link href="/profile" className="btn-secondary px-8 py-3">
-                      <User className="w-4 h-4" /> Complete Profile
-                    </Link>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {isAuthenticated ? (
+                      <>
+                        <Link href="/dashboard" className="btn-primary px-8 py-3">
+                          Go to Dashboard <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link href="/profile" className="btn-secondary px-8 py-3">
+                          <User className="w-4 h-4" /> Complete Profile
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <Link href="/register" className="btn-primary px-8 py-3">
+                          Create Account <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <Link href="/login" className="btn-secondary px-8 py-3">
+                          Sign In
+                        </Link>
+                      </>
+                    )}
                   </div>
                   <div className="mt-6 flex justify-center gap-1">
                     {[...Array(5)].map((_, i) => (
@@ -356,10 +405,14 @@ export default function OnboardingPage() {
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
                   <button
-                    onClick={next}
-                    className="btn-primary px-8 py-2.5"
+                    onClick={step === TOTAL_STEPS - 1 ? handleFinish : next}
+                    disabled={finishing}
+                    className="btn-primary px-8 py-2.5 disabled:opacity-60"
                   >
-                    {step === TOTAL_STEPS - 1 ? "Finish" : "Continue"} <ArrowRight className="w-4 h-4" />
+                    {finishing
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                      : <>{step === TOTAL_STEPS - 1 ? "Finish" : "Continue"} <ArrowRight className="w-4 h-4" /></>
+                    }
                   </button>
                 </div>
               )}

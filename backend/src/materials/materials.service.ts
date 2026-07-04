@@ -50,6 +50,16 @@ export class MaterialsService {
     return material;
   }
 
+  async findBySupplier(supplierId: string, page = 1, limit = 20) {
+    const [data, total] = await this.repo.findAndCount({
+      where: { supplierId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit };
+  }
+
   async update(id: string, updates: Partial<Material>): Promise<Material> {
     await this.repo.update(id, updates);
     return this.findById(id);

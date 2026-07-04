@@ -202,3 +202,26 @@ export const listMyOrders = (page = 1, limit = 20) =>
   apiFetch<Paginated<Order>>(`/orders/my?page=${page}&limit=${limit}`);
 
 export const getOrder = (id: string) => apiFetch<Order>(`/orders/${id}`);
+
+export const listIncomingOrders = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Order & { buyer?: User }>>(`/orders/incoming?page=${page}&limit=${limit}`);
+
+export const updateOrderStatus = (id: string, status: string) =>
+  apiFetch<Order>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+export const releaseEscrow = (id: string) =>
+  apiFetch<Order>(`/orders/${id}/release-escrow`, { method: 'PATCH' });
+
+// ── Profile ────────────────────────────────────────────────────────────────
+
+export const updateMe = (data: { fullName?: string; phone?: string; city?: string; state?: string }) =>
+  apiFetch<User>('/users/me', { method: 'PATCH', body: JSON.stringify(data) });
+
+// ── My profiles (contractor / labour / supplier) ───────────────────────────
+
+export const getMyContractorProfile = () => apiFetch<Contractor | null>('/contractors/my');
+
+export const getMyLabourProfile = () => apiFetch<Labour | null>('/labour/my');
+
+export const listMyMaterials = (page = 1, limit = 20) =>
+  apiFetch<Paginated<Material>>(`/materials/my?page=${page}&limit=${limit}`);

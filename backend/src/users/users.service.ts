@@ -28,6 +28,15 @@ export class UsersService {
     return user;
   }
 
+  async updateMe(id: string, data: { fullName?: string; phone?: string; city?: string; state?: string }): Promise<User> {
+    const allowed: (keyof User)[] = ['fullName', 'phone', 'city', 'state'];
+    const safe = Object.fromEntries(
+      Object.entries(data).filter(([k]) => allowed.includes(k as keyof User))
+    ) as Partial<User>;
+    if (Object.keys(safe).length) await this.repo.update(id, safe);
+    return this.findById(id);
+  }
+
   async findAll(page = 1, limit = 20) {
     const [data, total] = await this.repo.findAndCount({
       skip: (page - 1) * limit,

@@ -51,6 +51,10 @@ export class LabourService {
     return labour;
   }
 
+  async findByUserId(userId: string): Promise<Labour | null> {
+    return this.repo.findOne({ where: { userId }, relations: ['user'] });
+  }
+
   async update(id: string, updates: Partial<Labour>): Promise<Labour> {
     await this.repo.update(id, updates);
     return this.findById(id);
