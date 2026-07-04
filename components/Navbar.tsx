@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, HardHat, ChevronDown, ShoppingCart, LogOut, User, Package, LayoutDashboard } from "lucide-react";
+import { Menu, X, HardHat, ChevronDown, ShoppingCart, LogOut, User, Package, LayoutDashboard, Briefcase } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { initials } from "@/lib/constants";
+import NotificationBell from "./NotificationBell";
 
 const navLinks = [
   {
@@ -16,6 +17,7 @@ const navLinks = [
       { label: "Buy Materials", href: "/materials", desc: "Sand, bricks, cement, steel & more" },
       { label: "Hire Contractors", href: "/contractors", desc: "Licensed project contractors" },
       { label: "Hire Labour", href: "/labour", desc: "Mistri, electricians, plumbers & more" },
+      { label: "Open Projects", href: "/projects", desc: "Browse projects & submit bids" },
     ],
   },
   { label: "How It Works", href: "/how-it-works" },
@@ -112,6 +114,7 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
+            {isAuthenticated && <NotificationBell />}
 
             {isAuthenticated && user ? (
               <div className="relative" ref={userMenuRef}>
@@ -134,6 +137,9 @@ export default function Navbar() {
                     </div>
                     <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
                       <LayoutDashboard className="w-4 h-4" /> Dashboard
+                    </Link>
+                    <Link href="/projects" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
+                      <Briefcase className="w-4 h-4" /> Projects
                     </Link>
                     <Link href="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
                       <User className="w-4 h-4" /> Profile
@@ -182,6 +188,9 @@ export default function Navbar() {
           </Link>
           <Link href="/labour" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
             Hire Labour
+          </Link>
+          <Link href="/projects" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
+            Open Projects
           </Link>
           <Link href="/how-it-works" className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-orange-50 font-medium text-stone-700 hover:text-orange-500 transition-colors" onClick={() => setMobileOpen(false)}>
             How It Works

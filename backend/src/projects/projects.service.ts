@@ -9,6 +9,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Contractor } from '../contractors/contractor.entity';
 import { getContactInfoViolation } from '../common/utils/content-moderation';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProjectsService {
@@ -16,6 +17,7 @@ export class ProjectsService {
     @InjectRepository(Project) private readonly projectRepo: Repository<Project>,
     @InjectRepository(Bid) private readonly bidRepo: Repository<Bid>,
     @InjectRepository(Contractor) private readonly contractorRepo: Repository<Contractor>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateProjectDto, homeownerId: string): Promise<Project> {
@@ -113,7 +115,17 @@ export class ProjectsService {
     }
 
     const bid = this.bidRepo.create({ projectId, contractorId: contractor.id, ...dto });
-    return this.bidRepo.save(bid);
+    const saved = await this.bidRepo.save(bid);
+
+    this.notifications.create({
+      userId: project.homeownerId,
+      type: 'bid_received',
+      title: 'New bid on your project',
+      body: `A contractor submitted a bid on "${project.title}". Review it in your dashboard.`,
+      link: `/projects/${projectId}`,
+    }).catch(() => undefined);
+
+    return saved;
   }
 
   async findBids(projectId: string, requesterId: string): Promise<Bid[]> {
@@ -139,6 +151,19 @@ export class ProjectsService {
     if (status === BidStatus.AWARDED) {
       await this.projectRepo.update(projectId, { status: ProjectStatus.AWARDED });
     }
+
+    const contractorUser = await this.contractorRepo.findOne({ where: { id: bid.contractorId } });
+    if (contractorUser) {
+      const statusLabel = { awarded: 'awarded 🎉', shortlisted: 'shortlisted', rejected: 'not selected' }[status] ?? status;
+      this.notifications.create({
+        userId: contractorUser.userId,
+        type: 'bid_status_changed',
+        title: 'Your bid status was updated',
+        body: `Your bid on "${project.title}" has been ${statusLabel}.`,
+        link: `/projects/${projectId}`,
+      }).catch(() => undefined);
+    }
+
     return saved;
   }
 }

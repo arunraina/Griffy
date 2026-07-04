@@ -6,6 +6,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
 import { Material } from '../materials/material.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OrdersService {
@@ -14,12 +15,37 @@ export class OrdersService {
     @InjectRepository(Contractor) private readonly contractorRepo: Repository<Contractor>,
     @InjectRepository(Labour) private readonly labourRepo: Repository<Labour>,
     @InjectRepository(Material) private readonly materialRepo: Repository<Material>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateOrderDto, buyerId: string): Promise<Order> {
     const platformFee = Number(dto.amount) * 0.05;
     const order = this.repo.create({ ...dto, buyerId, platformFee });
-    return this.repo.save(order);
+    const saved = await this.repo.save(order);
+
+    // Notify the seller
+    let sellerId: string | undefined;
+    if (dto.type === 'contractor') {
+      const c = await this.contractorRepo.findOne({ where: { id: dto.itemId } });
+      sellerId = c?.userId;
+    } else if (dto.type === 'labour') {
+      const l = await this.labourRepo.findOne({ where: { id: dto.itemId } });
+      sellerId = l?.userId;
+    } else if (dto.type === 'material') {
+      const m = await this.materialRepo.findOne({ where: { id: dto.itemId } });
+      sellerId = m?.supplierId;
+    }
+    if (sellerId) {
+      this.notifications.create({
+        userId: sellerId,
+        type: 'order_placed',
+        title: 'New order received',
+        body: 'You have a new order. Check your dashboard to confirm it.',
+        link: '/dashboard',
+      }).catch(() => undefined);
+    }
+
+    return saved;
   }
 
   async findForUser(buyerId: string, page = 1, limit = 10) {
@@ -40,7 +66,18 @@ export class OrdersService {
 
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {
     await this.repo.update(id, { status });
-    return this.findById(id);
+    const order = await this.findById(id);
+    const statusLabels: Record<string, string> = {
+      accepted: 'accepted ✅', in_progress: 'in progress 🔨', completed: 'completed 🎉', cancelled: 'cancelled',
+    };
+    this.notifications.create({
+      userId: order.buyerId,
+      type: 'order_status',
+      title: 'Order status updated',
+      body: `Your order is now ${statusLabels[status] ?? status}. View details in My Orders.`,
+      link: '/orders',
+    }).catch(() => undefined);
+    return order;
   }
 
   async findIncomingForUser(userId: string, role: string, page = 1, limit = 20) {

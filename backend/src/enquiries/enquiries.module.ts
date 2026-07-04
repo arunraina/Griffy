@@ -5,9 +5,10 @@ import { EnquiriesController } from './enquiries.controller';
 import { Enquiry } from './enquiry.entity';
 import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Enquiry, Contractor, Labour])],
+  imports: [TypeOrmModule.forFeature([Enquiry, Contractor, Labour]), NotificationsModule],
   providers: [EnquiriesService],
   controllers: [EnquiriesController],
 })

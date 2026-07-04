@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 
 export const metadata: Metadata = {
   title: "Griffy — Your Construction Partner",
@@ -22,11 +23,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          <CartProvider>
-            <Navbar />
-            <main className="pt-16">{children}</main>
-            <Footer />
-          </CartProvider>
+          <NotificationProvider>
+            <CartProvider>
+              <Navbar />
+              <main className="pt-16">{children}</main>
+              <Footer />
+            </CartProvider>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

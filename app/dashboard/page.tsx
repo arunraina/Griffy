@@ -23,6 +23,8 @@ import {
   INDIAN_STATES,
 } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
+import GettingStartedChecklist from "@/components/GettingStartedChecklist";
+import JourneyNudge from "@/components/JourneyNudge";
 
 const quickActionsHomeowner = [
   { label: "Buy Materials", href: "/materials", emoji: "🧱", desc: "Sand, cement, steel & more" },
@@ -643,6 +645,35 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
 
   return (
     <div className="space-y-8">
+      <GettingStartedChecklist user={user} />
+
+      {/* Location nudge — no city set */}
+      {!user.city && (
+        <JourneyNudge
+          emoji="📍"
+          title="Add your location for better results"
+          description="Tell us your city and state so we can show contractors, labour and materials near you."
+          ctaLabel="Update Profile"
+          ctaHref="/profile"
+          dismissKey="homeowner_add_location"
+          variant="blue"
+        />
+      )}
+
+      {/* First project nudge */}
+      {orders.length === 0 && !ordersLoading && (
+        <JourneyNudge
+          emoji="📋"
+          title="Post your first project"
+          description="Describe your construction or renovation project and get bids from multiple verified contractors for free."
+          ctaLabel="Post a Project"
+          ctaHref="/post-project"
+          dismissKey="homeowner_first_project"
+          variant="orange"
+          secondary={{ label: "Browse contractors", href: "/contractors" }}
+        />
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard icon={Package} color="blue" label="Active Orders" value={ordersLoading ? "—" : activeOrders.length} />
         <StatCard icon={IndianRupee} color="green" label="Total Spent"
@@ -776,6 +807,53 @@ function ProDashboard({ user }: { user: any }) {
       {/* Overview */}
       {activeTab === "overview" && (
         <div className="space-y-8">
+          <GettingStartedChecklist
+            user={user}
+            hasContractorProfile={isContractor && !!profile}
+            hasLabourProfile={isLabour && !!profile}
+            hasMaterial={isSupplier && materials.length > 0}
+          />
+
+          {/* Verification nudge for contractors */}
+          {isContractor && profile && !(profile as Contractor).isVerified && (
+            <JourneyNudge
+              emoji="🔍"
+              title="Verification in progress"
+              description="Our team is reviewing your contractor profile. Once verified, you'll appear in search results and can receive enquiries from homeowners."
+              ctaLabel="View Profile"
+              ctaHref="/profile"
+              dismissKey="contractor_verification"
+              variant="amber"
+            />
+          )}
+
+          {/* No profile nudge */}
+          {(isContractor || isLabour) && !profile && (
+            <JourneyNudge
+              emoji="👷"
+              title={`Set up your ${isContractor ? "contractor" : "labour"} profile`}
+              description="Create your professional profile so homeowners can find and hire you. It only takes 2 minutes."
+              ctaLabel="Create Profile"
+              ctaHref="/profile"
+              dismissKey="create_pro_profile"
+              variant="orange"
+            />
+          )}
+
+          {/* Supplier nudge */}
+          {isSupplier && materials.length === 0 && (
+            <JourneyNudge
+              emoji="🧱"
+              title="List your first material"
+              description="Add your products to reach homeowners actively searching for construction materials in your city."
+              ctaLabel="Add Material"
+              ctaHref="/dashboard"
+              dismissKey="supplier_first_material"
+              variant="blue"
+              secondary={{ label: "View listings", href: "/materials" }}
+            />
+          )}
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard icon={Clock} color="amber" label="Pending" value={incomingLoading ? "—" : pendingCount} />
             <StatCard icon={Truck} color="blue" label="Active" value={incomingLoading ? "—" : activeCount} />

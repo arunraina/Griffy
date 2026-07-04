@@ -312,6 +312,31 @@ export const replyEnquiry = (id: string, reply: string, status?: string) =>
     body: JSON.stringify({ reply, status }),
   });
 
+// ── Notifications ──────────────────────────────────────────────────────────
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const listNotifications = (page = 1, limit = 20) =>
+  apiFetch<Paginated<AppNotification>>(`/notifications?page=${page}&limit=${limit}`);
+
+export const getUnreadNotificationCount = () =>
+  apiFetch<{ count: number }>('/notifications/unread-count');
+
+export const markNotificationRead = (id: string) =>
+  apiFetch<void>(`/notifications/${id}/read`, { method: 'PATCH' });
+
+export const markAllNotificationsRead = () =>
+  apiFetch<void>('/notifications/read-all', { method: 'PATCH' });
+
 // ── Admin ──────────────────────────────────────────────────────────────────
 
 export interface AdminStats {

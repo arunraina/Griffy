@@ -7,6 +7,7 @@ import { ReplyEnquiryDto } from './dto/reply-enquiry.dto';
 import { Contractor } from '../contractors/contractor.entity';
 import { Labour } from '../labour/labour.entity';
 import { getContactInfoViolation } from '../common/utils/content-moderation';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EnquiriesService {
@@ -14,6 +15,7 @@ export class EnquiriesService {
     @InjectRepository(Enquiry) private readonly repo: Repository<Enquiry>,
     @InjectRepository(Contractor) private readonly contractorRepo: Repository<Contractor>,
     @InjectRepository(Labour) private readonly labourRepo: Repository<Labour>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateEnquiryDto, senderId: string): Promise<Enquiry> {
@@ -47,7 +49,17 @@ export class EnquiriesService {
       projectDescription: dto.projectDescription,
       status: EnquiryStatus.PENDING,
     });
-    return this.repo.save(enquiry);
+    const saved = await this.repo.save(enquiry);
+
+    this.notifications.create({
+      userId: recipientId,
+      type: 'enquiry_received',
+      title: 'New enquiry received',
+      body: 'Someone has sent you an enquiry. Reply from your dashboard.',
+      link: '/dashboard',
+    }).catch(() => undefined);
+
+    return saved;
   }
 
   async findSent(userId: string, page = 1, limit = 20) {
@@ -92,6 +104,16 @@ export class EnquiriesService {
     enquiry.reply = dto.reply;
     enquiry.status = (dto.status as EnquiryStatus) ?? EnquiryStatus.REPLIED;
     enquiry.repliedAt = new Date();
-    return this.repo.save(enquiry);
+    const saved = await this.repo.save(enquiry);
+
+    this.notifications.create({
+      userId: enquiry.senderId,
+      type: 'enquiry_replied',
+      title: 'Your enquiry has a reply',
+      body: 'The professional you contacted has replied to your enquiry.',
+      link: '/dashboard',
+    }).catch(() => undefined);
+
+    return saved;
   }
 }
