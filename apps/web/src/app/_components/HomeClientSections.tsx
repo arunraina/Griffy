@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 const TICKER = [
   { label: 'UltraTech Cement', price: '₹380/bag',    change: '+₹5',   up: true  },
@@ -102,6 +103,9 @@ export function CostCalculator() {
           <p className="text-xs text-gray-400 mt-2">
             For {area} sqft in {city} · {type.split('(')[0].trim()}
           </p>
+          <Link href="/estimate" className="inline-block text-xs font-semibold text-[#C0593A] hover:underline mt-3">
+            See full cost breakdown by category →
+          </Link>
         </div>
       )}
       <p className="text-xs text-center text-gray-400 mt-3">
