@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -16,6 +16,9 @@ export enum ContractorSpecialty {
 }
 
 @Entity('contractors')
+@Index('idx_contractors_userId', ['userId'], { unique: true })
+@Index('idx_contractors_city_specialty', ['city', 'specialty'])
+@Index('idx_contractors_rating', ['rating'])
 export class Contractor {
   @PrimaryGeneratedColumn('uuid')
   id: string;

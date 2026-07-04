@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -12,6 +12,9 @@ export enum EnquiryStatus {
 }
 
 @Entity('enquiries')
+@Index('idx_enquiries_recipientId', ['recipientId'])
+@Index('idx_enquiries_senderId', ['senderId'])
+@Index('idx_enquiries_status', ['status'])
 export class Enquiry {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -27,10 +30,10 @@ export class Enquiry {
   recipientId: string;
 
   @Column({ type: 'varchar', length: 20 })
-  recipientType: string; // 'contractor' | 'labour'
+  recipientType: string;
 
   @Column()
-  targetId: string; // contractor or labour profile id
+  targetId: string;
 
   @Column({ type: 'text' })
   message: string;

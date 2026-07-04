@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -17,6 +17,10 @@ export enum LabourTrade {
 }
 
 @Entity('labour')
+@Index('idx_labour_userId', ['userId'], { unique: true })
+@Index('idx_labour_city_trade', ['city', 'trade'])
+@Index('idx_labour_dailyRate', ['dailyRate'])
+@Index('idx_labour_rating', ['rating'])
 export class Labour {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -22,44 +22,43 @@ export class AnalyticsService {
     let itemIds: string[] = [];
 
     if (role === 'contractor') {
-      const profile = await this.contractorRepo.findOne({ where: { userId }, select: ['id', 'profileViews', 'completedProjects', 'rating', 'reviewCount'] });
-      if (profile) { profileViews = profile.profileViews; itemIds = [profile.id]; }
+      const p = await this.contractorRepo.findOne({ where: { userId }, select: ['id', 'profileViews'] });
+      if (p) { profileViews = p.profileViews; itemIds = [p.id]; }
     } else if (role === 'labour') {
-      const profile = await this.labourRepo.findOne({ where: { userId }, select: ['id', 'profileViews', 'completedJobs', 'rating', 'reviewCount'] });
-      if (profile) { profileViews = profile.profileViews; itemIds = [profile.id]; }
+      const p = await this.labourRepo.findOne({ where: { userId }, select: ['id', 'profileViews'] });
+      if (p) { profileViews = p.profileViews; itemIds = [p.id]; }
     } else if (role === 'supplier') {
       const mats = await this.materialRepo.find({ where: { supplierId: userId }, select: ['id'] });
       itemIds = mats.map((m) => m.id);
     }
 
-    const enquiryCount = await this.enquiryRepo.count({ where: { recipientId: userId } });
+    // Two parallel queries instead of 7 sequential
+    const [enquiryCount, recentOrders] = await Promise.all([
+      this.enquiryRepo.count({ where: { recipientId: userId } }),
+      itemIds.length > 0
+        ? this.orderRepo
+            .createQueryBuilder('o')
+            .where('o.itemId IN (:...ids)', { ids: itemIds })
+            .andWhere('o.status = :s', { s: OrderStatus.COMPLETED })
+            .andWhere('o.createdAt >= :since', { since: new Date(Date.now() - 42 * 86400000) })
+            .select(['o.createdAt', 'o.amount'])
+            .getMany()
+        : Promise.resolve([] as Order[]),
+    ]);
 
-    const now = new Date();
+    // Bucket in JS — no extra round trips
+    const now = Date.now();
     const weeks: { label: string; earnings: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const start = new Date(now);
-      start.setDate(start.getDate() - (i + 1) * 7);
-      const end = new Date(now);
-      end.setDate(end.getDate() - i * 7);
-
-      let earnings = 0;
-      if (itemIds.length > 0) {
-        const orders = await this.orderRepo
-          .createQueryBuilder('o')
-          .where('o.itemId IN (:...ids)', { ids: itemIds })
-          .andWhere('o.status = :status', { status: OrderStatus.COMPLETED })
-          .andWhere('o.createdAt >= :start AND o.createdAt < :end', { start, end })
-          .select('SUM(o.amount)', 'sum')
-          .getRawOne();
-        earnings = Number(orders?.sum ?? 0);
-      }
-
-      const d = new Date(end);
-      weeks.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, earnings });
+      const end = new Date(now - i * 7 * 86400000);
+      const start = new Date(end.getTime() - 7 * 86400000);
+      const earnings = recentOrders
+        .filter((o) => new Date(o.createdAt) >= start && new Date(o.createdAt) < end)
+        .reduce((s, o) => s + Number(o.amount), 0);
+      weeks.push({ label: `${end.getDate()}/${end.getMonth() + 1}`, earnings });
     }
 
     const totalEarnings = weeks.reduce((s, w) => s + w.earnings, 0);
-
     return { profileViews, enquiryCount, totalEarnings, weeklyEarnings: weeks };
   }
 }

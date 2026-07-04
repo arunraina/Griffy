@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -19,6 +19,9 @@ export enum MaterialCategory {
 }
 
 @Entity('materials')
+@Index('idx_materials_supplierId', ['supplierId'])
+@Index('idx_materials_category', ['category'])
+@Index('idx_materials_city_category', ['city', 'category'])
 export class Material {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 
@@ -20,6 +20,9 @@ export enum OrderStatus {
 }
 
 @Entity('orders')
+@Index('idx_orders_buyerId', ['buyerId'])
+@Index('idx_orders_itemId_status', ['itemId', 'status'])
+@Index('idx_orders_createdAt', ['createdAt'])
 export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -71,7 +74,7 @@ export class Order {
   razorpayPaymentId: string;
 
   @Column({ nullable: true })
-  paymentMethod: string; // 'razorpay' | 'cod'
+  paymentMethod: string;
 
   @Column({ default: false })
   isEscrowReleased: boolean;

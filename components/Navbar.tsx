@@ -21,6 +21,7 @@ const navLinks = [
       { label: "Leaderboard", href: "/leaderboard", desc: "Top-rated contractors & labour" },
     ],
   },
+  { label: "Cost Estimator", href: "/estimate" },
   { label: "How It Works", href: "/how-it-works" },
   { label: "About", href: "/about" },
 ];
