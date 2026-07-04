@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, Star, MapPin, Phone, Calendar, ChevronRight, Clock, CheckCircle2 } from "lucide-react";
+import { Search, Star, MapPin, Phone, Calendar, ChevronRight, Clock, CheckCircle2, SlidersHorizontal, X } from "lucide-react";
 import { listLabour, Labour } from "@/lib/api";
 import { TRADE_LABEL, TRADE_EMOJI } from "@/lib/constants";
 
@@ -16,6 +16,14 @@ const tradeFilters = [
   { label: "Tiler", value: "tiler" },
   { label: "Welder", value: "welder" },
   { label: "Helper", value: "helper" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Top Rated", value: "" },
+  { label: "Rate: Low to High", value: "rate_asc" },
+  { label: "Rate: High to Low", value: "rate_desc" },
+  { label: "Most Experienced", value: "experience" },
+  { label: "Newest", value: "newest" },
 ];
 
 function SkeletonCard() {
@@ -45,6 +53,22 @@ export default function LabourPage() {
   const [cityInput, setCityInput] = useState("");
   const [city, setCity] = useState("");
   const [trade, setTrade] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Advanced filter state
+  const [sortBy, setSortBy] = useState("");
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [maxRateInput, setMaxRateInput] = useState("");
+  // Applied
+  const [appliedSort, setAppliedSort] = useState("");
+  const [appliedAvailable, setAppliedAvailable] = useState<boolean | undefined>();
+  const [appliedMaxRate, setAppliedMaxRate] = useState<number | undefined>();
+
+  const activeFilterCount = [
+    appliedSort !== "",
+    appliedAvailable === true,
+    appliedMaxRate != null,
+  ].filter(Boolean).length;
 
   const fetchWorkers = useCallback(async (p: number, replace: boolean) => {
     try {
@@ -54,6 +78,9 @@ export default function LabourPage() {
         trade: trade || undefined,
         city: city || undefined,
         search: search || undefined,
+        available: appliedAvailable,
+        maxRate: appliedMaxRate,
+        sortBy: appliedSort || undefined,
       });
       setWorkers((prev) => replace ? res.data : [...prev, ...res.data]);
       setTotal(res.total);
@@ -63,12 +90,12 @@ export default function LabourPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [trade, city, search]);
+  }, [trade, city, search, appliedSort, appliedAvailable, appliedMaxRate]);
 
   useEffect(() => {
     setPage(1);
     fetchWorkers(1, true);
-  }, [trade, city, search]);
+  }, [trade, city, search, appliedSort, appliedAvailable, appliedMaxRate]);
 
   function handleSearch() {
     setSearch(searchInput);
@@ -79,6 +106,23 @@ export default function LabourPage() {
     const next = page + 1;
     setPage(next);
     fetchWorkers(next, false);
+  }
+
+  function applyFilters() {
+    setAppliedSort(sortBy);
+    setAppliedAvailable(availableOnly ? true : undefined);
+    setAppliedMaxRate(maxRateInput ? Number(maxRateInput) : undefined);
+    setShowFilters(false);
+  }
+
+  function clearFilters() {
+    setSortBy("");
+    setAvailableOnly(false);
+    setMaxRateInput("");
+    setAppliedSort("");
+    setAppliedAvailable(undefined);
+    setAppliedMaxRate(undefined);
+    setShowFilters(false);
   }
 
   const hasMore = workers.length < total;
@@ -109,6 +153,11 @@ export default function LabourPage() {
                 placeholder="Search trade (e.g. mistri, electrician, plumber)"
                 className="flex-1 py-3 text-stone-700 placeholder-stone-400 outline-none bg-transparent"
               />
+              {searchInput && (
+                <button onClick={() => { setSearchInput(""); setSearch(""); }} className="text-stone-400 hover:text-stone-600">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <div className="bg-white rounded-xl flex items-center gap-2 px-4">
               <MapPin className="w-5 h-5 text-stone-400 shrink-0" />
@@ -129,22 +178,95 @@ export default function LabourPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Trade filter */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-8">
-          {tradeFilters.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTrade(t.value)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                trade === t.value
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-stone-600 border-stone-200 hover:border-green-300 hover:text-green-600"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Trade filter + filter toggle */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 flex-1 scrollbar-hide">
+            {tradeFilters.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTrade(t.value)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  trade === t.value
+                    ? "bg-green-600 text-white border-green-600"
+                    : "bg-white text-stone-600 border-stone-200 hover:border-green-300 hover:text-green-600"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowFilters((p) => !p)}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+              showFilters || activeFilterCount > 0
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white text-stone-600 border-stone-200 hover:border-green-300 hover:text-green-600"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-white text-green-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Advanced filter panel */}
+        {showFilters && (
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="label-text">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="input-field"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label-text">Max Daily Rate (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 1500"
+                  value={maxRateInput}
+                  onChange={(e) => setMaxRateInput(e.target.value)}
+                  className="input-field"
+                  min={0}
+                />
+              </div>
+              <div className="flex flex-col justify-end">
+                <label className="label-text">Availability</label>
+                <button
+                  onClick={() => setAvailableOnly((p) => !p)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                    availableOnly
+                      ? "bg-green-50 border-green-400 text-green-700"
+                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                  }`}
+                >
+                  <span className={`w-3 h-3 rounded-full ${availableOnly ? "bg-green-500" : "bg-stone-300"}`} />
+                  {availableOnly ? "Available now only" : "All workers"}
+                </button>
+              </div>
+              <div className="flex items-end gap-2">
+                <button onClick={applyFilters} className="btn-primary flex-1 justify-center">
+                  Apply
+                </button>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} className="btn-secondary px-4 justify-center">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-6">
           <p className="text-stone-600 text-sm">
@@ -152,6 +274,11 @@ export default function LabourPage() {
               <><span className="font-semibold text-stone-900">{total}</span> workers available</>
             )}
           </p>
+          {activeFilterCount > 0 && (
+            <button onClick={clearFilters} className="text-sm text-green-700 hover:text-green-800 font-semibold flex items-center gap-1">
+              <X className="w-3.5 h-3.5" /> Clear all filters
+            </button>
+          )}
         </div>
 
         {error && (
@@ -169,6 +296,11 @@ export default function LabourPage() {
             <p className="text-5xl mb-4">🔍</p>
             <h2 className="font-bold text-stone-700 text-lg mb-2">No workers found</h2>
             <p className="text-stone-500 text-sm">Try a different trade, search, or city.</p>
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="mt-4 text-green-700 hover:text-green-800 font-semibold text-sm underline">
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

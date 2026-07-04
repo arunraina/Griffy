@@ -131,7 +131,7 @@ export const getMe = () => apiFetch<User>("/auth/me");
 
 type MaterialsParams = Partial<{
   page: number; limit: number; category: string;
-  city: string; search: string; minPrice: number; maxPrice: number;
+  city: string; search: string; minPrice: number; maxPrice: number; sortBy: string;
 }>;
 
 export function listMaterials(params: MaterialsParams = {}) {
@@ -149,7 +149,7 @@ export const getMaterial = (id: string) => apiFetch<Material>(`/materials/${id}`
 
 type ContractorsParams = Partial<{
   page: number; limit: number; specialty: string;
-  city: string; search: string; available: boolean;
+  city: string; search: string; available: boolean; sortBy: string;
 }>;
 
 export function listContractors(params: ContractorsParams = {}) {
@@ -167,7 +167,7 @@ export const getContractor = (id: string) => apiFetch<Contractor>(`/contractors/
 
 type LabourParams = Partial<{
   page: number; limit: number; trade: string;
-  city: string; search: string; available: boolean; maxRate: number;
+  city: string; search: string; available: boolean; maxRate: number; sortBy: string;
 }>;
 
 export function listLabour(params: LabourParams = {}) {

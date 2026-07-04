@@ -24,13 +24,12 @@ export class MaterialsService {
     search?: string;
     minPrice?: number;
     maxPrice?: number;
+    sortBy?: string;
   }) {
-    const { page = 1, limit = 20, category, city, search, minPrice, maxPrice } = query;
+    const { page = 1, limit = 20, category, city, search, minPrice, maxPrice, sortBy } = query;
 
     const qb = this.repo.createQueryBuilder('m')
       .where('m.isAvailable = true')
-      .orderBy('m.isFeatured', 'DESC')
-      .addOrderBy('m.rating', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -39,6 +38,18 @@ export class MaterialsService {
     if (search) qb.andWhere('LOWER(m.name) LIKE LOWER(:search)', { search: `%${search}%` });
     if (minPrice) qb.andWhere('m.pricePerUnit >= :minPrice', { minPrice });
     if (maxPrice) qb.andWhere('m.pricePerUnit <= :maxPrice', { maxPrice });
+
+    if (sortBy === 'price_asc') {
+      qb.orderBy('m.pricePerUnit', 'ASC');
+    } else if (sortBy === 'price_desc') {
+      qb.orderBy('m.pricePerUnit', 'DESC');
+    } else if (sortBy === 'rating') {
+      qb.orderBy('m.rating', 'DESC');
+    } else if (sortBy === 'newest') {
+      qb.orderBy('m.createdAt', 'DESC');
+    } else {
+      qb.orderBy('m.isFeatured', 'DESC').addOrderBy('m.rating', 'DESC');
+    }
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };

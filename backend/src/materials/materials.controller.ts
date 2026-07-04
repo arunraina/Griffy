@@ -20,6 +20,7 @@ export class MaterialsController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'minPrice', required: false })
   @ApiQuery({ name: 'maxPrice', required: false })
+  @ApiQuery({ name: 'sortBy', required: false })
   findAll(
     @Query('page') page: number,
     @Query('limit') limit: number,
@@ -28,8 +29,9 @@ export class MaterialsController {
     @Query('search') search: string,
     @Query('minPrice') minPrice: number,
     @Query('maxPrice') maxPrice: number,
+    @Query('sortBy') sortBy: string,
   ) {
-    return this.materialsService.findAll({ page, limit, category, city, search, minPrice, maxPrice });
+    return this.materialsService.findAll({ page, limit, category, city, search, minPrice, maxPrice, sortBy });
   }
 
   @Get('my')

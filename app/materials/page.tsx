@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, Filter, Star, Truck, MapPin, ShoppingCart, ChevronRight } from "lucide-react";
+import { Search, Star, Truck, MapPin, ShoppingCart, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { listMaterials, Material } from "@/lib/api";
 import { CATEGORY_EMOJI, CATEGORY_LABEL } from "@/lib/constants";
 import { useCart } from "@/context/CartContext";
@@ -18,6 +18,14 @@ const categoryFilters = [
   { label: "Paint", value: "paint" },
   { label: "Electrical", value: "electrical" },
   { label: "Plumbing", value: "plumbing" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Featured", value: "" },
+  { label: "Top Rated", value: "rating" },
+  { label: "Price: Low to High", value: "price_asc" },
+  { label: "Price: High to Low", value: "price_desc" },
+  { label: "Newest First", value: "newest" },
 ];
 
 function SkeletonCard() {
@@ -44,12 +52,36 @@ export default function MaterialsPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [category, setCategory] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Advanced filter state
+  const [sortBy, setSortBy] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  // Applied filters (committed on Apply)
+  const [appliedSort, setAppliedSort] = useState("");
+  const [appliedMin, setAppliedMin] = useState<number | undefined>();
+  const [appliedMax, setAppliedMax] = useState<number | undefined>();
+
   const { addItem } = useCart();
+
+  const activeFilterCount = [
+    appliedSort !== "",
+    appliedMin != null,
+    appliedMax != null,
+  ].filter(Boolean).length;
 
   const fetchMaterials = useCallback(async (p: number, replace: boolean) => {
     try {
       replace ? setLoading(true) : setLoadingMore(true);
-      const res = await listMaterials({ page: p, limit: 12, category: category || undefined, search: search || undefined });
+      const res = await listMaterials({
+        page: p, limit: 12,
+        category: category || undefined,
+        search: search || undefined,
+        sortBy: appliedSort || undefined,
+        minPrice: appliedMin,
+        maxPrice: appliedMax,
+      });
       setMaterials((prev) => replace ? res.data : [...prev, ...res.data]);
       setTotal(res.total);
     } catch (e: any) {
@@ -58,12 +90,12 @@ export default function MaterialsPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [category, search]);
+  }, [category, search, appliedSort, appliedMin, appliedMax]);
 
   useEffect(() => {
     setPage(1);
     fetchMaterials(1, true);
-  }, [category, search]);
+  }, [category, search, appliedSort, appliedMin, appliedMax]);
 
   function loadMore() {
     const next = page + 1;
@@ -73,6 +105,23 @@ export default function MaterialsPage() {
 
   function handleSearch() {
     setSearch(searchInput);
+  }
+
+  function applyFilters() {
+    setAppliedSort(sortBy);
+    setAppliedMin(minPrice ? Number(minPrice) : undefined);
+    setAppliedMax(maxPrice ? Number(maxPrice) : undefined);
+    setShowFilters(false);
+  }
+
+  function clearFilters() {
+    setSortBy("");
+    setMinPrice("");
+    setMaxPrice("");
+    setAppliedSort("");
+    setAppliedMin(undefined);
+    setAppliedMax(undefined);
+    setShowFilters(false);
   }
 
   const hasMore = materials.length < total;
@@ -103,6 +152,11 @@ export default function MaterialsPage() {
                 placeholder="Search for materials (e.g. cement, sand, TMT bars)"
                 className="flex-1 py-3 text-stone-700 placeholder-stone-400 outline-none bg-transparent"
               />
+              {searchInput && (
+                <button onClick={() => { setSearchInput(""); setSearch(""); }} className="text-stone-400 hover:text-stone-600">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <button onClick={handleSearch} className="btn-primary rounded-xl whitespace-nowrap">
               Search
@@ -112,22 +166,92 @@ export default function MaterialsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Category filter */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-8 scrollbar-hide">
-          {categoryFilters.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setCategory(cat.value)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                category === cat.value
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-stone-600 border-stone-200 hover:border-orange-300 hover:text-orange-500"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        {/* Category filter + Filter toggle */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 flex-1 scrollbar-hide">
+            {categoryFilters.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => setCategory(cat.value)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  category === cat.value
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-white text-stone-600 border-stone-200 hover:border-orange-300 hover:text-orange-500"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowFilters((p) => !p)}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+              showFilters || activeFilterCount > 0
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-white text-stone-600 border-stone-200 hover:border-orange-300 hover:text-orange-500"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-white text-orange-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Advanced filter panel */}
+        {showFilters && (
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="label-text">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="input-field"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label-text">Min Price (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 500"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="input-field"
+                  min={0}
+                />
+              </div>
+              <div>
+                <label className="label-text">Max Price (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 10000"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="input-field"
+                  min={0}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <button onClick={applyFilters} className="btn-primary flex-1 justify-center">
+                  Apply
+                </button>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} className="btn-secondary px-4 justify-center">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between mb-6">
           <p className="text-stone-600 text-sm">
@@ -135,6 +259,11 @@ export default function MaterialsPage() {
               <>Showing <span className="font-semibold text-stone-900">{materials.length}</span> of <span className="font-semibold text-stone-900">{total}</span> products</>
             )}
           </p>
+          {activeFilterCount > 0 && (
+            <button onClick={clearFilters} className="text-sm text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1">
+              <X className="w-3.5 h-3.5" /> Clear all filters
+            </button>
+          )}
         </div>
 
         {error && (
@@ -152,6 +281,11 @@ export default function MaterialsPage() {
             <p className="text-5xl mb-4">🔍</p>
             <h2 className="font-bold text-stone-700 text-lg mb-2">No materials found</h2>
             <p className="text-stone-500 text-sm">Try a different search or category filter.</p>
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="mt-4 text-orange-500 hover:text-orange-600 font-semibold text-sm underline">
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

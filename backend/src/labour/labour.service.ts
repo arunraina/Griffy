@@ -24,12 +24,12 @@ export class LabourService {
     search?: string;
     available?: boolean;
     maxRate?: number;
+    sortBy?: string;
   }) {
-    const { page = 1, limit = 20, trade, city, search, available, maxRate } = query;
+    const { page = 1, limit = 20, trade, city, search, available, maxRate, sortBy } = query;
 
     const qb = this.repo.createQueryBuilder('l')
       .leftJoinAndSelect('l.user', 'user')
-      .orderBy('l.rating', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -39,6 +39,18 @@ export class LabourService {
     if (maxRate) qb.andWhere('l.dailyRate <= :maxRate', { maxRate });
     if (search) {
       qb.andWhere('LOWER(l.bio) LIKE LOWER(:s)', { s: `%${search}%` });
+    }
+
+    if (sortBy === 'rate_asc') {
+      qb.orderBy('l.dailyRate', 'ASC');
+    } else if (sortBy === 'rate_desc') {
+      qb.orderBy('l.dailyRate', 'DESC');
+    } else if (sortBy === 'experience') {
+      qb.orderBy('l.experienceYears', 'DESC');
+    } else if (sortBy === 'newest') {
+      qb.orderBy('l.createdAt', 'DESC');
+    } else {
+      qb.orderBy('l.rating', 'DESC');
     }
 
     const [data, total] = await qb.getManyAndCount();

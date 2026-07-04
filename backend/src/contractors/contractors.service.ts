@@ -23,12 +23,12 @@ export class ContractorsService {
     city?: string;
     search?: string;
     available?: boolean;
+    sortBy?: string;
   }) {
-    const { page = 1, limit = 20, specialty, city, search, available } = query;
+    const { page = 1, limit = 20, specialty, city, search, available, sortBy } = query;
 
     const qb = this.repo.createQueryBuilder('c')
       .leftJoinAndSelect('c.user', 'user')
-      .orderBy('c.rating', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -37,6 +37,16 @@ export class ContractorsService {
     if (available !== undefined) qb.andWhere('c.isAvailable = :available', { available });
     if (search) {
       qb.andWhere('(LOWER(c.businessName) LIKE LOWER(:s) OR LOWER(c.bio) LIKE LOWER(:s))', { s: `%${search}%` });
+    }
+
+    if (sortBy === 'experience') {
+      qb.orderBy('c.experienceYears', 'DESC');
+    } else if (sortBy === 'price_asc') {
+      qb.orderBy('c.priceRangeMin', 'ASC');
+    } else if (sortBy === 'newest') {
+      qb.orderBy('c.createdAt', 'DESC');
+    } else {
+      qb.orderBy('c.rating', 'DESC');
     }
 
     const [data, total] = await qb.getManyAndCount();

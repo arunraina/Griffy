@@ -15,6 +15,7 @@ export class LabourController {
   @ApiQuery({ name: 'city', required: false })
   @ApiQuery({ name: 'available', required: false })
   @ApiQuery({ name: 'maxRate', required: false })
+  @ApiQuery({ name: 'sortBy', required: false })
   findAll(
     @Query('page') page: number,
     @Query('limit') limit: number,
@@ -23,8 +24,9 @@ export class LabourController {
     @Query('search') search: string,
     @Query('available') available: boolean,
     @Query('maxRate') maxRate: number,
+    @Query('sortBy') sortBy: string,
   ) {
-    return this.labourService.findAll({ page, limit, trade, city, search, available, maxRate });
+    return this.labourService.findAll({ page, limit, trade, city, search, available, maxRate, sortBy });
   }
 
   @Get('my')

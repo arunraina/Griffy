@@ -15,6 +15,7 @@ export class ContractorsController {
   @ApiQuery({ name: 'city', required: false })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'available', required: false })
+  @ApiQuery({ name: 'sortBy', required: false })
   findAll(
     @Query('page') page: number,
     @Query('limit') limit: number,
@@ -22,8 +23,9 @@ export class ContractorsController {
     @Query('city') city: string,
     @Query('search') search: string,
     @Query('available') available: boolean,
+    @Query('sortBy') sortBy: string,
   ) {
-    return this.contractorsService.findAll({ page, limit, specialty, city, search, available });
+    return this.contractorsService.findAll({ page, limit, specialty, city, search, available, sortBy });
   }
 
   @Get('my')
