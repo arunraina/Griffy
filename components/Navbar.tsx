@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, HardHat, ChevronDown, ShoppingCart } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, X, HardHat, ChevronDown, ShoppingCart, LogOut, User, Package, LayoutDashboard } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { initials } from "@/lib/constants";
 
 const navLinks = [
   {
@@ -22,7 +25,27 @@ const navLinks = [
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { count } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleLogout() {
+    logout();
+    setUserMenuOpen(false);
+    router.push("/");
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-100 shadow-sm">
@@ -79,7 +102,7 @@ export default function Navbar() {
             )}
           </nav>
 
-          {/* CTA */}
+          {/* CTA / User Menu */}
           <div className="hidden md:flex items-center gap-3">
             <Link href="/cart" className="relative p-2 text-stone-600 hover:text-orange-500 transition-colors">
               <ShoppingCart className="w-5 h-5" />
@@ -89,12 +112,53 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            <Link href="/login" className="text-stone-600 hover:text-stone-900 font-medium px-3 py-2 transition-colors">
-              Sign In
-            </Link>
-            <Link href="/register" className="btn-primary text-sm py-2">
-              Get Started Free
-            </Link>
+
+            {isAuthenticated && user ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-stone-100 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center">
+                    {initials(user.fullName)}
+                  </div>
+                  <span className="text-sm font-semibold text-stone-700 max-w-[100px] truncate">{user.fullName.split(" ")[0]}</span>
+                  <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-stone-100 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-stone-100 mb-1">
+                      <p className="font-semibold text-stone-900 text-sm truncate">{user.fullName}</p>
+                      <p className="text-xs text-stone-500 truncate">{user.email}</p>
+                    </div>
+                    <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
+                      <LayoutDashboard className="w-4 h-4" /> Dashboard
+                    </Link>
+                    <Link href="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
+                      <User className="w-4 h-4" /> Profile
+                    </Link>
+                    <Link href="/orders" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 text-stone-700 hover:text-orange-500 transition-colors text-sm">
+                      <Package className="w-4 h-4" /> My Orders
+                    </Link>
+                    <div className="border-t border-stone-100 mt-1 pt-1">
+                      <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 text-red-600 transition-colors text-sm">
+                        <LogOut className="w-4 h-4" /> Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link href="/login" className="text-stone-600 hover:text-stone-900 font-medium px-3 py-2 transition-colors">
+                  Sign In
+                </Link>
+                <Link href="/register" className="btn-primary text-sm py-2">
+                  Get Started Free
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile toggle */}
@@ -126,8 +190,20 @@ export default function Navbar() {
             About
           </Link>
           <div className="pt-3 border-t border-stone-100 flex flex-col gap-2">
-            <Link href="/login" className="btn-secondary text-center justify-center">Sign In</Link>
-            <Link href="/register" className="btn-primary justify-center">Get Started Free</Link>
+            {isAuthenticated && user ? (
+              <>
+                <Link href="/dashboard" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>Dashboard</Link>
+                <Link href="/orders" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>My Orders</Link>
+                <button onClick={() => { logout(); setMobileOpen(false); router.push("/"); }} className="text-red-600 font-semibold text-sm py-2">
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="btn-secondary text-center justify-center" onClick={() => setMobileOpen(false)}>Sign In</Link>
+                <Link href="/register" className="btn-primary justify-center" onClick={() => setMobileOpen(false)}>Get Started Free</Link>
+              </>
+            )}
           </div>
         </div>
       )}

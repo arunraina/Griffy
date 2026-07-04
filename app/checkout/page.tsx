@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, MapPin, CreditCard, CheckCircle2, ArrowRight, Shield, Truck, Clock, AlertCircle } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { loadRazorpayScript, createRazorpayOrder, verifyRazorpayPayment, openRazorpayCheckout } from "@/lib/razorpay";
+import { createOrder } from "@/lib/api";
 
 const INDIAN_STATES = [
   "Andhra Pradesh","Assam","Bihar","Chhattisgarh","Delhi","Goa","Gujarat","Haryana",
@@ -53,9 +54,16 @@ export default function CheckoutPage() {
 
     try {
       if (paymentMethod === "cod") {
-        // COD — no Razorpay, directly confirm
-        await new Promise((r) => setTimeout(r, 800));
-        setOrderResult({ id: "GRF" + Math.floor(100000 + Math.random() * 900000), paymentMethod: "cod" });
+        const firstItem = items[0];
+        const grOrder = await createOrder({
+          type: "material",
+          itemId: firstItem?.id ?? "",
+          amount: grandTotal,
+          quantity: firstItem?.quantity,
+          deliveryAddress,
+          paymentMethod: "cod",
+        });
+        setOrderResult({ id: grOrder.id, paymentMethod: "cod" });
         clearCart();
         setPlaced(true);
         return;
@@ -97,8 +105,19 @@ export default function CheckoutPage() {
               },
               token,
             );
+            const firstItem = items[0];
+            const grOrder = await createOrder({
+              type: "material",
+              itemId: firstItem?.id ?? "",
+              amount: grandTotal,
+              quantity: firstItem?.quantity,
+              deliveryAddress,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              paymentMethod,
+            });
             setOrderResult({
-              id: order.razorpay_order_id,
+              id: grOrder.id,
               paymentMethod,
               paymentId: response.razorpay_payment_id,
             });
