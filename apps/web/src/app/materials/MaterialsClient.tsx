@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase';
 import { getRegionData, type RegionKey } from '@/lib/regionUtils';
 import { isSubEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
+import SaveButton from '@/components/SaveButton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1034,7 +1035,7 @@ function ProductCard({ product: p, region, priceFactor, warning, cartQty, onAdd,
             className="px-3 py-2 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] rounded-xl transition-colors whitespace-nowrap">
             Details
           </Link>
-          <button className="px-3 py-2 text-sm text-gray-400 hover:text-red-500 border border-gray-100 hover:border-red-200 rounded-xl transition-colors">♡</button>
+          <SaveButton type="material" id={p.id} title={p.name} subtitle={p.brand} href={`/materials/${p.id}`} emoji="🧱" />
         </div>
       </div>
     </div>

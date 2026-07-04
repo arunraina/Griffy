@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import SaveButton from '@/components/SaveButton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -410,6 +411,7 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
         <button className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] py-2 rounded-xl transition-colors">
           Contact
         </button>
+        <SaveButton type="contractor" id={c.id} title={c.name} subtitle={c.type} href={`/contractors/${c.id}`} emoji="🏗️" />
       </div>
     </div>
   );

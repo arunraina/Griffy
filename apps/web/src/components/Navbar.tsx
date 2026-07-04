@@ -76,6 +76,12 @@ export default function Navbar() {
 
         {/* Right — desktop */}
         <div className="hidden md:flex items-center gap-3">
+          <Link href="/search" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Search">
+            <span className="text-lg">🔍</span>
+          </Link>
+          <Link href="/saved" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Saved">
+            <span className="text-lg">♡</span>
+          </Link>
           <Link href="/cart" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Cart">
             <span className="text-lg">🛒</span>
             {cartCount > 0 && (
@@ -163,6 +169,14 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
+            <Link href="/search" onClick={() => setMenuOpen(false)}
+              className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
+              🔍 Search
+            </Link>
+            <Link href="/saved" onClick={() => setMenuOpen(false)}
+              className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
+              ♡ Saved
+            </Link>
             <Link href="/cart" onClick={() => setMenuOpen(false)}
               className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
               🛒 Cart{cartCount > 0 ? ` (${cartCount})` : ''}

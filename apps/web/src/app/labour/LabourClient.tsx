@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import SaveButton from '@/components/SaveButton';
 
 type SortKey = 'relevance' | 'rating' | 'price';
 type RatingFilter = 'any' | '4' | '4.5';
@@ -257,6 +258,7 @@ function LabourCard({ profile: p, rank }: { profile: LabourProfile; rank: number
         <button className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] py-2 rounded-xl transition-colors">
           Contact
         </button>
+        <SaveButton type="labour" id={p.id} title={p.name} subtitle={p.skillType} href={`/labour/${p.id}`} emoji="👷" />
       </div>
     </div>
   );

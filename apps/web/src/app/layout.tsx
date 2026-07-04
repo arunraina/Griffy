@@ -4,6 +4,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
+import { SavedProvider } from '@/context/SavedContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,9 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.className} bg-[#FDF8F5]`}>
         <CartProvider>
-          <Navbar />
-          {children}
-          <Footer />
+          <SavedProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </SavedProvider>
         </CartProvider>
       </body>
     </html>

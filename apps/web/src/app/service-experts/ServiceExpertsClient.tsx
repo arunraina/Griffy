@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import SaveButton from '@/components/SaveButton';
 
 type SortKey = 'relevance' | 'rating' | 'price';
 type RatingFilter = 'any' | '4' | '4.5';
@@ -266,6 +267,7 @@ function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank:
         <button className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] py-2 rounded-xl transition-colors">
           Contact
         </button>
+        <SaveButton type="service_expert" id={p.id} title={p.name} subtitle={p.expertiseType} href={`/service-experts/${p.id}`} emoji="⚡" />
       </div>
     </div>
   );
