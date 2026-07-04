@@ -4,20 +4,28 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { isEnabled } from '@/lib/featureFlags';
 
 interface UserInfo { name: string }
 
-const NAV_LINKS = [
-  { href: '/contractors',    label: 'Find Contractors' },
-  { href: '/labour',         label: 'Labour' },
-  { href: '/service-experts',label: 'Service Experts' },
-  { href: '/materials',      label: 'Materials' },
-  { href: '/properties',     label: 'Properties' },
-];
+function getNavLinks() {
+  return [
+    isEnabled('contractors')     && { href: '/contractors',     label: 'Find Contractors' },
+    isEnabled('labour')          && { href: '/labour',          label: 'Labour' },
+    isEnabled('service_experts') && { href: '/service-experts', label: 'Service Experts' },
+    isEnabled('materials')       && { href: '/materials',       label: 'Materials' },
+    isEnabled('properties')
+      ? { href: '/properties', label: 'Properties' }
+      : isEnabled('land')
+      ? { href: '/land',       label: 'Land' }
+      : null,
+  ].filter(Boolean) as { href: string; label: string }[];
+}
 
 export default function Navbar() {
   const router   = useRouter();
   const supabase = createClient();
+  const NAV_LINKS = getNavLinks();
 
   const [user,       setUser]       = useState<UserInfo | null>(null);
   const [menuOpen,   setMenuOpen]   = useState(false);
@@ -86,35 +94,36 @@ export default function Navbar() {
               <div className="relative"
                 onMouseEnter={() => setSignupOpen(true)}
                 onMouseLeave={() => setSignupOpen(false)}>
-                <button
-                  onClick={() => setSignupOpen(o => !o)}
+                <Link href="/signup"
                   className="flex items-center gap-1 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2 rounded-lg transition-colors">
                   Sign up
                   <svg className={`w-3 h-3 transition-transform ${signupOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
                     <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                </button>
+                </Link>
                 {signupOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-[#EBE0D8] rounded-xl shadow-lg overflow-hidden z-50">
-                    <Link href="/signup?type=homeowner"
-                      onClick={() => setSignupOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
-                      <span className="text-base">🏠</span>
-                      <div>
-                        <p className="font-semibold text-xs">Homeowner</p>
-                        <p className="text-[11px] text-[#A08070]">Hire & buy materials</p>
-                      </div>
-                    </Link>
-                    <div className="h-px bg-[#F0E8E2]" />
-                    <Link href="/signup?type=professional"
-                      onClick={() => setSignupOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
-                      <span className="text-base">💼</span>
-                      <div>
-                        <p className="font-semibold text-xs">Professional</p>
-                        <p className="text-[11px] text-[#A08070]">Work & sell on Griffy</p>
-                      </div>
-                    </Link>
+                  <div className="absolute right-0 top-full pt-1.5 w-52 z-50">
+                    <div className="bg-white border border-[#EBE0D8] rounded-xl shadow-lg overflow-hidden">
+                      <Link href="/signup?type=homeowner"
+                        onClick={() => setSignupOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                        <span className="text-base">🏠</span>
+                        <div>
+                          <p className="font-semibold text-xs">Homeowner</p>
+                          <p className="text-[11px] text-[#A08070]">Hire & buy materials</p>
+                        </div>
+                      </Link>
+                      <div className="h-px bg-[#F0E8E2]" />
+                      <Link href="/signup?type=professional"
+                        onClick={() => setSignupOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                        <span className="text-base">💼</span>
+                        <div>
+                          <p className="font-semibold text-xs">Professional</p>
+                          <p className="text-[11px] text-[#A08070]">Work & sell on Griffy</p>
+                        </div>
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>

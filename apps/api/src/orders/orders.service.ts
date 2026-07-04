@@ -9,7 +9,7 @@ export class OrdersService {
   findByBuyer(buyerId: string) {
     return this.prisma.order.findMany({
       where: { buyerId },
-      include: { material: { select: { name: true, imageUrl: true } } },
+      include: { material: { select: { name: true, imageUrls: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }

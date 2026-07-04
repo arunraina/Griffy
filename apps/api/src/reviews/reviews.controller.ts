@@ -20,7 +20,8 @@ export class ReviewsController {
   @UseGuards(AuthGuard)
   create(
     @CurrentUser() user: User,
-    @Body() body: { targetType: ReviewTargetType; targetId: string; rating: number; comment?: string },
+    @Body()
+    body: { targetType: ReviewTargetType; targetId: string; rating: number; comment?: string },
   ) {
     return this.reviews.create(user.id, body);
   }

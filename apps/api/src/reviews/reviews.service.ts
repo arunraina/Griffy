@@ -2,16 +2,25 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewTargetType } from '@prisma/client';
 
+const TARGET_FK: Record<ReviewTargetType, string> = {
+  CONTRACTOR: 'contractorProfileId',
+  LABOUR: 'labourProfileId',
+  SERVICE_EXPERT: 'serviceExpertProfileId',
+  MATERIAL_SUPPLIER: 'materialSupplierProfileId',
+  BUILDER: 'builderProfileId',
+  PROPERTY_AGENT: 'propertyAgentProfileId',
+  MATERIAL: 'materialId',
+  LAND: 'landId',
+  PROPERTY: 'propertyId',
+};
+
 @Injectable()
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
   findByTarget(targetType: ReviewTargetType, targetId: string) {
     return this.prisma.review.findMany({
-      where:
-        targetType === 'SERVICE_PROVIDER'
-          ? { serviceProviderId: targetId }
-          : { materialId: targetId },
+      where: { targetType, [TARGET_FK[targetType]]: targetId },
       include: { reviewer: { select: { name: true, avatarUrl: true } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -31,32 +40,48 @@ export class ReviewsService {
         targetType: data.targetType,
         rating: data.rating,
         comment: data.comment,
-        ...(data.targetType === 'SERVICE_PROVIDER'
-          ? { serviceProviderId: data.targetId }
-          : { materialId: data.targetId }),
+        [TARGET_FK[data.targetType]]: data.targetId,
       },
     });
 
-    await this.updateAggregateRating(data.targetType, data.targetId);
+    await this.updateAggregates(data.targetType, data.targetId);
     return review;
   }
 
-  private async updateAggregateRating(targetType: ReviewTargetType, targetId: string) {
+  private async updateAggregates(targetType: ReviewTargetType, targetId: string) {
+    const fkField = TARGET_FK[targetType];
     const agg = await this.prisma.review.aggregate({
-      where:
-        targetType === 'SERVICE_PROVIDER'
-          ? { serviceProviderId: targetId }
-          : { materialId: targetId },
+      where: { targetType, [fkField]: targetId },
       _avg: { rating: true },
       _count: true,
     });
 
-    const update = { rating: agg._avg.rating ?? 0, reviewCount: agg._count };
+    const avgRating = agg._avg.rating ?? 0;
+    const totalReviews = agg._count;
 
-    if (targetType === 'SERVICE_PROVIDER') {
-      await this.prisma.serviceProvider.update({ where: { id: targetId }, data: update });
-    } else {
-      await this.prisma.material.update({ where: { id: targetId }, data: update });
+    switch (targetType) {
+      case 'CONTRACTOR':
+        await this.prisma.contractorProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'LABOUR':
+        await this.prisma.labourProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'SERVICE_EXPERT':
+        await this.prisma.serviceExpertProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'MATERIAL_SUPPLIER':
+        await this.prisma.materialSupplierProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'BUILDER':
+        await this.prisma.builderProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'PROPERTY_AGENT':
+        await this.prisma.propertyAgentProfile.update({ where: { id: targetId }, data: { avgRating, totalReviews } });
+        break;
+      case 'MATERIAL':
+        await this.prisma.material.update({ where: { id: targetId }, data: { avgRating, reviewCount: totalReviews } });
+        break;
+      // LAND and PROPERTY have no denormalized rating fields
     }
   }
 }

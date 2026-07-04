@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class BookingsService {
@@ -9,15 +9,19 @@ export class BookingsService {
   findByCustomer(customerId: string) {
     return this.prisma.booking.findMany({
       where: { customerId },
-      include: { serviceProvider: { include: { user: { select: { name: true } } } } },
+      include: {
+        provider: { select: { id: true, name: true, avatarUrl: true, phone: true } },
+      },
       orderBy: { scheduledAt: 'desc' },
     });
   }
 
-  findByServiceProvider(serviceProviderId: string) {
+  findByProvider(providerId: string) {
     return this.prisma.booking.findMany({
-      where: { serviceProviderId },
-      include: { customer: { select: { name: true, phone: true } } },
+      where: { providerId },
+      include: {
+        customer: { select: { id: true, name: true, phone: true, email: true } },
+      },
       orderBy: { scheduledAt: 'asc' },
     });
   }
@@ -25,19 +29,28 @@ export class BookingsService {
   async findOne(id: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
-      include: { customer: true, serviceProvider: { include: { user: true } } },
+      include: {
+        customer: { select: { name: true, phone: true } },
+        provider: { select: { name: true, avatarUrl: true } },
+      },
     });
     if (!booking) throw new NotFoundException('Booking not found');
     return booking;
   }
 
-  create(customerId: string, data: { serviceProviderId: string; scheduledAt: Date; notes?: string; amount: number }) {
-    return this.prisma.booking.create({
-      data: { customerId, ...data },
-    });
+  create(
+    customerId: string,
+    data: { providerId: string; providerRole: UserRole; scheduledAt: Date; notes?: string; amount: number },
+  ) {
+    return this.prisma.booking.create({ data: { customerId, ...data } });
   }
 
-  updateStatus(id: string, status: BookingStatus, razorpayPaymentId?: string) {
+  async updateStatus(id: string, status: BookingStatus, userId?: string, razorpayPaymentId?: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (userId && booking.providerId !== userId && booking.customerId !== userId) {
+      throw new ForbiddenException();
+    }
     return this.prisma.booking.update({
       where: { id },
       data: { status, ...(razorpayPaymentId && { razorpayPaymentId }) },

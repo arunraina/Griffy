@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { getEnabledSubs, FEATURE_FLAGS } from '@/lib/featureFlags';
 
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 
@@ -93,7 +94,7 @@ const PROJECT_TYPES = [
 ];
 
 const TRADES       = ['Civil', 'Electrical', 'Plumbing', 'Carpentry', 'Painting', 'All'];
-const TRADE_SKILLS = ['Mason', 'Carpenter', 'Electrician', 'Plumber', 'Painter', 'Helper'];
+const TRADE_SKILLS = getEnabledSubs('labour').map(key => FEATURE_FLAGS.labour.subcategories[key].name);
 const LANGUAGES    = ['Hindi', 'Urdu', 'Punjabi', 'English', 'Kashmiri'];
 const TEAM_SIZES   = [
   { value: 'just_me', label: 'Just me' },
@@ -115,12 +116,11 @@ const LISTING_TYPES = [
   { value: 'for_rent',          icon: '📋', label: 'For Rent / Lease',   desc: 'Monthly or annual lease' },
   { value: 'joint_development', icon: '🤝', label: 'Joint Development',  desc: 'Partner to develop the land' },
 ];
-const LAND_TYPES = [
-  { value: 'residential',  icon: '🏡', label: 'Residential Plot' },
-  { value: 'agricultural', icon: '🌾', label: 'Agricultural' },
-  { value: 'commercial',   icon: '🏢', label: 'Commercial' },
-  { value: 'industrial',   icon: '🏭', label: 'Industrial' },
-];
+const LAND_TYPES = getEnabledSubs('land').map(key => ({
+  value: key,
+  label: FEATURE_FLAGS.land.subcategories[key].name,
+  icon:  FEATURE_FLAGS.land.subcategories[key].icon,
+}));
 const AREA_UNITS = ['sq ft', 'sq yards', 'acres', 'bigha'];
 const LAND_AMENITIES = ['Road Access', 'Water Connection', 'Electricity', 'Boundary Wall', 'Corner Plot', 'RERA Registered'];
 const INDIAN_STATES = [
@@ -138,13 +138,11 @@ const PROJECT_STAGES = [
   { value: 'ready_to_move', icon: '✅', label: 'Ready to Move' },
 ];
 
-const MATERIAL_CATEGORIES = [
-  { value: 'cement_steel',   label: 'Cement & Steel',  icon: '🏗️' },
-  { value: 'tiles_flooring', label: 'Tiles & Flooring', icon: '🟫' },
-  { value: 'sanitary_ware',  label: 'Sanitary Ware',   icon: '🚿' },
-  { value: 'electricals',    label: 'Electricals',      icon: '⚡' },
-  { value: 'all_materials',  label: 'All Materials',    icon: '📦' },
-];
+const MATERIAL_CATEGORIES = getEnabledSubs('materials').map(key => ({
+  value: key,
+  label: FEATURE_FLAGS.materials.subcategories[key].name,
+  icon:  FEATURE_FLAGS.materials.subcategories[key].icon,
+}));
 
 export default function OnboardingPage() {
   const router   = useRouter();

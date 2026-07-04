@@ -9,8 +9,12 @@ export class MaterialsController {
   constructor(private readonly materials: MaterialsService) {}
 
   @Get()
-  findAll(@Query('search') search?: string) {
-    return this.materials.findAll(search);
+  findAll(
+    @Query('search') search?: string,
+    @Query('category') category?: string,
+    @Query('subcategory') subcategory?: string,
+  ) {
+    return this.materials.findAll(search, category, subcategory);
   }
 
   @Get(':id')
@@ -22,20 +26,44 @@ export class MaterialsController {
   @UseGuards(AuthGuard)
   create(
     @CurrentUser() user: User,
-    @Body() body: { name: string; description?: string; price: number; unit: string; stock: number; imageUrl?: string },
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      category: string;
+      subcategory: string;
+      price: number;
+      unit: string;
+      stock: number;
+      imageUrls?: string[];
+    },
   ) {
     return this.materials.create(user.id, body);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard)
-  update(@Param('id') id: string, @Body() body: { name?: string; description?: string | null; price?: number; unit?: string; stock?: number; imageUrl?: string | null }) {
-    return this.materials.update(id, body);
+  update(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      category?: string;
+      subcategory?: string;
+      price?: number;
+      unit?: string;
+      stock?: number;
+      imageUrls?: string[];
+    },
+  ) {
+    return this.materials.update(id, user.id, body);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard)
-  remove(@Param('id') id: string) {
-    return this.materials.remove(id);
+  remove(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.materials.remove(id, user.id);
   }
 }

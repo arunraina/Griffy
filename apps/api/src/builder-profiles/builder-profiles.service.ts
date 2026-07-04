@@ -1,0 +1,77 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { ApprovalStatus } from '@prisma/client';
+
+type CreateDto = {
+  companyName: string;
+  serviceCities: string[];
+  registrationNumber?: string;
+  specializations?: string[];
+  bio?: string;
+  portfolioImages?: string[];
+};
+
+type UpdateDto = Partial<CreateDto>;
+
+@Injectable()
+export class BuilderProfilesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  findAll(city?: string) {
+    return this.prisma.builderProfile.findMany({
+      where: {
+        approvalStatus: ApprovalStatus.APPROVED,
+        ...(city ? { serviceCities: { has: city } } : {}),
+      },
+      include: { user: { select: { name: true, avatarUrl: true } } },
+      orderBy: { avgRating: 'desc' },
+    });
+  }
+
+  async findOne(id: string) {
+    const profile = await this.prisma.builderProfile.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, avatarUrl: true, email: true } } },
+    });
+    if (!profile) throw new NotFoundException('Builder profile not found');
+    return profile;
+  }
+
+  findByUser(userId: string) {
+    return this.prisma.builderProfile.findUnique({ where: { userId } });
+  }
+
+  async create(userId: string, data: CreateDto) {
+    const existing = await this.prisma.builderProfile.findUnique({ where: { userId } });
+    if (existing) throw new ConflictException('Profile already exists');
+    return this.prisma.builderProfile.create({
+      data: { userId, ...data },
+    });
+  }
+
+  async update(id: string, userId: string, data: UpdateDto) {
+    const profile = await this.prisma.builderProfile.findUnique({ where: { id } });
+    if (!profile) throw new NotFoundException('Builder profile not found');
+    if (profile.userId !== userId) throw new ForbiddenException();
+    return this.prisma.builderProfile.update({ where: { id }, data });
+  }
+
+  async setApprovalStatus(id: string, status: ApprovalStatus, adminId: string, rejectionReason?: string) {
+    const profile = await this.prisma.builderProfile.findUnique({ where: { id } });
+    if (!profile) throw new NotFoundException('Builder profile not found');
+    return this.prisma.builderProfile.update({
+      where: { id },
+      data: {
+        approvalStatus: status,
+        approvedBy: adminId,
+        approvedAt: status === ApprovalStatus.APPROVED ? new Date() : null,
+        rejectionReason: rejectionReason ?? null,
+      },
+    });
+  }
+}

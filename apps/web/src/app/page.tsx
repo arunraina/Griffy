@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SEO_KEYWORDS } from '@/lib/seo';
+import { isEnabled, isSubEnabled } from '@/lib/featureFlags';
 import { HomePriceTicker, CostCalculator } from './_components/HomeClientSections';
 
 export const metadata: Metadata = {
@@ -45,15 +46,15 @@ export default function HomePage() {
 
           {/* Quick links */}
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-gray-500 mb-8">
-            {[
-              { label: 'Find Contractors', href: '/contractors' },
-              { label: 'Hire Labour',      href: '/labour' },
-              { label: 'Book Experts',     href: '/service-experts' },
-              { label: 'Materials',        href: '/materials' },
-              { label: 'Land',             href: '/land' },
-              { label: 'Buy Home',         href: '/properties?tab=buy' },
-              { label: 'Rent',             href: '/properties?tab=rent' },
-            ].map((link, i, arr) => (
+            {([
+              isEnabled('contractors')     && { label: 'Find Contractors', href: '/contractors' },
+              isEnabled('labour')          && { label: 'Hire Labour',      href: '/labour' },
+              isEnabled('service_experts') && { label: 'Book Experts',     href: '/service-experts' },
+              isEnabled('materials')       && { label: 'Materials',        href: '/materials' },
+              (isEnabled('land') && !isEnabled('properties')) && { label: 'Land', href: '/land' },
+              (isEnabled('properties') && isSubEnabled('properties', 'buy_home'))  && { label: 'Buy Home', href: '/properties?tab=buy' },
+              (isEnabled('properties') && isSubEnabled('properties', 'rent_home')) && { label: 'Rent',     href: '/properties?tab=rent' },
+            ].filter(Boolean) as { label: string; href: string }[]).map((link, i, arr) => (
               <span key={link.label} className="flex items-center gap-3">
                 <Link href={link.href} className="hover:text-[#C0593A] transition-colors font-medium">
                   {link.label}
@@ -90,18 +91,22 @@ export default function HomePage() {
             Everything you need to build, renovate or buy
           </p>
 
-          {/* Row 1: 3 cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
             {SERVICE_CARDS.slice(0, 3).map(card => (
               <ServiceCard key={card.title} {...card} />
             ))}
           </div>
-          {/* Row 2: 3 cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {SERVICE_CARDS.slice(3).map(card => (
-              <ServiceCard key={card.title} {...card} />
-            ))}
-          </div>
+          {SERVICE_CARDS.slice(3).length > 0 && (
+            <div className={[
+              'grid grid-cols-1 gap-5',
+              SERVICE_CARDS.slice(3).length === 1 ? 'sm:grid-cols-1' :
+              SERVICE_CARDS.slice(3).length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3',
+            ].join(' ')}>
+              {SERVICE_CARDS.slice(3).map(card => (
+                <ServiceCard key={card.title} {...card} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -209,16 +214,20 @@ export default function HomePage() {
             ))}
           </div>
 
-          <p className="text-xs font-semibold text-[#A08070] uppercase tracking-wider mb-3">Properties for Sale & Rent</p>
-          <div className="flex flex-wrap gap-3">
-            {PROPERTY_CITIES.map(c => (
-              <Link key={c.name} href={`/properties?city=${encodeURIComponent(c.name)}`}
-                className="group flex items-center gap-2 bg-white border border-[#EBE0D8] hover:border-[#C0593A] rounded-xl px-4 py-2.5 text-sm font-medium text-[#3D2B22] hover:text-[#C0593A] transition-all shadow-sm">
-                <span>{c.flag}</span> {c.name}
-                <span className="text-xs text-[#A08070] group-hover:text-[#C0593A]">{c.props}</span>
-              </Link>
-            ))}
-          </div>
+          {isEnabled('properties') && (
+            <>
+              <p className="text-xs font-semibold text-[#A08070] uppercase tracking-wider mb-3">Properties for Sale &amp; Rent</p>
+              <div className="flex flex-wrap gap-3">
+                {PROPERTY_CITIES.map(c => (
+                  <Link key={c.name} href={`/properties?city=${encodeURIComponent(c.name)}`}
+                    className="group flex items-center gap-2 bg-white border border-[#EBE0D8] hover:border-[#C0593A] rounded-xl px-4 py-2.5 text-sm font-medium text-[#3D2B22] hover:text-[#C0593A] transition-all shadow-sm">
+                    <span>{c.flag}</span> {c.name}
+                    <span className="text-xs text-[#A08070] group-hover:text-[#C0593A]">{c.props}</span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -278,10 +287,12 @@ export default function HomePage() {
                 className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-8 py-3.5 rounded-xl transition-colors border border-white/20">
                 List Your Materials
               </Link>
-              <Link href="/signup?type=professional"
-                className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-8 py-3.5 rounded-xl transition-colors border border-white/20">
-                List a Property
-              </Link>
+              {isEnabled('properties') && (
+                <Link href="/signup?type=professional"
+                  className="inline-block bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-8 py-3.5 rounded-xl transition-colors border border-white/20">
+                  List a Property
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -294,49 +305,37 @@ export default function HomePage() {
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const SERVICE_CARDS = [
-  {
-    icon: '🏗️',
-    title: 'Find Contractors',
+  isEnabled('contractors') && {
+    icon: '🏗️', title: 'Find Contractors',
     desc: 'Architects, interior designers, civil & renovation contractors for your project',
-    stats: '500+ verified contractors',
-    href: '/contractors',
+    stats: '500+ verified contractors', href: '/contractors',
   },
-  {
-    icon: '👷',
-    title: 'Hire Labour',
+  isEnabled('labour') && {
+    icon: '👷', title: 'Hire Labour',
     desc: 'Masons, carpenters, painters, tile fixers & daily wage workers near you',
-    stats: '2,000+ skilled workers',
-    href: '/labour',
+    stats: '2,000+ skilled workers', href: '/labour',
   },
-  {
-    icon: '⚡',
-    title: 'Book Service Experts',
+  isEnabled('service_experts') && {
+    icon: '⚡', title: 'Book Service Experts',
     desc: 'Electricians, plumbers, AC technicians, waterproofing & specialist services',
-    stats: '800+ service experts',
-    href: '/service-experts',
+    stats: '800+ service experts', href: '/service-experts',
   },
-  {
-    icon: '🧱',
-    title: 'Buy Materials',
+  isEnabled('materials') && {
+    icon: '🧱', title: 'Buy Materials',
     desc: 'Cement, TMT steel, tiles, sand, doors, windows & all building materials',
-    stats: '10,000+ products listed',
-    href: '/materials',
+    stats: '10,000+ products listed', href: '/materials',
   },
-  {
-    icon: '🌍',
-    title: 'Find Land',
+  (isEnabled('land') && !isEnabled('properties')) && {
+    icon: '🌍', title: 'Find Land',
     desc: 'Residential plots, agricultural land & commercial properties for sale or rent',
-    stats: '1,000+ land listings',
-    href: '/land',
+    stats: '1,000+ land listings', href: '/land',
   },
-  {
-    icon: '🏠',
-    title: 'Buy / Rent Homes',
+  isEnabled('properties') && {
+    icon: '🏠', title: 'Buy / Rent Homes',
     desc: 'Apartments, villas, independent houses — ready to move or under construction',
-    stats: '5,000+ properties listed',
-    href: '/properties',
+    stats: '5,000+ properties listed', href: '/properties',
   },
-];
+].filter(Boolean) as { icon: string; title: string; desc: string; stats: string; href: string }[];
 
 function ServiceCard({ icon, title, desc, stats, href }: {
   icon: string; title: string; desc: string; stats: string; href: string;

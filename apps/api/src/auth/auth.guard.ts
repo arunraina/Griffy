@@ -5,15 +5,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
 import { Request } from 'express';
 import ws from 'ws';
+import { PrismaService } from '../prisma/prisma.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly supabase: SupabaseClient;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.supabase = createClient(
       config.getOrThrow('SUPABASE_URL'),
       config.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
@@ -34,7 +39,20 @@ export class AuthGuard implements CanActivate {
 
     if (error || !user) throw new UnauthorizedException('Invalid token');
 
-    (request as Request & { supabaseUser: User }).supabaseUser = user;
+    const dbUser = await this.prisma.user.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        email: user.email!,
+        name: (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0],
+        phone: (user.phone as string | undefined) ?? null,
+        role: 'HOMEOWNER',
+      },
+      update: {},
+    });
+
+    (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).supabaseUser = user;
+    (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).dbUser = dbUser;
     return true;
   }
 

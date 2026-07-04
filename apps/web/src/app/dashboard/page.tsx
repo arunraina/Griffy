@@ -4,7 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-
+import { isEnabled, isSubEnabled } from '@/lib/featureFlags';
+import {
+  fetchMyBookings, fetchIncomingBookings,
+  confirmBooking, cancelBooking,
+  type Booking,
+} from '@/lib/bookings';
 
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 
@@ -130,30 +135,36 @@ export default function DashboardPage() {
 // ── HOMEOWNER DASHBOARD ───────────────────────────────────────────────────────
 
 function HomeownerDashboard({ name }: { name: string }) {
+  const [bookings, setBookings] = useState<Booking[] | null>(null);
+
+  useEffect(() => {
+    fetchMyBookings().then(setBookings).catch(() => setBookings([]));
+  }, []);
+
+  const pendingCount   = bookings?.filter(b => b.status === 'PENDING').length   ?? 0;
+  const confirmedCount = bookings?.filter(b => b.status === 'CONFIRMED').length ?? 0;
+
   return (
     <div className="space-y-8">
       <WelcomeHeader emoji="👋" title={`Welcome back, ${name}`} subtitle="Here's what's happening with your projects." />
 
       <StatGrid stats={[
-        { icon: '🏗️', value: '0', label: 'Active Projects' },
-        { icon: '📅', value: '0', label: 'Pending Bookings' },
-        { icon: '📦', value: '0', label: 'Material Orders' },
-        { icon: '👷', value: '0', label: 'Labour Hired' },
-        { icon: '₹',  value: '₹0', label: 'Total Spent' },
+        { icon: '📅', value: String(pendingCount),   label: 'Pending Bookings' },
+        { icon: '✅', value: String(confirmedCount), label: 'Confirmed' },
+        { icon: '🏗️', value: '0',                   label: 'Active Projects' },
+        { icon: '📦', value: '0',                   label: 'Material Orders' },
       ]} />
 
-      <QuickActions actions={[
-        { label: 'Find Contractors', href: '/contractors',         icon: '🔨' },
-        { label: 'Browse Materials', href: '/materials',           icon: '🧱' },
-        { label: 'Book a Service',   href: '/service-experts',     icon: '📅' },
-        { label: 'Hire Labour',      href: '/labour',              icon: '👷' },
-        { label: 'Buy Home',         href: '/properties?tab=buy',  icon: '🏠' },
-        { label: 'Rent a Home',      href: '/properties?tab=rent', icon: '🔑' },
-      ]} />
+      <QuickActions actions={([
+        isEnabled('contractors')     && { label: 'Find Contractors', href: '/contractors',     icon: '🔨' },
+        isEnabled('materials')       && { label: 'Browse Materials', href: '/materials',       icon: '🧱' },
+        isEnabled('service_experts') && { label: 'Book a Service',   href: '/service-experts', icon: '📅' },
+        isEnabled('labour')          && { label: 'Hire Labour',      href: '/labour',          icon: '👷' },
+        (isEnabled('properties') && isSubEnabled('properties', 'buy_home'))  && { label: 'Buy Home',    href: '/properties?tab=buy',  icon: '🏠' },
+        (isEnabled('properties') && isSubEnabled('properties', 'rent_home')) && { label: 'Rent a Home', href: '/properties?tab=rent', icon: '🔑' },
+      ].filter(Boolean) as { label: string; href: string; icon: string }[])} />
 
-      <RecentSection title="Recent Activity">
-        <EmptyState icon="🏗️" message="No activity yet. Start by finding a contractor!" cta="Find Contractors" href="/contractors" />
-      </RecentSection>
+      <MyBookingsList bookings={bookings} />
     </div>
   );
 }
@@ -253,14 +264,7 @@ function ContractorDashboard({ name, contractorType, status, verified, featured,
         { label: 'View Bookings',  href: '/bookings', icon: '📅' },
       ]} />
 
-      <RecentSection title={isLabour ? 'Recent Jobs' : 'Recent Leads'}>
-        <EmptyState
-          icon={isLabour ? '👷' : '📢'}
-          message={isLabour ? 'No jobs yet. Browse open requests and apply!' : 'No leads yet. Complete your profile to get discovered!'}
-          cta={isLabour ? 'Browse Jobs' : 'Update Profile'}
-          href={isLabour ? '/jobs' : '/profile'}
-        />
-      </RecentSection>
+      <IncomingBookingsList />
       </div>
     </div>
   );
@@ -468,6 +472,182 @@ function LandOwnerDashboard({ name }: { name: string }) {
           href="/land/new"
         />
       </RecentSection>
+    </div>
+  );
+}
+
+// ── BOOKING COMPONENTS ────────────────────────────────────────────────────────
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  PENDING:     { label: 'Pending',     cls: 'bg-yellow-50  text-yellow-700  border-yellow-200'  },
+  CONFIRMED:   { label: 'Confirmed',   cls: 'bg-green-50   text-green-700   border-green-200'   },
+  IN_PROGRESS: { label: 'In Progress', cls: 'bg-blue-50    text-blue-700    border-blue-200'    },
+  COMPLETED:   { label: 'Completed',   cls: 'bg-gray-50    text-gray-600    border-gray-200'    },
+  CANCELLED:   { label: 'Cancelled',   cls: 'bg-red-50     text-red-600     border-red-200'     },
+};
+
+function MyBookingsList({ bookings }: { bookings: Booking[] | null }) {
+  if (bookings === null) {
+    return (
+      <div>
+        <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">My Bookings</h2>
+        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm flex items-center justify-center py-10">
+          <svg className="animate-spin h-6 w-6 text-[#C0593A]" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (bookings.length === 0) {
+    return (
+      <RecentSection title="My Bookings">
+        <EmptyState icon="📅" message="No bookings yet. Find a contractor or service expert to get started!" cta="Find Contractors" href="/contractors" />
+      </RecentSection>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">My Bookings</h2>
+      <div className="space-y-3">
+        {bookings.map(b => {
+          const badge = STATUS_BADGE[b.status] ?? STATUS_BADGE['PENDING'];
+          const date  = new Date(b.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          const providerInitials = (b.provider?.name ?? 'P').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+          return (
+            <div key={b.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4 flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FAEEE9] text-[#C0593A] text-xs font-bold flex items-center justify-center flex-shrink-0">
+                {providerInitials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-[#2C1810]">{b.provider?.name ?? 'Provider'}</p>
+                    <p className="text-xs text-[#A08070] mt-0.5">📅 {date}</p>
+                    {b.notes && <p className="text-xs text-[#6B5248] mt-1 line-clamp-2">{b.notes}</p>}
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function IncomingBookingsList() {
+  const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchIncomingBookings().then(setBookings).catch(() => setBookings([]));
+  }, []);
+
+  async function handleConfirm(id: string) {
+    if (updating) return;
+    setUpdating(id);
+    setBookings(prev => prev?.map(b => b.id === id ? { ...b, status: 'CONFIRMED' as const } : b) ?? null);
+    try {
+      await confirmBooking(id);
+    } catch {
+      setBookings(prev => prev?.map(b => b.id === id ? { ...b, status: 'PENDING' as const } : b) ?? null);
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function handleCancel(id: string) {
+    if (updating) return;
+    setUpdating(id);
+    setBookings(prev => prev?.map(b => b.id === id ? { ...b, status: 'CANCELLED' as const } : b) ?? null);
+    try {
+      await cancelBooking(id);
+    } catch {
+      setBookings(prev => prev?.map(b => b.id === id ? { ...b, status: 'PENDING' as const } : b) ?? null);
+    } finally {
+      setUpdating(null);
+    }
+  }
+
+  if (bookings === null) {
+    return (
+      <div>
+        <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">Incoming Bookings</h2>
+        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm flex items-center justify-center py-10">
+          <svg className="animate-spin h-6 w-6 text-[#C0593A]" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (bookings.length === 0) {
+    return (
+      <RecentSection title="Incoming Bookings">
+        <EmptyState icon="📢" message="No booking requests yet. Complete your profile to get discovered!" cta="Update Profile" href="/profile" />
+      </RecentSection>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-[#1a1a1a] mb-3">Incoming Bookings</h2>
+      <div className="space-y-3">
+        {bookings.map(b => {
+          const badge = STATUS_BADGE[b.status] ?? STATUS_BADGE['PENDING'];
+          const date  = new Date(b.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          const customerInitials = (b.customer?.name ?? 'C').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+          const isPending = b.status === 'PENDING';
+          const isUpdating = updating === b.id;
+          return (
+            <div key={b.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {customerInitials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-[#2C1810]">{b.customer?.name ?? 'Customer'}</p>
+                      {b.customer?.phone && <p className="text-xs text-[#A08070]">📞 {b.customer.phone}</p>}
+                      <p className="text-xs text-[#A08070] mt-0.5">📅 {date}</p>
+                      {b.notes && <p className="text-xs text-[#6B5248] mt-1 line-clamp-2">{b.notes}</p>}
+                    </div>
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+                  {isPending && (
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleConfirm(b.id)}
+                        disabled={isUpdating}
+                        className="flex-1 text-xs font-semibold bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white py-2 rounded-lg transition-colors">
+                        {isUpdating ? '…' : '✓ Confirm'}
+                      </button>
+                      <button
+                        onClick={() => handleCancel(b.id)}
+                        disabled={isUpdating}
+                        className="flex-1 text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 py-2 rounded-lg transition-colors">
+                        {isUpdating ? '…' : '✕ Decline'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

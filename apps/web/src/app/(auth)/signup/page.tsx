@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { isEnabled } from '@/lib/featureFlags';
 
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';
@@ -12,26 +13,38 @@ type Mode = 'options' | 'email' | 'wp-phone' | 'wp-otp' | 'verify-choice';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-const PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; icon: string; team?: boolean }[] = [
-  { value: 'SERVICE_PROVIDER', label: 'Contractor',       sublabel: 'Builder / Designer', desc: 'Architect, designer, civil or renovation contractor', icon: '🏗️' },
-  { value: 'SERVICE_PROVIDER', label: 'Labour / Mistri',  sublabel: 'Skilled Worker',     desc: 'Mason, carpenter, painter or daily wage worker',      icon: '👷' },
-  { value: 'SERVICE_PROVIDER', label: 'Service Expert',   sublabel: 'Specialist',         desc: 'Electrician, plumber, AC technician or specialist',    icon: '⚡' },
-  { value: 'MATERIAL_SELLER',  label: 'Material Supplier',sublabel: 'Seller',             desc: 'Sell cement, steel, tiles or building materials',       icon: '🧱' },
-  { value: 'LAND_OWNER',       label: 'Land Owner',       sublabel: 'Plot / Land',        desc: 'List land or plots for sale or rent',                  icon: '🌍' },
-  { value: 'PROPERTY_SELLER',  label: 'Property Seller',  sublabel: 'Home / Flat',        desc: 'Sell or rent out your home, flat or villa',            icon: '🏠' },
-  { value: 'BUILDER',          label: 'Builder / Developer', sublabel: 'New Projects',    desc: 'Launch new construction projects or housing societies', icon: '🏢' },
-  { value: 'PROPERTY_AGENT',   label: 'Property Agent',   sublabel: 'Broker / Agent',     desc: 'Help buyers and renters find the right property',      icon: '🤝' },
-  { value: 'ADMIN',            label: 'Admin',            sublabel: 'Griffy Team',        desc: 'Internal team access only',                            icon: '⚙️', team: true },
+const ALL_PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; icon: string; flagKey?: string; team?: boolean }[] = [
+  { value: 'SERVICE_PROVIDER', label: 'Contractor',          sublabel: 'Builder / Designer', desc: 'Architect, designer, civil or renovation contractor', icon: '🏗️', flagKey: 'contractors' },
+  { value: 'SERVICE_PROVIDER', label: 'Labour / Mistri',     sublabel: 'Skilled Worker',     desc: 'Mason, carpenter, painter or daily wage worker',      icon: '👷', flagKey: 'labour' },
+  { value: 'SERVICE_PROVIDER', label: 'Service Expert',      sublabel: 'Specialist',         desc: 'Electrician, plumber, AC technician or specialist',    icon: '⚡', flagKey: 'service_experts' },
+  { value: 'MATERIAL_SELLER',  label: 'Material Supplier',   sublabel: 'Seller',             desc: 'Sell cement, steel, tiles or building materials',       icon: '🧱', flagKey: 'materials' },
+  { value: 'LAND_OWNER',       label: 'Land Owner',          sublabel: 'Plot / Land',        desc: 'List land or plots for sale or rent',                  icon: '🌍', flagKey: 'land' },
+  { value: 'PROPERTY_SELLER',  label: 'Property Seller',     sublabel: 'Home / Flat',        desc: 'Sell or rent out your home, flat or villa',            icon: '🏠', flagKey: 'properties' },
+  { value: 'BUILDER',          label: 'Builder / Developer', sublabel: 'New Projects',       desc: 'Launch new construction projects or housing societies', icon: '🏢', flagKey: 'properties' },
+  { value: 'PROPERTY_AGENT',   label: 'Property Agent',      sublabel: 'Broker / Agent',     desc: 'Help buyers and renters find the right property',      icon: '🤝', flagKey: 'properties' },
+  { value: 'ADMIN',            label: 'Admin',               sublabel: 'Griffy Team',        desc: 'Internal team access only',                            icon: '⚙️', team: true },
 ];
 
 export default function SignupPage() {
-  return <Suspense><SignupInner /></Suspense>;
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-2xl flex items-center justify-center min-h-[300px]">
+        <svg className="animate-spin h-7 w-7 text-[#C0593A]" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+      </div>
+    }>
+      <SignupInner />
+    </Suspense>
+  );
 }
 
 function SignupInner() {
   const params   = useSearchParams();
   const router   = useRouter();
   const supabase = createClient();
+  const PRO_ROLES = ALL_PRO_ROLES.filter(r => r.team || isEnabled(r.flagKey ?? ''));
 
   const [side,      setSide]      = useState<Side>(null);
   const [flowStep,  setFlowStep]  = useState<FlowStep>('side');
