@@ -55,7 +55,7 @@ export default function PostProjectPage() {
   });
 
   useEffect(() => {
-    getMe().catch(() => router.replace("/auth/login?redirect=/post-project")).finally(() => setAuthChecked(true));
+    getMe().catch(() => router.replace("/login?redirect=/post-project")).finally(() => setAuthChecked(true));
   }, [router]);
 
   if (!authChecked) {

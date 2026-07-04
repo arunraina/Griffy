@@ -160,7 +160,7 @@ export default function Home() {
         }} />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl lg:max-w-lg">
             <div className="inline-flex items-center gap-2 bg-orange-500/20 border border-orange-500/30 text-orange-300 text-sm font-medium px-4 py-2 rounded-full mb-6">
               <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
               India&apos;s #1 Construction Marketplace

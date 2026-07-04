@@ -309,7 +309,7 @@ export default function ProjectDetailPage() {
             {canBid && !me && (
               <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 text-center">
                 <p className="text-stone-600 text-sm mb-3">Sign in to submit a bid</p>
-                <Link href="/auth/login?redirect=/projects" className="btn-primary w-full justify-center">Sign In</Link>
+                <Link href="/login?redirect=/projects" className="btn-primary w-full justify-center">Sign In</Link>
               </div>
             )}
 

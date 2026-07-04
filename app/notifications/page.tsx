@@ -63,7 +63,7 @@ export default function NotificationsPage() {
   const limit = 20;
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.replace("/auth/login?redirect=/notifications");
+    if (!authLoading && !isAuthenticated) router.replace("/login?redirect=/notifications");
   }, [authLoading, isAuthenticated, router]);
 
   const fetchPage = useCallback(async (p: number) => {
