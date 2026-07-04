@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { LabourService } from './labour.service';
 import { CreateLabourDto } from './dto/create-labour.dto';
@@ -32,6 +32,15 @@ export class LabourController {
   @ApiBearerAuth()
   getMyProfile(@Request() req: any) {
     return this.labourService.findByUserId(req.user.id);
+  }
+
+  @Patch('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateMyProfile(@Body() updates: Partial<CreateLabourDto>, @Request() req: any) {
+    const profile = await this.labourService.findByUserId(req.user.id);
+    if (!profile) throw new NotFoundException('Labour profile not found');
+    return this.labourService.update(profile.id, updates);
   }
 
   @Get(':id')

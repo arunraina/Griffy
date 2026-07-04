@@ -1,20 +1,26 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Package, IndianRupee, TrendingUp, ChevronRight, Star,
   Plus, Clock, CheckCircle2, Truck, XCircle, AlertCircle,
-  Briefcase, Wrench, LayoutGrid, Users, Edit2, ToggleLeft,
-  ToggleRight, Loader2,
+  Briefcase, Wrench, LayoutGrid, Edit2, Loader2, Save,
+  ToggleLeft, ToggleRight, Trash2, X,
 } from "lucide-react";
 import {
   listMyOrders, listIncomingOrders, updateOrderStatus,
   getMyContractorProfile, getMyLabourProfile, listMyMaterials,
+  updateMyContractorProfile, updateMyLabourProfile,
+  createMaterial, updateMaterial, deleteMaterial,
   Order, Contractor, Labour, Material,
 } from "@/lib/api";
-import { ORDER_STATUS, formatDate, initials, SPECIALTY_LABEL, TRADE_LABEL, TRADE_EMOJI, CATEGORY_EMOJI, CATEGORY_LABEL } from "@/lib/constants";
+import {
+  ORDER_STATUS, formatDate, initials,
+  SPECIALTY_LABEL, TRADE_LABEL, TRADE_EMOJI, CATEGORY_EMOJI, CATEGORY_LABEL,
+  INDIAN_STATES,
+} from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
 
 const quickActionsHomeowner = [
@@ -33,6 +39,601 @@ const STATUS_ICONS: Record<string, any> = {
   disputed: AlertCircle,
 };
 
+const CONTRACTOR_SPECIALTIES = [
+  "civil", "structural", "electrical", "plumbing", "interior", "architect", "painting", "other",
+];
+const LABOUR_TRADES = [
+  "mason", "electrician", "plumber", "carpenter", "painter", "tiler", "welder", "helper", "other",
+];
+const MATERIAL_CATEGORIES = [
+  "sand", "bricks", "cement", "steel", "wood", "tiles", "paint", "glass", "electrical", "plumbing", "other",
+];
+const MATERIAL_UNITS = ["ton", "kg", "bag", "cubic meter", "sq ft", "sq meter", "piece", "litre", "bundle", "feet", "meter"];
+
+// ── Tag input ──────────────────────────────────────────────────────────────
+
+function TagInput({ tags, onChange, placeholder }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string }) {
+  const [input, setInput] = useState("");
+
+  function addTag(val: string) {
+    const trimmed = val.trim();
+    if (trimmed && !tags.includes(trimmed)) onChange([...tags, trimmed]);
+    setInput("");
+  }
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(input); }
+    if (e.key === "Backspace" && !input && tags.length > 0) onChange(tags.slice(0, -1));
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5 p-2.5 border border-stone-200 rounded-xl focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 bg-white min-h-[42px]">
+      {tags.map((t) => (
+        <span key={t} className="flex items-center gap-1 px-2.5 py-1 bg-stone-100 text-stone-700 text-xs font-medium rounded-full">
+          {t}
+          <button type="button" onClick={() => onChange(tags.filter((x) => x !== t))} className="text-stone-400 hover:text-red-500">
+            <X className="w-3 h-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={() => { if (input.trim()) addTag(input); }}
+        placeholder={tags.length === 0 ? placeholder : ""}
+        className="flex-1 min-w-[120px] text-sm text-stone-700 outline-none bg-transparent placeholder:text-stone-400"
+      />
+    </div>
+  );
+}
+
+// ── Availability toggle ────────────────────────────────────────────────────
+
+function AvailToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+        value ? "bg-green-50 border-green-300 text-green-700" : "bg-stone-50 border-stone-200 text-stone-500"
+      }`}
+    >
+      {value ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+      {value ? "Available" : "Not available"}
+    </button>
+  );
+}
+
+// ── Contractor profile editor ──────────────────────────────────────────────
+
+function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | null; onSaved: (p: Contractor) => void }) {
+  const blank = {
+    businessName: "", specialty: "civil", experienceYears: 0,
+    licenseNumber: "", priceRangeMin: 0, priceRangeMax: 0, priceUnit: "per project",
+    bio: "", skills: [] as string[], city: "", state: "", isAvailable: true,
+  };
+  const [form, setForm] = useState({ ...blank, ...(profile ?? {}) });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSavedFlag] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (profile) setForm({ ...blank, ...profile });
+  }, [profile]);
+
+  function set(key: string, val: any) { setForm((f) => ({ ...f, [key]: val })); }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError("");
+    try {
+      const payload: any = {
+        businessName: form.businessName,
+        specialty: form.specialty,
+        experienceYears: Number(form.experienceYears),
+        bio: form.bio || undefined,
+        skills: form.skills,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        isAvailable: form.isAvailable,
+        ...(form.licenseNumber ? { licenseNumber: form.licenseNumber } : {}),
+        ...(form.priceRangeMin ? { priceRangeMin: Number(form.priceRangeMin) } : {}),
+        ...(form.priceRangeMax ? { priceRangeMax: Number(form.priceRangeMax) } : {}),
+        ...(form.priceUnit ? { priceUnit: form.priceUnit } : {}),
+      };
+      const updated = await updateMyContractorProfile(payload);
+      onSaved(updated);
+      setSavedFlag(true);
+      setTimeout(() => setSavedFlag(false), 2000);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="font-bold text-stone-900 text-lg">My Profile</h2>
+        <div className="flex items-center gap-3">
+          <AvailToggle value={form.isAvailable} onChange={(v) => set("isAvailable", v)} />
+          <button type="submit" disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : saved ? "Saved!" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+
+      <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">Business Name</label>
+            <input className="input-field" value={form.businessName} onChange={(e) => set("businessName", e.target.value)} required />
+          </div>
+          <div>
+            <label className="label-text">Specialty</label>
+            <select className="input-field" value={form.specialty} onChange={(e) => set("specialty", e.target.value)}>
+              {CONTRACTOR_SPECIALTIES.map((s) => (
+                <option key={s} value={s}>{SPECIALTY_LABEL[s] ?? s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">Experience (years)</label>
+            <input type="number" min={0} className="input-field" value={form.experienceYears} onChange={(e) => set("experienceYears", e.target.value)} />
+          </div>
+          <div>
+            <label className="label-text">License Number <span className="text-stone-400 font-normal">(optional)</span></label>
+            <input className="input-field" value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} placeholder="e.g. LIC-2024-001" />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label className="label-text">Min. Price (₹)</label>
+            <input type="number" min={0} className="input-field" value={form.priceRangeMin || ""} onChange={(e) => set("priceRangeMin", e.target.value)} placeholder="e.g. 50000" />
+          </div>
+          <div>
+            <label className="label-text">Max. Price (₹)</label>
+            <input type="number" min={0} className="input-field" value={form.priceRangeMax || ""} onChange={(e) => set("priceRangeMax", e.target.value)} placeholder="e.g. 500000" />
+          </div>
+          <div>
+            <label className="label-text">Price Unit</label>
+            <input className="input-field" value={form.priceUnit} onChange={(e) => set("priceUnit", e.target.value)} placeholder="e.g. per project" />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">City</label>
+            <input className="input-field" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Mumbai" />
+          </div>
+          <div>
+            <label className="label-text">State</label>
+            <select className="input-field" value={form.state} onChange={(e) => set("state", e.target.value)}>
+              <option value="">Select state</option>
+              {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="label-text">Bio</label>
+          <textarea rows={3} className="input-field resize-none" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Tell clients about your experience and expertise…" />
+        </div>
+
+        <div>
+          <label className="label-text">Skills <span className="text-stone-400 font-normal">(press Enter to add)</span></label>
+          <TagInput tags={form.skills} onChange={(t) => set("skills", t)} placeholder="e.g. RCC Construction, Waterproofing…" />
+        </div>
+      </div>
+
+      {profile && (
+        <Link href={`/contractors/${profile.id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-600 font-semibold">
+          View public profile <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
+    </form>
+  );
+}
+
+// ── Labour profile editor ──────────────────────────────────────────────────
+
+function LabourProfileEditor({ profile, onSaved }: { profile: Labour | null; onSaved: (p: Labour) => void }) {
+  const blank = {
+    trade: "mason", experienceYears: 0, dailyRate: 0, weeklyRate: 0,
+    bio: "", skills: [] as string[], languages: [] as string[], city: "", state: "", isAvailable: true,
+  };
+  const [form, setForm] = useState({ ...blank, ...(profile ?? {}) });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSavedFlag] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (profile) setForm({ ...blank, ...profile });
+  }, [profile]);
+
+  function set(key: string, val: any) { setForm((f) => ({ ...f, [key]: val })); }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError("");
+    try {
+      const payload: any = {
+        trade: form.trade,
+        experienceYears: Number(form.experienceYears),
+        dailyRate: Number(form.dailyRate),
+        bio: form.bio || undefined,
+        skills: form.skills,
+        languages: form.languages,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        isAvailable: form.isAvailable,
+        ...(form.weeklyRate ? { weeklyRate: Number(form.weeklyRate) } : {}),
+      };
+      const updated = await updateMyLabourProfile(payload);
+      onSaved(updated);
+      setSavedFlag(true);
+      setTimeout(() => setSavedFlag(false), 2000);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="font-bold text-stone-900 text-lg">My Profile</h2>
+        <div className="flex items-center gap-3">
+          <AvailToggle value={form.isAvailable} onChange={(v) => set("isAvailable", v)} />
+          <button type="submit" disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : saved ? "Saved!" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+
+      <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 space-y-4">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">Trade</label>
+            <select className="input-field" value={form.trade} onChange={(e) => set("trade", e.target.value)}>
+              {LABOUR_TRADES.map((t) => (
+                <option key={t} value={t}>{TRADE_LABEL[t] ?? t}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label-text">Experience (years)</label>
+            <input type="number" min={0} className="input-field" value={form.experienceYears} onChange={(e) => set("experienceYears", e.target.value)} />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">Daily Rate (₹)</label>
+            <input type="number" min={0} className="input-field" value={form.dailyRate || ""} onChange={(e) => set("dailyRate", e.target.value)} required placeholder="e.g. 800" />
+          </div>
+          <div>
+            <label className="label-text">Weekly Rate (₹) <span className="text-stone-400 font-normal">(optional)</span></label>
+            <input type="number" min={0} className="input-field" value={form.weeklyRate || ""} onChange={(e) => set("weeklyRate", e.target.value)} placeholder="e.g. 5000" />
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label-text">City</label>
+            <input className="input-field" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Delhi" />
+          </div>
+          <div>
+            <label className="label-text">State</label>
+            <select className="input-field" value={form.state} onChange={(e) => set("state", e.target.value)}>
+              <option value="">Select state</option>
+              {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="label-text">Bio</label>
+          <textarea rows={3} className="input-field resize-none" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Share your work experience and specialisation…" />
+        </div>
+
+        <div>
+          <label className="label-text">Skills <span className="text-stone-400 font-normal">(press Enter to add)</span></label>
+          <TagInput tags={form.skills} onChange={(t) => set("skills", t)} placeholder="e.g. RCC work, Brick laying…" />
+        </div>
+
+        <div>
+          <label className="label-text">Languages <span className="text-stone-400 font-normal">(press Enter to add)</span></label>
+          <TagInput tags={form.languages} onChange={(t) => set("languages", t)} placeholder="e.g. Hindi, English, Tamil…" />
+        </div>
+      </div>
+
+      {profile && (
+        <Link href={`/labour/${profile.id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-600 font-semibold">
+          View public profile <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
+    </form>
+  );
+}
+
+// ── Material form (create / edit) ──────────────────────────────────────────
+
+type MatForm = {
+  id?: string; name: string; category: string; description: string;
+  pricePerUnit: number | ""; unit: string; minOrderQuantity: number | "";
+  stockQuantity: number | ""; brand: string; deliveryDays: string;
+  city: string; state: string; isAvailable: boolean;
+};
+
+const BLANK_MAT: MatForm = {
+  name: "", category: "cement", description: "", pricePerUnit: "",
+  unit: "bag", minOrderQuantity: "", stockQuantity: "", brand: "",
+  deliveryDays: "", city: "", state: "", isAvailable: true,
+};
+
+function MaterialFormPanel({
+  initial, onSave, onCancel,
+}: { initial: MatForm; onSave: (m: Material) => void; onCancel: () => void }) {
+  const [form, setForm] = useState<MatForm>(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const isEdit = !!initial.id;
+
+  function set(key: keyof MatForm, val: any) { setForm((f) => ({ ...f, [key]: val })); }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError("");
+    try {
+      const payload: any = {
+        name: form.name,
+        category: form.category,
+        pricePerUnit: Number(form.pricePerUnit),
+        unit: form.unit,
+        isAvailable: form.isAvailable,
+        ...(form.description ? { description: form.description } : {}),
+        ...(form.minOrderQuantity !== "" ? { minOrderQuantity: Number(form.minOrderQuantity) } : {}),
+        ...(form.stockQuantity !== "" ? { stockQuantity: Number(form.stockQuantity) } : {}),
+        ...(form.brand ? { brand: form.brand } : {}),
+        ...(form.deliveryDays ? { deliveryDays: form.deliveryDays } : {}),
+        ...(form.city ? { city: form.city } : {}),
+        ...(form.state ? { state: form.state } : {}),
+      };
+      const saved = isEdit
+        ? await updateMaterial(initial.id!, payload)
+        : await createMaterial(payload);
+      onSave(saved);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to save material");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-2xl border border-orange-200 shadow-sm p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-stone-900">{isEdit ? "Edit Material" : "Add New Material"}</h3>
+        <button type="button" onClick={onCancel} className="text-stone-400 hover:text-stone-600"><X className="w-5 h-5" /></button>
+      </div>
+
+      {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2.5">{error}</p>}
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="label-text">Material Name</label>
+          <input className="input-field" value={form.name} onChange={(e) => set("name", e.target.value)} required placeholder="e.g. OPC Cement 53 Grade" />
+        </div>
+        <div>
+          <label className="label-text">Category</label>
+          <select className="input-field" value={form.category} onChange={(e) => set("category", e.target.value)}>
+            {MATERIAL_CATEGORIES.map((c) => (
+              <option key={c} value={c}>{CATEGORY_LABEL[c] ?? c}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-4">
+        <div>
+          <label className="label-text">Price per Unit (₹)</label>
+          <input type="number" min={0} step="0.01" className="input-field" value={form.pricePerUnit} onChange={(e) => set("pricePerUnit", e.target.value)} required placeholder="e.g. 350" />
+        </div>
+        <div>
+          <label className="label-text">Unit</label>
+          <select className="input-field" value={form.unit} onChange={(e) => set("unit", e.target.value)}>
+            {MATERIAL_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label-text">Min. Order Qty <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <input type="number" min={0} className="input-field" value={form.minOrderQuantity} onChange={(e) => set("minOrderQuantity", e.target.value)} placeholder="e.g. 10" />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-4">
+        <div>
+          <label className="label-text">Stock Qty <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <input type="number" min={0} className="input-field" value={form.stockQuantity} onChange={(e) => set("stockQuantity", e.target.value)} placeholder="e.g. 500" />
+        </div>
+        <div>
+          <label className="label-text">Brand <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <input className="input-field" value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. Ultratech" />
+        </div>
+        <div>
+          <label className="label-text">Delivery Time <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <input className="input-field" value={form.deliveryDays} onChange={(e) => set("deliveryDays", e.target.value)} placeholder="e.g. 2–3 days" />
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="label-text">City <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <input className="input-field" value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Pune" />
+        </div>
+        <div>
+          <label className="label-text">State <span className="text-stone-400 font-normal">(opt.)</span></label>
+          <select className="input-field" value={form.state} onChange={(e) => set("state", e.target.value)}>
+            <option value="">Select state</option>
+            {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="label-text">Description <span className="text-stone-400 font-normal">(opt.)</span></label>
+        <textarea rows={2} className="input-field resize-none" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Product details, grade, specifications…" />
+      </div>
+
+      <div className="flex items-center justify-between pt-1">
+        <AvailToggle value={form.isAvailable} onChange={(v) => set("isAvailable", v)} />
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-semibold text-stone-600 hover:text-stone-800 border border-stone-200 rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : isEdit ? "Update" : "Add Material"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// ── Supplier materials manager ─────────────────────────────────────────────
+
+function SupplierMaterials({ materials: init, loading }: { materials: Material[]; loading: boolean }) {
+  const [materials, setMaterials] = useState<Material[]>(init);
+  const [form, setForm] = useState<MatForm | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  useEffect(() => { setMaterials(init); }, [init]);
+
+  function openCreate() { setForm({ ...BLANK_MAT }); }
+  function openEdit(m: Material) {
+    setForm({
+      id: m.id, name: m.name, category: m.category, description: m.description ?? "",
+      pricePerUnit: Number(m.pricePerUnit), unit: m.unit,
+      minOrderQuantity: m.minOrderQuantity ?? "", stockQuantity: m.stockQuantity ?? "",
+      brand: m.brand ?? "", deliveryDays: m.deliveryDays ?? "",
+      city: m.city ?? "", state: m.state ?? "", isAvailable: m.isAvailable,
+    });
+  }
+
+  function handleSaved(saved: Material) {
+    setMaterials((prev) => {
+      const exists = prev.find((x) => x.id === saved.id);
+      return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
+    });
+    setForm(null);
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteMaterial(id);
+      setMaterials((prev) => prev.filter((m) => m.id !== id));
+    } catch {}
+    setDeletingId(null);
+    setConfirmId(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-extrabold text-stone-900 text-lg">My Materials</h2>
+        <button onClick={openCreate}
+          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all">
+          <Plus className="w-4 h-4" /> Add Material
+        </button>
+      </div>
+
+      {form && <MaterialFormPanel initial={form} onSave={handleSaved} onCancel={() => setForm(null)} />}
+
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 animate-pulse h-16" />
+          ))}
+        </div>
+      ) : materials.length === 0 && !form ? (
+        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
+          <Package className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+          <p className="text-stone-500 mb-3">No materials listed yet.</p>
+          <button onClick={openCreate} className="text-sm text-orange-500 font-semibold hover:text-orange-600">
+            + Add your first material
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {materials.map((m) => {
+            const emoji = CATEGORY_EMOJI[m.category] ?? "📦";
+            return (
+              <div key={m.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm p-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl">{emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-stone-800 text-sm">{m.name}</p>
+                    <p className="text-xs text-stone-500">{CATEGORY_LABEL[m.category]} · ₹{Number(m.pricePerUnit).toLocaleString("en-IN")}/{m.unit}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${m.isAvailable ? "bg-green-100 text-green-700" : "bg-stone-100 text-stone-500"}`}>
+                      {m.isAvailable ? "In Stock" : "Unavailable"}
+                    </span>
+                    <button onClick={() => openEdit(m)} className="p-1.5 rounded-lg text-stone-400 hover:text-orange-500 hover:bg-orange-50 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setConfirmId(m.id)} className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {confirmId === m.id && (
+                  <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
+                    <p className="text-sm text-stone-600">Delete <strong>{m.name}</strong>?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setConfirmId(null)} className="px-3 py-1.5 text-xs font-semibold text-stone-600 border border-stone-200 rounded-lg">Cancel</button>
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        disabled={deletingId === m.id}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg disabled:opacity-60"
+                      >
+                        {deletingId === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Homeowner dashboard ────────────────────────────────────────────────────
 
 function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders: Order[]; ordersLoading: boolean }) {
@@ -41,7 +642,6 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
 
   return (
     <div className="space-y-8">
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard icon={Package} color="blue" label="Active Orders" value={ordersLoading ? "—" : activeOrders.length} />
         <StatCard icon={IndianRupee} color="green" label="Total Spent"
@@ -49,7 +649,6 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
         <StatCard icon={TrendingUp} color="orange" label="Total Orders" value={ordersLoading ? "—" : orders.length} />
       </div>
 
-      {/* Quick actions */}
       <div>
         <h2 className="font-extrabold text-stone-900 text-lg mb-4">Quick Actions</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -63,7 +662,6 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
         </div>
       </div>
 
-      {/* Recent Orders */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-extrabold text-stone-900 text-lg">Recent Orders</h2>
@@ -77,7 +675,7 @@ function HomeownerDashboard({ user, orders, ordersLoading }: { user: any; orders
   );
 }
 
-// ── Pro dashboard (contractor / labour / supplier) ─────────────────────────
+// ── Pro dashboard ──────────────────────────────────────────────────────────
 
 type ProTab = "overview" | "bookings" | "listings";
 
@@ -95,7 +693,6 @@ function ProDashboard({ user }: { user: any }) {
   const isSupplier = user.role === "supplier";
 
   const listingsLabel = isSupplier ? "My Materials" : "My Profile";
-  const listingsTab: ProTab = "listings";
 
   useEffect(() => {
     listIncomingOrders(1, 20)
@@ -104,9 +701,9 @@ function ProDashboard({ user }: { user: any }) {
       .finally(() => setIncomingLoading(false));
 
     if (isContractor) {
-      getMyContractorProfile().then(setProfile).catch(() => {});
+      getMyContractorProfile().then((p) => setProfile(p)).catch(() => {});
     } else if (isLabour) {
-      getMyLabourProfile().then(setProfile).catch(() => {});
+      getMyLabourProfile().then((p) => setProfile(p)).catch(() => {});
     } else if (isSupplier) {
       setMaterialsLoading(true);
       listMyMaterials(1, 50).then((r) => setMaterials(r.data)).catch(() => {}).finally(() => setMaterialsLoading(false));
@@ -132,12 +729,11 @@ function ProDashboard({ user }: { user: any }) {
   const tabs: { id: ProTab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "bookings", label: `Bookings${incoming.length > 0 ? ` (${incoming.length})` : ""}` },
-    { id: listingsTab, label: listingsLabel },
+    { id: "listings", label: listingsLabel },
   ];
 
   return (
     <div>
-      {/* Sub-tabs */}
       <div className="flex gap-1 mb-8 bg-stone-100 p-1 rounded-xl w-fit">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -158,14 +754,14 @@ function ProDashboard({ user }: { user: any }) {
               value={incomingLoading ? "—" : earnings >= 100000 ? `₹${(earnings / 100000).toFixed(1)}L` : `₹${earnings.toLocaleString("en-IN")}`} />
           </div>
 
-          {/* Profile card */}
           {(isContractor || isLabour) && (
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-stone-900 text-lg">My Profile</h2>
-                <Link href="/profile" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-600 font-semibold">
+                <button onClick={() => setActiveTab("listings")}
+                  className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-600 font-semibold">
                   <Edit2 className="w-4 h-4" /> Edit
-                </Link>
+                </button>
               </div>
               {profile ? (
                 <div className="flex items-start gap-5">
@@ -182,8 +778,7 @@ function ProDashboard({ user }: { user: any }) {
                       )}
                     </div>
                     <p className="text-stone-500 text-sm mt-0.5">
-                      {isContractor ? SPECIALTY_LABEL[(profile as Contractor).specialty] ?? (profile as Contractor).specialty
-                        : TRADE_LABEL[(profile as Labour).trade] ?? (profile as Labour).trade}
+                      {isContractor ? SPECIALTY_LABEL[(profile as Contractor).specialty] : TRADE_LABEL[(profile as Labour).trade]}
                     </p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-stone-600">
                       {(profile as any).rating > 0 && (
@@ -192,7 +787,9 @@ function ProDashboard({ user }: { user: any }) {
                           {(profile as any).rating.toFixed(1)}
                         </span>
                       )}
-                      {(profile as any).city && <span>{(profile as any).city}{(profile as any).state ? `, ${(profile as any).state}` : ""}</span>}
+                      {(profile as any).city && (
+                        <span>{(profile as any).city}{(profile as any).state ? `, ${(profile as any).state}` : ""}</span>
+                      )}
                       <span className={`font-semibold ${(profile as any).isAvailable ? "text-green-600" : "text-stone-400"}`}>
                         {(profile as any).isAvailable ? "● Available" : "● Not available"}
                       </span>
@@ -202,39 +799,38 @@ function ProDashboard({ user }: { user: any }) {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-stone-500 text-sm mb-3">No profile created yet.</p>
-                  <p className="text-xs text-stone-400">
-                    {isContractor ? "Create your contractor profile to start receiving bookings." : "Create your labour profile to start getting hired."}
-                  </p>
+                  <button onClick={() => setActiveTab("listings")} className="text-sm text-orange-500 font-semibold hover:text-orange-600">
+                    Complete your profile →
+                  </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Quick actions for pro */}
           <div>
             <h2 className="font-extrabold text-stone-900 text-lg mb-4">Quick Actions</h2>
             <div className="grid sm:grid-cols-3 gap-4">
               {isSupplier && (
-                <Link href="/materials" className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group">
+                <button onClick={() => setActiveTab("listings")}
+                  className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group text-left">
                   <span className="text-3xl mb-3 block">🧱</span>
-                  <p className="font-bold text-stone-900 group-hover:text-orange-500 transition-colors">Browse Marketplace</p>
-                  <p className="text-sm text-stone-500 mt-0.5">See how your products compare</p>
-                </Link>
+                  <p className="font-bold text-stone-900 group-hover:text-orange-500 transition-colors">Manage Materials</p>
+                  <p className="text-sm text-stone-500 mt-0.5">Add, edit or remove listings</p>
+                </button>
               )}
               <Link href="/profile" className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group">
                 <span className="text-3xl mb-3 block">👤</span>
                 <p className="font-bold text-stone-900 group-hover:text-orange-500 transition-colors">Edit Profile</p>
                 <p className="text-sm text-stone-500 mt-0.5">Update your info & location</p>
               </Link>
-              <button
-                onClick={() => setActiveTab("bookings")}
-                className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group text-left"
-              >
+              <button onClick={() => setActiveTab("bookings")}
+                className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group text-left">
                 <span className="text-3xl mb-3 block">📋</span>
                 <p className="font-bold text-stone-900 group-hover:text-orange-500 transition-colors">View Bookings</p>
                 <p className="text-sm text-stone-500 mt-0.5">{pendingCount > 0 ? `${pendingCount} pending` : "No pending requests"}</p>
               </button>
-              <Link href={isContractor ? "/contractors" : isLabour ? "/labour" : "/materials"} className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group">
+              <Link href={isContractor ? "/contractors" : isLabour ? "/labour" : "/materials"}
+                className="bg-white rounded-2xl border border-stone-100 shadow-sm p-5 hover:border-orange-200 hover:shadow-md transition-all group">
                 <span className="text-3xl mb-3 block">🔍</span>
                 <p className="font-bold text-stone-900 group-hover:text-orange-500 transition-colors">View Marketplace</p>
                 <p className="text-sm text-stone-500 mt-0.5">See your public listing</p>
@@ -270,9 +866,7 @@ function ProDashboard({ user }: { user: any }) {
                   <div className="flex items-start gap-4 flex-wrap">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-stone-800">
-                          {order.buyer?.fullName ?? "Customer"}
-                        </span>
+                        <span className="font-semibold text-stone-800">{order.buyer?.fullName ?? "Customer"}</span>
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${sc.color}`}>
                           <Icon className="w-3 h-3" /> {sc.label}
                         </span>
@@ -285,50 +879,36 @@ function ProDashboard({ user }: { user: any }) {
                         <p className="text-xs text-stone-400 mt-1">📍 {order.deliveryAddress}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-extrabold text-stone-900">₹{Number(order.amount).toLocaleString("en-IN")}</span>
-                    </div>
+                    <span className="font-extrabold text-stone-900 shrink-0">₹{Number(order.amount).toLocaleString("en-IN")}</span>
                   </div>
 
-                  {(isPending || isActive) && (
+                  {(isPending || isActive || order.status === "accepted") && (
                     <div className="flex gap-2 mt-4 pt-4 border-t border-stone-50 flex-wrap">
                       {isPending && (
                         <>
-                          <button
-                            onClick={() => changeStatus(order.id, "accepted")}
-                            disabled={updatingId === order.id}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
-                          >
+                          <button onClick={() => changeStatus(order.id, "accepted")} disabled={updatingId === order.id}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
                             {updatingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                             Accept
                           </button>
-                          <button
-                            onClick={() => changeStatus(order.id, "cancelled")}
-                            disabled={updatingId === order.id}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-stone-100 hover:bg-red-50 text-stone-600 hover:text-red-600 text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
-                          >
+                          <button onClick={() => changeStatus(order.id, "cancelled")} disabled={updatingId === order.id}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-stone-100 hover:bg-red-50 text-stone-600 hover:text-red-600 text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
                             <XCircle className="w-3.5 h-3.5" /> Decline
                           </button>
                         </>
                       )}
-                      {isActive && (
-                        <button
-                          onClick={() => changeStatus(order.id, "completed")}
-                          disabled={updatingId === order.id}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
-                        >
-                          {updatingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                          Mark Complete
-                        </button>
-                      )}
                       {order.status === "accepted" && (
-                        <button
-                          onClick={() => changeStatus(order.id, "in_progress")}
-                          disabled={updatingId === order.id}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60"
-                        >
+                        <button onClick={() => changeStatus(order.id, "in_progress")} disabled={updatingId === order.id}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
                           {updatingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
                           Start Work
+                        </button>
+                      )}
+                      {isActive && (
+                        <button onClick={() => changeStatus(order.id, "completed")} disabled={updatingId === order.id}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-all disabled:opacity-60">
+                          {updatingId === order.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          Mark Complete
                         </button>
                       )}
                     </div>
@@ -342,79 +922,19 @@ function ProDashboard({ user }: { user: any }) {
 
       {/* Listings tab */}
       {activeTab === "listings" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-stone-900 text-lg">{listingsLabel}</h2>
-            {isSupplier && (
-              <Link href="/materials" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-600 font-semibold">
-                <Plus className="w-4 h-4" /> Browse all
-              </Link>
-            )}
-          </div>
-
-          {isSupplier && (
-            materialsLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-stone-100 p-4 animate-pulse h-16" />
-                ))}
-              </div>
-            ) : materials.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
-                <Package className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-                <p className="text-stone-500">No materials listed yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {materials.map((m) => {
-                  const emoji = CATEGORY_EMOJI[m.category] ?? "📦";
-                  return (
-                    <div key={m.id} className="bg-white rounded-2xl border border-stone-100 shadow-sm p-4 flex items-center gap-4">
-                      <span className="text-2xl">{emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-stone-800 text-sm">{m.name}</p>
-                        <p className="text-xs text-stone-500">{CATEGORY_LABEL[m.category]} · ₹{Number(m.pricePerUnit).toLocaleString("en-IN")}/{m.unit}</p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${m.isAvailable ? "bg-green-100 text-green-700" : "bg-stone-100 text-stone-500"}`}>
-                          {m.isAvailable ? "In Stock" : "Unavailable"}
-                        </span>
-                        <Link href={`/materials/${m.id}`} className="text-xs text-orange-500 font-semibold hover:text-orange-600">
-                          View →
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )
+        <div>
+          {isSupplier && <SupplierMaterials materials={materials} loading={materialsLoading} />}
+          {isContractor && (
+            <ContractorProfileEditor
+              profile={profile as Contractor | null}
+              onSaved={(p) => setProfile(p)}
+            />
           )}
-
-          {(isContractor || isLabour) && profile && (
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
-              <p className="text-stone-600 text-sm leading-relaxed mb-4">
-                {(profile as any).bio ?? "No bio added yet."}
-              </p>
-              {(profile as any).skills?.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {(profile as any).skills.map((s: string) => (
-                    <span key={s} className="px-3 py-1 bg-stone-100 text-stone-700 text-xs font-medium rounded-full">{s}</span>
-                  ))}
-                </div>
-              )}
-              <Link href={isContractor ? `/contractors/${profile.id}` : `/labour/${profile.id}`}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm text-orange-500 hover:text-orange-600 font-semibold">
-                View public profile <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-          )}
-
-          {(isContractor || isLabour) && !profile && (
-            <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-12 text-center">
-              <Wrench className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-              <p className="text-stone-500 mb-2">No profile created yet.</p>
-              <p className="text-stone-400 text-sm">Contact support to set up your professional profile.</p>
-            </div>
+          {isLabour && (
+            <LabourProfileEditor
+              profile={profile as Labour | null}
+              onSaved={(p) => setProfile(p)}
+            />
           )}
         </div>
       )}
@@ -530,7 +1050,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
       <div className="bg-white border-b border-stone-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-start justify-between flex-wrap gap-4">
@@ -553,7 +1072,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Tabs — homeowner only */}
           {isHomeowner && (
             <div className="flex gap-1 mt-5 bg-stone-100 p-1 rounded-xl w-fit">
               {(["overview", "orders"] as const).map((t) => (

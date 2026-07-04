@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContractorSpecialty } from '../contractor.entity';
 
@@ -55,4 +55,9 @@ export class CreateContractorDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
 }

@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards,
+  Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, Request, UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { MaterialsService } from './materials.service';
@@ -58,14 +58,18 @@ export class MaterialsController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  update(@Param('id') id: string, @Body() updates: Partial<CreateMaterialDto>) {
+  async update(@Param('id') id: string, @Body() updates: Partial<CreateMaterialDto>, @Request() req: any) {
+    const material = await this.materialsService.findById(id);
+    if (material.supplierId !== req.user.id) throw new ForbiddenException();
     return this.materialsService.update(id, updates);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Request() req: any) {
+    const material = await this.materialsService.findById(id);
+    if (material.supplierId !== req.user.id) throw new ForbiddenException();
     return this.materialsService.remove(id);
   }
 }

@@ -221,10 +221,25 @@ export const updateMe = (data: { fullName?: string; phone?: string; city?: strin
 
 export const getMyContractorProfile = () => apiFetch<Contractor | null>('/contractors/my');
 
+export const updateMyContractorProfile = (data: Partial<Omit<Contractor, 'id' | 'userId' | 'user' | 'rating' | 'reviewCount' | 'completedProjects' | 'isVerified' | 'createdAt' | 'updatedAt'>>) =>
+  apiFetch<Contractor>('/contractors/my', { method: 'PATCH', body: JSON.stringify(data) });
+
 export const getMyLabourProfile = () => apiFetch<Labour | null>('/labour/my');
+
+export const updateMyLabourProfile = (data: Partial<Omit<Labour, 'id' | 'userId' | 'user' | 'rating' | 'reviewCount' | 'completedJobs' | 'isVerified' | 'createdAt' | 'updatedAt'>>) =>
+  apiFetch<Labour>('/labour/my', { method: 'PATCH', body: JSON.stringify(data) });
 
 export const listMyMaterials = (page = 1, limit = 20) =>
   apiFetch<Paginated<Material>>(`/materials/my?page=${page}&limit=${limit}`);
+
+export const createMaterial = (data: Partial<Omit<Material, 'id' | 'supplierId' | 'supplier' | 'rating' | 'reviewCount' | 'isFeatured' | 'createdAt' | 'updatedAt'>>) =>
+  apiFetch<Material>('/materials', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateMaterial = (id: string, data: Partial<Omit<Material, 'id' | 'supplierId' | 'supplier' | 'rating' | 'reviewCount' | 'isFeatured' | 'createdAt' | 'updatedAt'>>) =>
+  apiFetch<Material>(`/materials/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteMaterial = (id: string) =>
+  apiFetch<void>(`/materials/${id}`, { method: 'DELETE' });
 
 // ── Reviews ────────────────────────────────────────────────────────────────
 

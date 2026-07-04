@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LabourTrade } from '../labour.entity';
 
@@ -44,4 +44,9 @@ export class CreateLabourDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ContractorsService } from './contractors.service';
 import { CreateContractorDto } from './dto/create-contractor.dto';
@@ -31,6 +31,15 @@ export class ContractorsController {
   @ApiBearerAuth()
   getMyProfile(@Request() req: any) {
     return this.contractorsService.findByUserId(req.user.id);
+  }
+
+  @Patch('my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async updateMyProfile(@Body() updates: Partial<CreateContractorDto>, @Request() req: any) {
+    const profile = await this.contractorsService.findByUserId(req.user.id);
+    if (!profile) throw new NotFoundException('Contractor profile not found');
+    return this.contractorsService.update(profile.id, updates);
   }
 
   @Get(':id')
