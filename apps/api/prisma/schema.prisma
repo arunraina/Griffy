@@ -328,24 +328,23 @@ model Material {
   createdAt   DateTime                @default(now()) @map("created_at")
   updatedAt   DateTime                @updatedAt @map("updated_at")
 
-  orders  Order[]
-  reviews Review[]
+  orderItems OrderItem[]
+  reviews    Review[]
 
   @@map("materials")
 }
 
 // ---------------------------------------------------------------------------
-// Order — material purchase only (no services)
+// Order — material purchase only (no services). One Order can hold multiple
+// OrderItems, one per distinct material, so a single cart checkout produces
+// a single Order + single Razorpay payment.
 // ---------------------------------------------------------------------------
 
 model Order {
   id                String      @id @default(uuid())
   buyerId           String      @map("buyer_id")
   buyer             User        @relation(fields: [buyerId], references: [id])
-  materialId        String      @map("material_id")
-  material          Material    @relation(fields: [materialId], references: [id])
-  quantity          Int
-  unitPrice         Decimal     @map("unit_price") @db.Decimal(10, 2)
+  items             OrderItem[]
   totalAmount       Decimal     @map("total_amount") @db.Decimal(10, 2)
   status            OrderStatus @default(PENDING)
   shippingAddress   String?     @map("shipping_address")
@@ -356,6 +355,19 @@ model Order {
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
   @@map("orders")
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  materialId String   @map("material_id")
+  material   Material @relation(fields: [materialId], references: [id])
+  quantity   Int
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  lineTotal  Decimal  @map("line_total") @db.Decimal(10, 2)
+
+  @@map("order_items")
 }
 
 // ---------------------------------------------------------------------------

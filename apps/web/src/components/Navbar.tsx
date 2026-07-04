@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { isEnabled } from '@/lib/featureFlags';
+import { useCart } from '@/context/CartContext';
 
 interface UserInfo { name: string }
 
@@ -27,6 +28,7 @@ export default function Navbar() {
   const router   = useRouter();
   const supabase = createClient();
   const NAV_LINKS = getNavLinks();
+  const { count: cartCount } = useCart();
 
   const [user,       setUser]       = useState<UserInfo | null>(null);
   const [menuOpen,   setMenuOpen]   = useState(false);
@@ -74,9 +76,21 @@ export default function Navbar() {
 
         {/* Right — desktop */}
         <div className="hidden md:flex items-center gap-3">
+          <Link href="/cart" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Cart">
+            <span className="text-lg">🛒</span>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </Link>
           {user ? (
             <>
               <span className="text-sm text-gray-500 max-w-[120px] truncate">{user.name}</span>
+              <Link href="/orders"
+                className="text-sm font-semibold text-[#C0593A] hover:underline">
+                Orders
+              </Link>
               <Link href="/dashboard"
                 className="text-sm font-semibold text-[#C0593A] hover:underline">
                 Dashboard
@@ -149,10 +163,18 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
+            <Link href="/cart" onClick={() => setMenuOpen(false)}
+              className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
+              🛒 Cart{cartCount > 0 ? ` (${cartCount})` : ''}
+            </Link>
             <div className="border-t border-[#f0ebe6] pt-4 flex flex-col gap-3">
               {user ? (
                 <>
                   <p className="text-xs text-gray-400">{user.name}</p>
+                  <Link href="/orders" onClick={() => setMenuOpen(false)}
+                    className="text-sm font-semibold text-[#C0593A] py-1">
+                    Orders
+                  </Link>
                   <Link href="/dashboard" onClick={() => setMenuOpen(false)}
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Dashboard

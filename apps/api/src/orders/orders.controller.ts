@@ -22,7 +22,7 @@ export class OrdersController {
   @Post()
   create(
     @CurrentUser() user: User,
-    @Body() body: { materialId: string; quantity: number; shippingAddress: string; notes?: string },
+    @Body() body: { items: { materialId: string; quantity: number }[]; shippingAddress: string; notes?: string },
   ) {
     return this.orders.create(user.id, body);
   }

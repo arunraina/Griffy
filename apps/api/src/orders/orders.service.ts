@@ -9,7 +9,7 @@ export class OrdersService {
   findByBuyer(buyerId: string) {
     return this.prisma.order.findMany({
       where: { buyerId },
-      include: { material: { select: { name: true, imageUrls: true } } },
+      include: { items: { include: { material: { select: { name: true, imageUrls: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -17,25 +17,42 @@ export class OrdersService {
   async findOne(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { material: true, buyer: { select: { name: true, email: true } } },
+      include: { items: { include: { material: true } }, buyer: { select: { name: true, email: true } } },
     });
     if (!order) throw new NotFoundException('Order not found');
     return order;
   }
 
-  async create(buyerId: string, data: { materialId: string; quantity: number; shippingAddress: string; notes?: string }) {
-    const material = await this.prisma.material.findUniqueOrThrow({ where: { id: data.materialId } });
-    const totalAmount = Number(material.price) * data.quantity;
+  async create(
+    buyerId: string,
+    data: { items: { materialId: string; quantity: number }[]; shippingAddress: string; notes?: string },
+  ) {
+    if (!data.items?.length) throw new NotFoundException('Order must contain at least one item');
+
+    const materials = await this.prisma.material.findMany({
+      where: { id: { in: data.items.map((i) => i.materialId) } },
+    });
+    const materialById = new Map(materials.map((m) => [m.id, m]));
+
+    const lineItems = data.items.map((i) => {
+      const material = materialById.get(i.materialId);
+      if (!material) throw new NotFoundException(`Material ${i.materialId} not found`);
+      const unitPrice = material.price;
+      const lineTotal = Number(unitPrice) * i.quantity;
+      return { materialId: i.materialId, quantity: i.quantity, unitPrice, lineTotal };
+    });
+
+    const totalAmount = lineItems.reduce((sum, i) => sum + Number(i.lineTotal), 0);
+
     return this.prisma.order.create({
       data: {
         buyerId,
-        materialId: data.materialId,
-        quantity: data.quantity,
-        unitPrice: material.price,
         totalAmount,
         shippingAddress: data.shippingAddress,
         notes: data.notes,
+        items: { create: lineItems },
       },
+      include: { items: { include: { material: { select: { name: true, imageUrls: true } } } } },
     });
   }
 

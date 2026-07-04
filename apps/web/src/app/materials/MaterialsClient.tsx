@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { getRegionData, type RegionKey } from '@/lib/regionUtils';
 import { isSubEnabled } from '@/lib/featureFlags';
+import { useCart } from '@/context/CartContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -471,7 +472,7 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   const [ratingFilter,   setRatingFilter]   = useState<RatingFilter>('any');
   const [nearMe,         setNearMe]         = useState(false);
   const [filtersOpen,    setFiltersOpen]    = useState(false);
-  const [cart,           setCart]           = useState<Record<string, number>>({});
+  const { addItem, setQty, qtyOf, count: totalCartItems } = useCart();
 
   const regionData = getRegionData(city);
   const { region, label: regionLabel, icon: regionIcon, alerts, tips, warningMaterials } = regionData;
@@ -553,13 +554,11 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   function toggleSubcat(id: string) { setCheckedSubcats(prev => toggleSet(prev, id)); }
   function toggleType(t: string) { setCheckedTypes(prev => toggleSet(prev, t)); }
   function toggleBrand(b: string) { setSelectedBrands(prev => toggleSet(prev, b)); }
-  function addToCart(id: string) { setCart(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 })); }
+  function addToCart(p: Product) {
+    addItem({ id: p.id, name: p.name, imageIcon: p.imageIcon, price: p.price, unit: p.unit, sellerName: p.sellerName });
+  }
   function removeFromCart(id: string) {
-    setCart(prev => {
-      const qty = (prev[id] ?? 0) - 1;
-      if (qty <= 0) { const next = { ...prev }; delete next[id]; return next; }
-      return { ...prev, [id]: qty };
-    });
+    setQty(id, qtyOf(id) - 1);
   }
   function clearAll() {
     setSelectedRoom('all'); setActiveChip(null); setCheckedSubcats(new Set());
@@ -571,8 +570,6 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   const hasFilters = !!(selectedRoom !== 'all' || activeChip || checkedSubcats.size || checkedTypes.size ||
     selectedBrands.size || priceMin || priceMax || inStockOnly || certifiedOnly ||
     ratingFilter !== 'any' || nearMe);
-
-  const totalCartItems = Object.values(cart).reduce((a, b) => a + b, 0);
 
   const relevantBrands = useMemo(() => {
     const targetCats = activeChip ? [activeChip] : [...openCats];
@@ -880,8 +877,8 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {products.map(p => (
                   <ProductCard key={p.id} product={p} region={region} priceFactor={priceFactor}
-                    warning={getWarning(p)} cartQty={cart[p.id] ?? 0}
-                    onAdd={() => addToCart(p.id)} onRemove={() => removeFromCart(p.id)} />
+                    warning={getWarning(p)} cartQty={qtyOf(p.id)}
+                    onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} />
                 ))}
               </div>
             )}
