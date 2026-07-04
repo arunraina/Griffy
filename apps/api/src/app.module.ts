@@ -20,6 +20,7 @@ import { PropertiesModule } from './properties/properties.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { StorageModule } from './storage/storage.module';
     AdminModule,
     PaymentsModule,
     StorageModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

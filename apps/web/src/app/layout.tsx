@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
 import { SavedProvider } from '@/context/SavedContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,9 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} bg-[#FDF8F5]`}>
         <CartProvider>
           <SavedProvider>
-            <Navbar />
-            {children}
-            <Footer />
+            <NotificationProvider>
+              <Navbar />
+              {children}
+              <Footer />
+            </NotificationProvider>
           </SavedProvider>
         </CartProvider>
       </body>

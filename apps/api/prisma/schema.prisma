@@ -109,9 +109,10 @@ model User {
 
   // transactional relations
   orders             Order[]
-  bookingsAsCustomer Booking[] @relation("BookingCustomer")
-  bookingsAsProvider Booking[] @relation("BookingProvider")
-  reviewsGiven       Review[]  @relation("ReviewsGiven")
+  bookingsAsCustomer Booking[]      @relation("BookingCustomer")
+  bookingsAsProvider Booking[]      @relation("BookingProvider")
+  reviewsGiven       Review[]       @relation("ReviewsGiven")
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -503,4 +504,30 @@ model WhatsappOtp {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("whatsapp_otps")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications — in-app only for now, no email/SMS/push fan-out.
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  ORDER_STATUS_CHANGED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, read])
+  @@map("notifications")
 }

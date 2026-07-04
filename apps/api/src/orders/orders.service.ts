@@ -1,10 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+
+const STATUS_MESSAGE: Partial<Record<OrderStatus, string>> = {
+  CONFIRMED: 'Your order has been confirmed.',
+  SHIPPED: 'Your order has shipped.',
+  DELIVERED: 'Your order has been delivered.',
+  CANCELLED: 'Your order has been cancelled.',
+};
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   findByBuyer(buyerId: string) {
     return this.prisma.order.findMany({
@@ -56,10 +67,17 @@ export class OrdersService {
     });
   }
 
-  updateStatus(id: string, status: OrderStatus, razorpayPaymentId?: string) {
-    return this.prisma.order.update({
+  async updateStatus(id: string, status: OrderStatus, razorpayPaymentId?: string) {
+    const order = await this.prisma.order.update({
       where: { id },
       data: { status, ...(razorpayPaymentId && { razorpayPaymentId }) },
     });
+
+    const message = STATUS_MESSAGE[status];
+    if (message) {
+      await this.notifications.create(order.buyerId, 'ORDER_STATUS_CHANGED', 'Order update', message, `/orders/${order.id}`);
+    }
+
+    return order;
   }
 }
