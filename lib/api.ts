@@ -94,6 +94,7 @@ export interface Labour {
   completedJobs: number;
   isAvailable: boolean;
   isVerified: boolean;
+  avatarUrl?: string;
   user?: { id: string; fullName: string };
 }
 

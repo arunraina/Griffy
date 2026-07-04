@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import GettingStartedChecklist from "@/components/GettingStartedChecklist";
 import JourneyNudge from "@/components/JourneyNudge";
+import ImageUpload from "@/components/ImageUpload";
 
 const quickActionsHomeowner = [
   { label: "Buy Materials", href: "/materials", emoji: "🧱", desc: "Sand, cement, steel & more" },
@@ -114,7 +115,7 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
   const blank = {
     businessName: "", specialty: "civil", experienceYears: 0,
     licenseNumber: "", priceRangeMin: 0, priceRangeMax: 0, priceUnit: "per project",
-    bio: "", skills: [] as string[], city: "", state: "", isAvailable: true,
+    bio: "", skills: [] as string[], city: "", state: "", isAvailable: true, avatarUrl: "",
   };
   const [form, setForm] = useState({ ...blank, ...(profile ?? {}) });
   const [saving, setSaving] = useState(false);
@@ -144,6 +145,7 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
         ...(form.priceRangeMin ? { priceRangeMin: Number(form.priceRangeMin) } : {}),
         ...(form.priceRangeMax ? { priceRangeMax: Number(form.priceRangeMax) } : {}),
         ...(form.priceUnit ? { priceUnit: form.priceUnit } : {}),
+        ...(form.avatarUrl ? { avatarUrl: form.avatarUrl } : {}),
       };
       const updated = await updateMyContractorProfile(payload);
       onSaved(updated);
@@ -237,6 +239,17 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
           <label className="label-text">Skills <span className="text-stone-400 font-normal">(press Enter to add)</span></label>
           <TagInput tags={form.skills} onChange={(t) => set("skills", t)} placeholder="e.g. RCC Construction, Waterproofing…" />
         </div>
+
+        <div>
+          <label className="label-text">Profile Photo <span className="text-stone-400 font-normal">(optional)</span></label>
+          <ImageUpload
+            value={form.avatarUrl ? [form.avatarUrl] : []}
+            onChange={(urls) => set("avatarUrl", urls[0] ?? "")}
+            maxFiles={1}
+            folder="avatars"
+            label="Upload Profile Photo"
+          />
+        </div>
       </div>
 
       {profile && (
@@ -254,7 +267,7 @@ function ContractorProfileEditor({ profile, onSaved }: { profile: Contractor | n
 function LabourProfileEditor({ profile, onSaved }: { profile: Labour | null; onSaved: (p: Labour) => void }) {
   const blank = {
     trade: "mason", experienceYears: 0, dailyRate: 0, weeklyRate: 0,
-    bio: "", skills: [] as string[], languages: [] as string[], city: "", state: "", isAvailable: true,
+    bio: "", skills: [] as string[], languages: [] as string[], city: "", state: "", isAvailable: true, avatarUrl: "",
   };
   const [form, setForm] = useState({ ...blank, ...(profile ?? {}) });
   const [saving, setSaving] = useState(false);
@@ -282,6 +295,7 @@ function LabourProfileEditor({ profile, onSaved }: { profile: Labour | null; onS
         state: form.state || undefined,
         isAvailable: form.isAvailable,
         ...(form.weeklyRate ? { weeklyRate: Number(form.weeklyRate) } : {}),
+        ...(form.avatarUrl ? { avatarUrl: form.avatarUrl } : {}),
       };
       const updated = await updateMyLabourProfile(payload);
       onSaved(updated);
@@ -365,6 +379,17 @@ function LabourProfileEditor({ profile, onSaved }: { profile: Labour | null; onS
           <label className="label-text">Languages <span className="text-stone-400 font-normal">(press Enter to add)</span></label>
           <TagInput tags={form.languages} onChange={(t) => set("languages", t)} placeholder="e.g. Hindi, English, Tamil…" />
         </div>
+
+        <div>
+          <label className="label-text">Profile Photo <span className="text-stone-400 font-normal">(optional)</span></label>
+          <ImageUpload
+            value={form.avatarUrl ? [form.avatarUrl] : []}
+            onChange={(urls) => set("avatarUrl", urls[0] ?? "")}
+            maxFiles={1}
+            folder="avatars"
+            label="Upload Profile Photo"
+          />
+        </div>
       </div>
 
       {profile && (
@@ -383,13 +408,13 @@ type MatForm = {
   id?: string; name: string; category: string; description: string;
   pricePerUnit: number | ""; unit: string; minOrderQuantity: number | "";
   stockQuantity: number | ""; brand: string; deliveryDays: string;
-  city: string; state: string; isAvailable: boolean;
+  city: string; state: string; isAvailable: boolean; imageUrls: string[];
 };
 
 const BLANK_MAT: MatForm = {
   name: "", category: "cement", description: "", pricePerUnit: "",
   unit: "bag", minOrderQuantity: "", stockQuantity: "", brand: "",
-  deliveryDays: "", city: "", state: "", isAvailable: true,
+  deliveryDays: "", city: "", state: "", isAvailable: true, imageUrls: [],
 };
 
 function MaterialFormPanel({
@@ -419,6 +444,7 @@ function MaterialFormPanel({
         ...(form.deliveryDays ? { deliveryDays: form.deliveryDays } : {}),
         ...(form.city ? { city: form.city } : {}),
         ...(form.state ? { state: form.state } : {}),
+        ...(form.imageUrls.length > 0 ? { imageUrls: form.imageUrls } : {}),
       };
       const saved = isEdit
         ? await updateMaterial(initial.id!, payload)
@@ -505,6 +531,17 @@ function MaterialFormPanel({
         <textarea rows={2} className="input-field resize-none" value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Product details, grade, specifications…" />
       </div>
 
+      <div>
+        <label className="label-text">Product Images <span className="text-stone-400 font-normal">(opt.)</span></label>
+        <ImageUpload
+          value={form.imageUrls}
+          onChange={(urls) => set("imageUrls", urls)}
+          maxFiles={5}
+          folder="materials"
+          label="Upload Product Images"
+        />
+      </div>
+
       <div className="flex items-center justify-between pt-1">
         <AvailToggle value={form.isAvailable} onChange={(v) => set("isAvailable", v)} />
         <div className="flex gap-2">
@@ -540,6 +577,7 @@ function SupplierMaterials({ materials: init, loading }: { materials: Material[]
       minOrderQuantity: m.minOrderQuantity ?? "", stockQuantity: m.stockQuantity ?? "",
       brand: m.brand ?? "", deliveryDays: m.deliveryDays ?? "",
       city: m.city ?? "", state: m.state ?? "", isAvailable: m.isAvailable,
+      imageUrls: m.imageUrls ?? [],
     });
   }
 

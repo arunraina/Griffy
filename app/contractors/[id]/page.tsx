@@ -78,8 +78,11 @@ export default function ContractorDetailPage() {
             {/* Header card */}
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
               <div className="flex items-start gap-5">
-                <div className="w-20 h-20 rounded-2xl bg-blue-100 text-blue-600 font-extrabold text-2xl flex items-center justify-center shrink-0">
-                  {avatarText}
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-blue-100 text-blue-600 font-extrabold text-2xl flex items-center justify-center">
+                  {contractor.avatarUrl
+                    ? <img src={contractor.avatarUrl} alt={contractor.businessName} className="w-full h-full object-cover" />
+                    : avatarText
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

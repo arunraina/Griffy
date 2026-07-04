@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Truck, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { Package, ChevronRight, Truck, CheckCircle2, Clock, XCircle, AlertCircle, Star } from "lucide-react";
 import { listMyOrders, Order } from "@/lib/api";
 import { ORDER_STATUS, formatDate } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import ReviewModal from "@/components/ReviewModal";
 
 const STATUS_ICONS: Record<string, any> = {
   pending: Clock,
@@ -45,6 +46,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -157,12 +159,22 @@ export default function OrdersPage() {
                       <span className="font-semibold text-stone-900">₹{order.amount.toLocaleString("en-IN")}</span>
                       {order.platformFee > 0 && <span className="ml-2 text-xs text-stone-400">(incl. ₹{order.platformFee} fee)</span>}
                     </div>
-                    <Link
-                      href={`/orders/${order.id}`}
-                      className="text-sm text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1"
-                    >
-                      View Details <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      {order.status === "completed" && (
+                        <button
+                          onClick={() => setReviewOrder(order)}
+                          className="flex items-center gap-1.5 text-sm text-yellow-600 hover:text-yellow-700 font-semibold"
+                        >
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" /> Leave a Review
+                        </button>
+                      )}
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="text-sm text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1"
+                      >
+                        View Details <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
@@ -178,6 +190,17 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {reviewOrder && (
+        <ReviewModal
+          orderId={reviewOrder.id}
+          targetType={reviewOrder.type as "material" | "contractor" | "labour"}
+          targetId={reviewOrder.itemId}
+          targetName={`${reviewOrder.type.charAt(0).toUpperCase() + reviewOrder.type.slice(1)} order #${reviewOrder.id.slice(-8).toUpperCase()}`}
+          onClose={() => setReviewOrder(null)}
+          onSubmitted={() => setReviewOrder(null)}
+        />
+      )}
     </div>
   );
 }

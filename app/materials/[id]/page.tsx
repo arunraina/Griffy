@@ -38,6 +38,7 @@ export default function MaterialDetailPage() {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -105,20 +106,55 @@ export default function MaterialDetailPage() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-2 gap-10 mb-12">
-          {/* Image */}
+          {/* Image / Gallery */}
           <div>
-            <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-3xl flex items-center justify-center text-[120px] relative overflow-hidden shadow-sm">
-              {emoji}
-              {material.isFeatured && (
-                <span className="absolute top-4 left-4 badge bg-orange-100 text-orange-700 text-sm">Featured</span>
-              )}
-              <button
-                onClick={() => setSaved(!saved)}
-                className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all ${saved ? "bg-red-500 text-white" : "bg-white text-stone-500 hover:text-red-400"}`}
-              >
-                <Heart className={`w-5 h-5 ${saved ? "fill-white" : ""}`} />
-              </button>
-            </div>
+            {material.imageUrls && material.imageUrls.length > 0 ? (
+              <div className="space-y-3">
+                <div className="aspect-square rounded-3xl overflow-hidden relative shadow-sm border border-stone-100">
+                  <img
+                    src={material.imageUrls[activeImg]}
+                    alt={material.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {material.isFeatured && (
+                    <span className="absolute top-4 left-4 badge bg-orange-100 text-orange-700 text-sm">Featured</span>
+                  )}
+                  <button
+                    onClick={() => setSaved(!saved)}
+                    className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all ${saved ? "bg-red-500 text-white" : "bg-white text-stone-500 hover:text-red-400"}`}
+                  >
+                    <Heart className={`w-5 h-5 ${saved ? "fill-white" : ""}`} />
+                  </button>
+                </div>
+                {material.imageUrls.length > 1 && (
+                  <div className="grid grid-cols-5 gap-2">
+                    {material.imageUrls.map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveImg(i)}
+                        className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${i === activeImg ? "border-orange-400" : "border-transparent"}`}
+                      >
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="aspect-square bg-gradient-to-br from-stone-100 to-stone-200 rounded-3xl flex items-center justify-center text-[120px] relative overflow-hidden shadow-sm">
+                {emoji}
+                {material.isFeatured && (
+                  <span className="absolute top-4 left-4 badge bg-orange-100 text-orange-700 text-sm">Featured</span>
+                )}
+                <button
+                  onClick={() => setSaved(!saved)}
+                  className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all ${saved ? "bg-red-500 text-white" : "bg-white text-stone-500 hover:text-red-400"}`}
+                >
+                  <Heart className={`w-5 h-5 ${saved ? "fill-white" : ""}`} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Info + Order */}

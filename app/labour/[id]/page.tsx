@@ -77,8 +77,11 @@ export default function LabourDetailPage() {
             {/* Profile card */}
             <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6">
               <div className="flex items-start gap-5">
-                <div className="w-20 h-20 rounded-2xl bg-orange-100 text-orange-600 font-extrabold text-3xl flex items-center justify-center shrink-0">
-                  {tradeEmoji}
+                <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-orange-100 text-orange-600 font-extrabold text-3xl flex items-center justify-center">
+                  {worker.avatarUrl
+                    ? <img src={worker.avatarUrl} alt={name} className="w-full h-full object-cover" />
+                    : tradeEmoji
+                  }
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
