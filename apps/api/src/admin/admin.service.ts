@@ -76,4 +76,8 @@ export class AdminService {
   moderateProject(id: string, status: ProjectStatus) {
     return this.prisma.project.update({ where: { id }, data: { status } });
   }
+
+  listCareerApplications() {
+    return this.prisma.careerApplication.findMany({ orderBy: { createdAt: 'desc' } });
+  }
 }

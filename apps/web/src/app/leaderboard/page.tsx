@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getTier, TIERS } from '@/lib/gamification';
+import { getTier, jobsToNextTier, TIERS } from '@/lib/gamification';
 import TierBadge from '@/components/TierBadge';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
@@ -16,11 +16,12 @@ interface Row {
   rating: number;
   reviewCount: number;
   completedJobs: number;
+  unitLabel: string;
   verified: boolean;
   href: string;
 }
 
-type Tab = 'contractors' | 'labour';
+type Tab = 'contractors' | 'labour' | 'service-experts' | 'material-sellers';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapContractor(p: any): Row {
@@ -32,6 +33,7 @@ function mapContractor(p: any): Row {
     rating: Number(p.avgRating ?? 0),
     reviewCount: p.totalReviews ?? 0,
     completedJobs: p.totalJobs ?? 0,
+    unitLabel: 'job',
     verified: p.approvalStatus === 'APPROVED',
     href: `/contractors/${p.id}`,
   };
@@ -47,8 +49,41 @@ function mapLabour(p: any): Row {
     rating: Number(p.avgRating ?? 0),
     reviewCount: p.totalReviews ?? 0,
     completedJobs: p.totalJobs ?? 0,
+    unitLabel: 'job',
     verified: p.approvalStatus === 'APPROVED',
     href: `/labour/${p.id}`,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapServiceExpert(p: any): Row {
+  return {
+    id: p.id,
+    name: p.user?.name ?? 'Unknown',
+    subtitle: p.expertiseType ?? 'Service Expert',
+    location: p.serviceCities?.[0] ?? '',
+    rating: Number(p.avgRating ?? 0),
+    reviewCount: p.totalReviews ?? 0,
+    completedJobs: p.totalJobs ?? 0,
+    unitLabel: 'consult',
+    verified: p.approvalStatus === 'APPROVED',
+    href: `/service-experts/${p.id}`,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapMaterialSeller(p: any): Row {
+  return {
+    id: p.id,
+    name: p.businessName ?? p.user?.name ?? 'Unknown',
+    subtitle: 'Material Supplier',
+    location: p.deliveryCities?.[0] ?? '',
+    rating: Number(p.avgRating ?? 0),
+    reviewCount: p.totalReviews ?? 0,
+    completedJobs: p.totalOrders ?? 0,
+    unitLabel: 'order',
+    verified: p.approvalStatus === 'APPROVED',
+    href: `/materials`,
   };
 }
 
@@ -58,6 +93,7 @@ function rankScore(r: Row): number {
 }
 
 function LeaderboardRow({ row, rank }: { row: Row; rank: number }) {
+  const progress = jobsToNextTier(row.completedJobs, row.rating);
   return (
     <Link
       href={row.href}
@@ -78,37 +114,57 @@ function LeaderboardRow({ row, rank }: { row: Row; rank: number }) {
         <p className="text-xs text-[#A08070] mt-0.5">
           {row.subtitle}{row.location && ` · ${row.location}`}
         </p>
+        {progress && (
+          <p className="text-[11px] text-[#C0593A] font-medium mt-1">
+            {progress.jobsLeft} more {row.unitLabel}{progress.jobsLeft !== 1 ? 's' : ''} to {progress.next.emoji} {progress.next.label}
+          </p>
+        )}
       </div>
       <div className="flex flex-col items-end shrink-0 gap-0.5">
         {row.rating > 0 && (
           <span className="text-sm font-bold text-[#2C1810]">★ {row.rating.toFixed(1)} <span className="text-xs text-[#A08070] font-normal">({row.reviewCount})</span></span>
         )}
-        <span className="text-xs text-[#A08070]">{row.completedJobs} job{row.completedJobs !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-[#A08070]">{row.completedJobs} {row.unitLabel}{row.completedJobs !== 1 ? 's' : ''}</span>
       </div>
     </Link>
   );
 }
 
+const TABS: { id: Tab; label: string; icon: string; unitLabel: string }[] = [
+  { id: 'contractors', label: 'Contractors', icon: '🏗️', unitLabel: 'job' },
+  { id: 'labour', label: 'Labour', icon: '👷', unitLabel: 'job' },
+  { id: 'service-experts', label: 'Service Experts', icon: '🧰', unitLabel: 'consult' },
+  { id: 'material-sellers', label: 'Material Sellers', icon: '📦', unitLabel: 'order' },
+];
+
 export default function LeaderboardPage() {
   const [tab, setTab] = useState<Tab>('contractors');
   const [contractors, setContractors] = useState<Row[]>([]);
   const [labour, setLabour] = useState<Row[]>([]);
+  const [serviceExperts, setServiceExperts] = useState<Row[]>([]);
+  const [materialSellers, setMaterialSellers] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch(`${API}/contractor-profiles`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch(`${API}/labour-profiles`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([c, l]) => {
+      fetch(`${API}/service-expert-profiles`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${API}/material-supplier-profiles`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([c, l, se, ms]) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setContractors((c ?? []).map(mapContractor).sort((a: Row, b: Row) => rankScore(b) - rankScore(a)));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setLabour((l ?? []).map(mapLabour).sort((a: Row, b: Row) => rankScore(b) - rankScore(a)));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setServiceExperts((se ?? []).map(mapServiceExpert).sort((a: Row, b: Row) => rankScore(b) - rankScore(a)));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setMaterialSellers((ms ?? []).map(mapMaterialSeller).sort((a: Row, b: Row) => rankScore(b) - rankScore(a)));
       setLoading(false);
     });
   }, []);
 
-  const rows = tab === 'contractors' ? contractors : labour;
+  const rows = { contractors, labour, 'service-experts': serviceExperts, 'material-sellers': materialSellers }[tab];
 
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
@@ -123,19 +179,16 @@ export default function LeaderboardPage() {
           <p className="text-[#6B5248] text-sm">Ranked by completed jobs and customer ratings.</p>
         </div>
 
-        <div className="flex justify-center gap-2 mb-6">
-          <button
-            onClick={() => setTab('contractors')}
-            className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all ${tab === 'contractors' ? 'bg-[#C0593A] text-white border-[#C0593A]' : 'bg-white text-[#6B5248] border-[#EBE0D8]'}`}
-          >
-            🏗️ Contractors
-          </button>
-          <button
-            onClick={() => setTab('labour')}
-            className={`px-5 py-2 rounded-full text-sm font-semibold border transition-all ${tab === 'labour' ? 'bg-[#C0593A] text-white border-[#C0593A]' : 'bg-white text-[#6B5248] border-[#EBE0D8]'}`}
-          >
-            👷 Labour
-          </button>
+        <div className="flex flex-wrap justify-center gap-2 mb-6">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${tab === t.id ? 'bg-[#C0593A] text-white border-[#C0593A]' : 'bg-white text-[#6B5248] border-[#EBE0D8]'}`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -162,7 +215,7 @@ export default function LeaderboardPage() {
                 <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${t.color} ${t.borderColor}`}>
                   {t.emoji} {t.label}
                 </span>
-                <p className="text-[11px] text-[#A08070] mt-1.5">{t.minJobs}+ jobs</p>
+                <p className="text-[11px] text-[#A08070] mt-1.5">{t.minJobs}+ {TABS.find((x) => x.id === tab)?.unitLabel}{t.minJobs !== 1 ? 's' : ''}</p>
               </div>
             ))}
           </div>

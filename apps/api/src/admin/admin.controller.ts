@@ -66,4 +66,10 @@ export class AdminController {
     await this.admin.assertAdmin(user.id);
     return this.admin.moderateProject(id, body.status);
   }
+
+  @Get('career-applications')
+  async listCareerApplications(@CurrentUser() user: User) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.listCareerApplications();
+  }
 }

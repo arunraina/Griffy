@@ -98,6 +98,11 @@ export class BookingsService {
         where: { userId: providerId },
         data: { totalJobs: { increment: 1 } },
       });
+    } else if (providerRole === 'SERVICE_EXPERT') {
+      await this.prisma.serviceExpertProfile.updateMany({
+        where: { userId: providerId },
+        data: { totalJobs: { increment: 1 } },
+      });
     }
   }
 }

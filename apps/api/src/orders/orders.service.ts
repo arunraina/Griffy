@@ -78,6 +78,26 @@ export class OrdersService {
       await this.notifications.create(order.buyerId, 'ORDER_STATUS_CHANGED', 'Order update', message, `/orders/${order.id}`);
     }
 
+    if (status === 'DELIVERED') {
+      await this.incrementSupplierOrders(order.id);
+    }
+
     return order;
+  }
+
+  private async incrementSupplierOrders(orderId: string) {
+    const items = await this.prisma.orderItem.findMany({
+      where: { orderId },
+      include: { material: { select: { supplierId: true } } },
+    });
+    const supplierIds = Array.from(new Set(items.map((i) => i.material.supplierId)));
+    await Promise.all(
+      supplierIds.map((supplierId) =>
+        this.prisma.materialSupplierProfile.update({
+          where: { id: supplierId },
+          data: { totalOrders: { increment: 1 } },
+        }),
+      ),
+    );
   }
 }

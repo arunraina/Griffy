@@ -31,6 +31,11 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum DegreeStatus {
+  PURSUING
+  COMPLETED
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -212,6 +217,7 @@ model ServiceExpertProfile {
   approvedBy      String?        @map("approved_by")
   avgRating       Float          @default(0) @map("avg_rating")
   totalReviews    Int            @default(0) @map("total_reviews")
+  totalJobs       Int            @default(0) @map("total_jobs")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -234,6 +240,7 @@ model MaterialSupplierProfile {
   approvedBy      String?        @map("approved_by")
   avgRating       Float          @default(0) @map("avg_rating")
   totalReviews    Int            @default(0) @map("total_reviews")
+  totalOrders     Int            @default(0) @map("total_orders")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
@@ -591,4 +598,23 @@ model Bid {
 
   @@unique([projectId, contractorId])
   @@map("bids")
+}
+
+// ---------------------------------------------------------------------------
+// Career applications — internship applies from the public Careers page.
+// No auth required to apply; applicants are prospective, not existing users.
+
+model CareerApplication {
+  id             String       @id @default(uuid())
+  role           String
+  name           String
+  email          String
+  resumeUrl      String       @map("resume_url")
+  institute      String
+  courseOrDegree String       @map("course_or_degree")
+  degreeStatus   DegreeStatus @map("degree_status")
+  graduationYear Int          @map("graduation_year")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@map("career_applications")
 }

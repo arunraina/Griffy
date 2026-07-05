@@ -32,6 +32,16 @@ export function getTier(completedJobs: number, rating: number): TierInfo {
   return tier;
 }
 
+// Same ladder rewards a brand-new supplier (only 5 jobs to reach Rising Star)
+// and gives a veteran something to keep climbing toward (100 for Elite) — one
+// number keeps both ends of the leaderboard motivated without extra config.
+export function jobsToNextTier(completedJobs: number, rating: number): { jobsLeft: number; next: TierInfo } | null {
+  const currentIdx = TIERS.findIndex((t) => t.id === getTier(completedJobs, rating).id);
+  const next = TIERS[currentIdx + 1];
+  if (!next) return null;
+  return { jobsLeft: Math.max(1, next.minJobs - completedJobs), next };
+}
+
 // ── Badges ───────────────────────────────────────────────────────────────────
 
 export interface Badge {

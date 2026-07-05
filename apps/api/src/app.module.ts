@@ -22,6 +22,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProjectsModule } from './projects/projects.module';
+import { CareerApplicationsModule } from './career-applications/career-applications.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { ProjectsModule } from './projects/projects.module';
     StorageModule,
     NotificationsModule,
     ProjectsModule,
+    CareerApplicationsModule,
   ],
 })
 export class AppModule {}
