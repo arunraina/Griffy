@@ -42,6 +42,12 @@ export class LandsService {
     return land;
   }
 
+  async findByOwner(userId: string) {
+    const profile = await this.prisma.landOwnerProfile.findUnique({ where: { userId } });
+    if (!profile) return [];
+    return this.prisma.land.findMany({ where: { ownerId: profile.id }, orderBy: { createdAt: 'desc' } });
+  }
+
   async create(userId: string, data: CreateDto) {
     const profile = await this.prisma.landOwnerProfile.findUnique({ where: { userId } });
     if (!profile) throw new ForbiddenException('No land owner profile found');

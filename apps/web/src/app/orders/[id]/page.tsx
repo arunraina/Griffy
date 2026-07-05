@@ -3,11 +3,52 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { fetchOrder, type Order } from '@/lib/orders';
+import { fetchOrder, fetchOrderHistory, type Order, type OrderStatusEvent } from '@/lib/orders';
+
+const STEPPER_STATUSES = ['PLACED', 'ACCEPTED', 'PACKED', 'SHIPPED', 'DELIVERED'] as const;
+
+function StatusStepper({ status, history }: { status: Order['status']; history: OrderStatusEvent[] }) {
+  if (status === 'REJECTED' || status === 'CANCELLED') {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-center">
+        <p className="text-sm font-semibold text-red-800">
+          {status === 'REJECTED' ? 'Order rejected by seller' : 'Order cancelled'}
+        </p>
+      </div>
+    );
+  }
+
+  const currentIndex = STEPPER_STATUSES.indexOf(status as (typeof STEPPER_STATUSES)[number]);
+  const eventAt = (s: string) => history.find((h) => h.status === s)?.createdAt;
+
+  return (
+    <div className="flex items-center mb-6">
+      {STEPPER_STATUSES.map((s, i) => {
+        const done = i <= currentIndex;
+        const at = eventAt(s);
+        return (
+          <div key={s} className="flex-1 flex flex-col items-center relative">
+            {i > 0 && (
+              <div className={`absolute top-3 right-1/2 w-full h-0.5 ${i <= currentIndex ? 'bg-[#C0593A]' : 'bg-[#EBE0D8]'}`} />
+            )}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold z-10 ${
+              done ? 'bg-[#C0593A] text-white' : 'bg-white border-2 border-[#EBE0D8] text-[#A08070]'
+            }`}>
+              {done ? '✓' : i + 1}
+            </div>
+            <p className={`text-[10px] font-semibold mt-1.5 text-center ${done ? 'text-[#2C1810]' : 'text-[#A08070]'}`}>{s}</p>
+            {at && <p className="text-[9px] text-[#A08070]">{new Date(at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
+  const [history, setHistory] = useState<OrderStatusEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,6 +56,7 @@ export default function OrderDetailPage() {
       .then((o) => setOrder(o))
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
+    fetchOrderHistory(params.id).then(setHistory).catch(() => setHistory([]));
   }, [params.id]);
 
   if (loading) {
@@ -40,13 +82,12 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-lg font-bold text-[#2C1810]">Order #{order.id.slice(0, 8)}</h1>
-            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-yellow-50 text-yellow-700 border-yellow-200">
-              {order.status}
-            </span>
           </div>
           <p className="text-xs text-[#A08070] mb-6">
             Placed {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
+
+          <StatusStepper status={order.status} history={history} />
 
           <div className="space-y-3 mb-5">
             {order.items.map((item) => (

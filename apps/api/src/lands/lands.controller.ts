@@ -13,6 +13,12 @@ export class LandsController {
     return this.lands.findAll(city, landType);
   }
 
+  @Get('mine')
+  @UseGuards(AuthGuard)
+  findMine(@CurrentUser() user: User) {
+    return this.lands.findByOwner(user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.lands.findOne(id);

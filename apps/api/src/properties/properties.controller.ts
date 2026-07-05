@@ -13,6 +13,12 @@ export class PropertiesController {
     return this.properties.findAll(city, propertyType);
   }
 
+  @Get('mine')
+  @UseGuards(AuthGuard)
+  findMine(@CurrentUser() user: User) {
+    return this.properties.findBySeller(user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.properties.findOne(id);

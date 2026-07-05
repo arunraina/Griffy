@@ -21,17 +21,28 @@ export interface OrderItem {
   material?: { name: string; imageUrls: string[] };
 }
 
+export type OrderStatusValue = 'PLACED' | 'ACCEPTED' | 'REJECTED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+
 export interface Order {
   id: string;
   buyerId: string;
   totalAmount: string;
-  status: 'PLACED' | 'ACCEPTED' | 'REJECTED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: OrderStatusValue;
   shippingAddress: string | null;
   notes: string | null;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
   createdAt: string;
   items: OrderItem[];
+  buyer?: { name: string; phone: string | null };
+}
+
+export interface OrderStatusEvent {
+  id: string;
+  orderId: string;
+  status: OrderStatusValue;
+  note: string | null;
+  createdAt: string;
 }
 
 export async function createOrder(body: {
@@ -63,5 +74,33 @@ export async function fetchOrder(id: string): Promise<Order | null> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/orders/${id}`, { headers });
   if (!res.ok) return null;
+  return res.json();
+}
+
+export async function fetchOrderHistory(id: string): Promise<OrderStatusEvent[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/orders/${id}/history`, { headers });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchIncomingOrders(): Promise<Order[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/orders/incoming`, { headers });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function updateOrderStatus(id: string, status: OrderStatusValue, note?: string): Promise<Order> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/orders/${id}/status`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ status, note }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to update order status');
+  }
   return res.json();
 }

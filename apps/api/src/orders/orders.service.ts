@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -10,6 +10,15 @@ const STATUS_MESSAGE: Partial<Record<OrderStatus, string>> = {
   SHIPPED: 'Your order has shipped.',
   DELIVERED: 'Your order has been delivered.',
   CANCELLED: 'Your order has been cancelled.',
+};
+
+// Legal supplier-driven transitions. Terminal states (REJECTED, DELIVERED,
+// CANCELLED) have no further moves from here.
+const LEGAL_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
+  PLACED: ['ACCEPTED', 'REJECTED'],
+  ACCEPTED: ['PACKED', 'CANCELLED'],
+  PACKED: ['SHIPPED'],
+  SHIPPED: ['DELIVERED'],
 };
 
 @Injectable()
@@ -69,11 +78,13 @@ export class OrdersService {
     });
   }
 
-  async updateStatus(id: string, status: OrderStatus, razorpayPaymentId?: string) {
+  async updateStatus(id: string, status: OrderStatus, razorpayPaymentId?: string, note?: string) {
     const order = await this.prisma.order.update({
       where: { id },
-      data: { status, ...(razorpayPaymentId && { razorpayPaymentId }) },
+      data: { status, statusUpdatedAt: new Date(), ...(razorpayPaymentId && { razorpayPaymentId }) },
     });
+
+    await this.prisma.orderStatusEvent.create({ data: { orderId: id, status, note } });
 
     const message = STATUS_MESSAGE[status];
     if (message) {
@@ -85,6 +96,42 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  findIncoming(userId: string) {
+    return this.prisma.order.findMany({
+      where: { items: { some: { material: { supplier: { userId } } } } },
+      include: {
+        items: { include: { material: { select: { name: true, imageUrls: true, supplierId: true } } } },
+        buyer: { select: { name: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateStatusForSupplier(orderId: string, userId: string, status: OrderStatus, note?: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { material: { select: { supplier: { select: { userId: true } } } } } } },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const isSupplierOnOrder = order.items.some((i) => i.material.supplier.userId === userId);
+    if (!isSupplierOnOrder) throw new ForbiddenException('You are not a supplier on this order');
+
+    const allowed = LEGAL_TRANSITIONS[order.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(`Cannot move an order from ${order.status} to ${status}`);
+    }
+
+    return this.updateStatus(orderId, status, undefined, note);
+  }
+
+  async getStatusHistory(orderId: string) {
+    return this.prisma.orderStatusEvent.findMany({
+      where: { orderId },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   private async incrementSupplierOrders(orderId: string) {

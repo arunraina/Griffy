@@ -36,6 +36,12 @@ export class PropertiesService {
     });
   }
 
+  async findBySeller(userId: string) {
+    const profile = await this.prisma.propertySellerProfile.findUnique({ where: { userId } });
+    if (!profile) return [];
+    return this.prisma.property.findMany({ where: { sellerId: profile.id }, orderBy: { createdAt: 'desc' } });
+  }
+
   async findOne(id: string) {
     const property = await this.prisma.property.findUnique({
       where: { id },
