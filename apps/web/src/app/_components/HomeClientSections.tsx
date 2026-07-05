@@ -103,7 +103,7 @@ export function CostCalculator() {
           <p className="text-xs text-gray-400 mt-2">
             For {area} sqft in {city} · {type.split('(')[0].trim()}
           </p>
-          <Link href="/estimate" className="inline-block text-xs font-semibold text-[#C0593A] hover:underline mt-3">
+          <Link href="/estimate/cost" className="inline-block text-xs font-semibold text-[#C0593A] hover:underline mt-3">
             See full cost breakdown by category →
           </Link>
         </div>
@@ -111,6 +111,11 @@ export function CostCalculator() {
       <p className="text-xs text-center text-gray-400 mt-3">
         * Estimates based on current market rates. Get exact quotes from verified contractors on Griffy.
       </p>
+      <div className="text-center mt-2">
+        <Link href="/estimate" className="text-xs font-semibold text-[#6B5248] hover:text-[#C0593A] hover:underline">
+          Explore all estimators →
+        </Link>
+      </div>
     </div>
   );
 }

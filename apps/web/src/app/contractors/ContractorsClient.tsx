@@ -321,6 +321,14 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
               {c.type}
             </span>
             <TierBadge completedJobs={c.completedJobs} rating={c.rating} />
+            {isBestMatch && (
+              <span className="relative group inline-flex items-center gap-1 text-[10px] font-semibold bg-[#C0593A]/10 text-[#C0593A] border border-[#C0593A]/20 px-2 py-0.5 rounded-full cursor-default">
+                🎯 Best Match
+                <span className="absolute left-0 top-6 z-10 hidden group-hover:block bg-[#2C1810] text-white text-xs px-3 py-2 rounded-lg shadow-lg w-52 font-normal normal-case">
+                  Recommended based on your location and project type
+                </span>
+              </span>
+            )}
             {c.featured && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700">
                 ⭐ Featured
@@ -334,18 +342,6 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
           </div>
         </div>
       </div>
-
-      {/* Best Match badge */}
-      {isBestMatch && (
-        <div className="relative group">
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#C0593A]/10 text-[#C0593A] border border-[#C0593A]/20 px-2.5 py-1 rounded-full cursor-default">
-            🎯 Best Match
-          </span>
-          <div className="absolute left-0 top-7 z-10 hidden group-hover:block bg-[#2C1810] text-white text-xs px-3 py-2 rounded-lg shadow-lg w-52">
-            Recommended based on your location and project type
-          </div>
-        </div>
-      )}
 
       {/* Skills */}
       <div className="flex flex-wrap gap-1.5">

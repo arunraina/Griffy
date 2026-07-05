@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import EstimateClient from './EstimateClient';
+import EstimateHubClient from './EstimateHubClient';
 
 export const metadata: Metadata = {
-  title: 'Cost Estimator — Griffy',
-  description: 'Get a detailed construction cost breakdown by project type, area, and quality level. Free instant estimate for building, renovating, or fitting out in India.',
+  title: 'Construction Cost Calculator India — Free Estimators | Griffy',
+  description: 'Free construction estimators for India — whole-project cost calculator plus bricks, concrete, plaster, flooring, paint, and steel quantity calculators.',
 };
 
-export default function EstimatePage() {
-  return <EstimateClient />;
+export default function EstimateHubPage() {
+  return <EstimateHubClient />;
 }

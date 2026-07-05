@@ -26,7 +26,7 @@ function getMarketplaceLinks() {
 
 const DIRECT_LINKS = [
   { href: '/projects', label: 'Projects' },
-  { href: '/estimate', label: 'Cost Estimator' },
+  { href: '/estimate', label: 'Estimate' },
 ];
 
 export default function Navbar() {
