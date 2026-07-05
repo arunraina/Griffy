@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { listProjects, type Project } from '@/lib/projects';
 
 const TYPE_LABEL: Record<string, string> = {
+  turnkey: 'Turnkey / Full Construction',
   civil: 'Civil / Structure', electrical: 'Electrical', plumbing: 'Plumbing', interior: 'Interior',
   structural: 'Structural', painting: 'Painting', architecture: 'Architecture', other: 'Other',
 };
 const TYPE_EMOJI: Record<string, string> = {
+  turnkey: '🔑',
   civil: '🏗️', electrical: '⚡', plumbing: '🔧', interior: '🛋️',
   structural: '🏛️', painting: '🎨', architecture: '📐', other: '🔨',
 };

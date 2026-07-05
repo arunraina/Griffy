@@ -7,6 +7,7 @@ import { getProject, getProjectBids, submitBid, updateBidStatus, type Project, t
 import { fetchMe, type Me } from '@/lib/users';
 
 const TYPE_LABEL: Record<string, string> = {
+  turnkey: 'Turnkey / Full Construction',
   civil: 'Civil / Structure', electrical: 'Electrical', plumbing: 'Plumbing', interior: 'Interior',
   structural: 'Structural', painting: 'Painting', architecture: 'Architecture', other: 'Other',
 };

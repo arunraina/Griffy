@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createProject } from '@/lib/projects';
 import { fetchMe } from '@/lib/users';
 
 const PROJECT_TYPES = [
+  { id: 'turnkey', label: 'Turnkey / Full Construction', emoji: '🔑', desc: 'Have land? We handle design to move-in' },
   { id: 'civil', label: 'Civil / Structure', emoji: '🏗️' },
   { id: 'electrical', label: 'Electrical', emoji: '⚡' },
   { id: 'plumbing', label: 'Plumbing', emoji: '🔧' },
@@ -27,16 +28,19 @@ const TIMELINES = ['ASAP (within 1 week)', '1–2 months', '2–4 months', '4–
 
 const STEPS = ['Project Details', 'Location & Budget', 'Review & Post'];
 
-export default function PostProjectPage() {
+function PostProjectForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [authChecked, setAuthChecked] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const preselectedType = searchParams.get('type');
   const [form, setForm] = useState({
-    projectType: '', title: '', description: '', city: '', state: '',
+    projectType: PROJECT_TYPES.some((p) => p.id === preselectedType) ? preselectedType! : '',
+    title: '', description: '', city: '', state: '',
     budgetMin: '', budgetMax: '', timeline: '',
   });
 
@@ -287,5 +291,13 @@ export default function PostProjectPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PostProjectPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDF8F5]" />}>
+      <PostProjectForm />
+    </Suspense>
   );
 }
