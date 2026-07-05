@@ -47,6 +47,18 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum ProjectStatus {
+  OPEN
+  AWARDED
+  CLOSED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum ReviewTargetType {
   CONTRACTOR
   LABOUR
@@ -113,6 +125,8 @@ model User {
   bookingsAsProvider Booking[]      @relation("BookingProvider")
   reviewsGiven       Review[]       @relation("ReviewsGiven")
   notifications      Notification[]
+  projectsPosted     Project[]      @relation("ProjectOwner")
+  bidsSubmitted      Bid[]          @relation("BidContractor")
 
   @@map("users")
 }
@@ -515,6 +529,9 @@ enum NotificationType {
   BOOKING_CONFIRMED
   BOOKING_CANCELLED
   ORDER_STATUS_CHANGED
+  PROJECT_BID_RECEIVED
+  PROJECT_BID_ACCEPTED
+  PROJECT_BID_REJECTED
 }
 
 model Notification {
@@ -530,4 +547,44 @@ model Notification {
 
   @@index([userId, read])
   @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Open projects marketplace — homeowners post a project, contractors bid.
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String        @id @default(uuid())
+  ownerId     String        @map("owner_id")
+  owner       User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  projectType String        @map("project_type")
+  title       String
+  description String
+  city        String
+  state       String
+  budgetMin   Decimal       @map("budget_min") @db.Decimal(12, 2)
+  budgetMax   Decimal       @map("budget_max") @db.Decimal(12, 2)
+  timeline    String
+  status      ProjectStatus @default(OPEN)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  bids Bid[]
+
+  @@map("projects")
+}
+
+model Bid {
+  id           String    @id @default(uuid())
+  projectId    String    @map("project_id")
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractorId String    @map("contractor_id")
+  contractor   User      @relation("BidContractor", fields: [contractorId], references: [id])
+  bidAmount    Decimal   @map("bid_amount") @db.Decimal(12, 2)
+  message      String
+  status       BidStatus @default(PENDING)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([projectId, contractorId])
+  @@map("bids")
 }

@@ -21,6 +21,7 @@ function getNavLinks() {
       : isEnabled('land')
       ? { href: '/land',       label: 'Land' }
       : null,
+    { href: '/projects', label: 'Projects' },
     { href: '/estimate', label: 'Cost Estimator' },
   ].filter(Boolean) as { href: string; label: string }[];
 }
