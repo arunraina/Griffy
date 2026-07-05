@@ -138,9 +138,29 @@ export const FAQ: FaqEntry[] = [
     answer: 'Use the Contact Us page and select "Report a problem," or email support@griffy.in with the profile/listing name and details. Our team reviews every report.',
     keywords: ['report', 'flag', 'abuse', 'fraud', 'scam'],
   },
+  {
+    category: 'Account & Safety',
+    question: 'How do I contact Griffy support?',
+    answer: 'Use the Contact Us page for a form, email support@griffy.in directly, or call +91 11 4567 8900. We typically respond within 1–2 business days.',
+    keywords: ['contact support', 'contact us', 'get in touch', 'reach you', 'customer service', 'talk to someone', 'phone number', 'email address', 'support team'],
+  },
+  {
+    category: 'Getting Started',
+    question: 'What is Griffy?',
+    answer: 'Griffy is India\'s one-stop construction marketplace — find and hire contractors, labour, and service experts, buy materials, browse land and properties, get a free cost estimate, or post a project for contractors to bid on.',
+    keywords: ['what is griffy', 'about griffy', 'what does griffy do'],
+  },
 ];
 
 export const FAQ_CATEGORIES = Array.from(new Set(FAQ.map((f) => f.category)));
+
+// Words too generic (brand name, common function words) to count as a real
+// signal of relevance — without this, "what is griffy" matched the signup FAQ
+// just because "Griffy" appears in nearly every question.
+const STOPWORDS = new Set([
+  'griffy', 'what', 'does', 'with', 'this', 'that', 'your', 'have', 'from',
+  'about', 'will', 'their', 'they', 'them', 'there', 'here', 'when', 'where',
+]);
 
 function score(query: string, entry: FaqEntry): number {
   const q = query.toLowerCase();
@@ -148,17 +168,29 @@ function score(query: string, entry: FaqEntry): number {
   for (const kw of entry.keywords) {
     if (q.includes(kw)) s += kw.split(' ').length * 2;
   }
-  const questionWords = entry.question.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
+  const questionWords = entry.question.toLowerCase().split(/\W+/)
+    .filter((w) => w.length > 3 && !STOPWORDS.has(w));
   for (const w of questionWords) {
     if (q.includes(w)) s += 1;
   }
   return s;
 }
 
+// The stopword list above is what actually fixes false-positive matches (like
+// "griffy" appearing in nearly every question); this floor just excludes
+// genuine zero-relevance results, same as the original ">0" check.
+const MIN_CONFIDENT_SCORE = 1;
+
+const GREETING_RE = /^\s*(hi|hii+|hello+|hey+|yo|sup|good\s?(morning|afternoon|evening))\s*[!.]*\s*$/i;
+
+export function isGreeting(query: string): boolean {
+  return GREETING_RE.test(query);
+}
+
 export function findBestAnswer(query: string): FaqEntry | null {
   if (!query.trim()) return null;
   const scored = FAQ.map((entry) => ({ entry, s: score(query, entry) }))
-    .filter((r) => r.s > 0)
+    .filter((r) => r.s >= MIN_CONFIDENT_SCORE)
     .sort((a, b) => b.s - a.s);
   return scored[0]?.entry ?? null;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { findBestAnswer } from '@/lib/faq-data';
+import { findBestAnswer, isGreeting } from '@/lib/faq-data';
 
 interface Message {
   from: 'bot' | 'user';
@@ -32,10 +32,12 @@ export default function ChatWidget() {
     const q = input.trim();
     if (!q) return;
 
-    const match = findBestAnswer(q);
-    const reply: Message = match
-      ? { from: 'bot', text: match.answer }
-      : { from: 'bot', text: FALLBACK, showContactLink: true };
+    const reply: Message = isGreeting(q)
+      ? { from: 'bot', text: "Hey there! Ask me anything about Griffy — signing up, orders, posting a project, referrals, whatever you're stuck on." }
+      : (() => {
+          const match = findBestAnswer(q);
+          return match ? { from: 'bot', text: match.answer } : { from: 'bot', text: FALLBACK, showContactLink: true };
+        })();
 
     setMessages((prev) => [...prev, { from: 'user', text: q }, reply]);
     setInput('');
