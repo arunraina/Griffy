@@ -10,32 +10,36 @@ import { useNotifications } from '@/context/NotificationContext';
 
 interface UserInfo { name: string }
 
-function getNavLinks() {
+function getMarketplaceLinks() {
   return [
-    isEnabled('contractors')     && { href: '/contractors',     label: 'Find Contractors' },
-    isEnabled('labour')          && { href: '/labour',          label: 'Labour' },
-    isEnabled('service_experts') && { href: '/service-experts', label: 'Service Experts' },
-    isEnabled('materials')       && { href: '/materials',       label: 'Materials' },
+    isEnabled('contractors')     && { href: '/contractors',     label: 'Find Contractors', icon: '🏗️' },
+    isEnabled('labour')          && { href: '/labour',          label: 'Labour', icon: '👷' },
+    isEnabled('service_experts') && { href: '/service-experts', label: 'Service Experts', icon: '⚡' },
+    isEnabled('materials')       && { href: '/materials',       label: 'Materials', icon: '🧱' },
     isEnabled('properties')
-      ? { href: '/properties', label: 'Properties' }
+      ? { href: '/properties', label: 'Properties', icon: '🏠' }
       : isEnabled('land')
-      ? { href: '/land',       label: 'Land' }
+      ? { href: '/land',       label: 'Land', icon: '🌍' }
       : null,
-    { href: '/projects', label: 'Projects' },
-    { href: '/estimate', label: 'Cost Estimator' },
-  ].filter(Boolean) as { href: string; label: string }[];
+  ].filter(Boolean) as { href: string; label: string; icon: string }[];
 }
+
+const DIRECT_LINKS = [
+  { href: '/projects', label: 'Projects' },
+  { href: '/estimate', label: 'Cost Estimator' },
+];
 
 export default function Navbar() {
   const router   = useRouter();
   const supabase = createClient();
-  const NAV_LINKS = getNavLinks();
+  const MARKETPLACE_LINKS = getMarketplaceLinks();
   const { count: cartCount } = useCart();
   const { unreadCount } = useNotifications();
 
-  const [user,       setUser]       = useState<UserInfo | null>(null);
-  const [menuOpen,   setMenuOpen]   = useState(false);
-  const [signupOpen, setSignupOpen] = useState(false);
+  const [user,          setUser]          = useState<UserInfo | null>(null);
+  const [menuOpen,      setMenuOpen]      = useState(false);
+  const [signupOpen,    setSignupOpen]    = useState(false);
+  const [marketOpen,    setMarketOpen]    = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -63,13 +67,36 @@ export default function Navbar() {
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="text-[#C0593A] font-bold text-2xl tracking-tight flex-shrink-0">
+        <Link href="/" className="text-[#C0593A] font-bold text-2xl tracking-tight flex-shrink-0 mr-8">
           Griffy
         </Link>
 
         {/* Center nav — desktop */}
-        <div className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map(l => (
+        <div className="hidden md:flex items-center gap-7 flex-1">
+          <div className="relative"
+            onMouseEnter={() => setMarketOpen(true)}
+            onMouseLeave={() => setMarketOpen(false)}>
+            <button className="flex items-center gap-1 text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors whitespace-nowrap">
+              Marketplace
+              <svg className={`w-3 h-3 transition-transform ${marketOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {marketOpen && (
+              <div className="absolute left-0 top-full pt-2 w-56 z-50">
+                <div className="bg-white border border-[#EBE0D8] rounded-xl shadow-lg overflow-hidden py-1.5">
+                  {MARKETPLACE_LINKS.map(l => (
+                    <Link key={l.href} href={l.href}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">{l.icon}</span>
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {DIRECT_LINKS.map(l => (
             <Link key={l.href} href={l.href}
               className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors whitespace-nowrap">
               {l.label}
@@ -78,7 +105,7 @@ export default function Navbar() {
         </div>
 
         {/* Right — desktop */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3 ml-8">
           <Link href="/search" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Search">
             <span className="text-lg">🔍</span>
           </Link>
@@ -178,10 +205,10 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden absolute top-16 left-0 w-full bg-white shadow-lg border-t border-[#f0ebe6] z-50">
           <div className="flex flex-col px-5 py-5 gap-4">
-            {NAV_LINKS.map(l => (
+            {[...MARKETPLACE_LINKS, ...DIRECT_LINKS].map(l => (
               <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
                 className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
-                {l.label}
+                {'icon' in l ? `${l.icon} ` : ''}{l.label}
               </Link>
             ))}
             <Link href="/search" onClick={() => setMenuOpen(false)}
