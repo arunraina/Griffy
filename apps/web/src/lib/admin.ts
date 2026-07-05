@@ -53,6 +53,7 @@ export interface AdminSummary {
   careerApplications: number;
   earlyAccessSignups: number;
   totalUsers: number;
+  kycPending: number;
 }
 
 export async function fetchAdminSummary(): Promise<AdminSummary> {
@@ -163,5 +164,72 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/early-access-signups`, { headers });
   if (!res.ok) throw new Error('Failed to load early access signups');
+  return res.json();
+}
+
+// ── Users (search / suspend) ─────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: string; name: string; email: string; phone: string | null;
+  role: string; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
+}
+
+export async function fetchAdminUsers(search?: string, role?: string): Promise<AdminUser[]> {
+  const headers = await authHeaders();
+  const qs = new URLSearchParams();
+  if (search) qs.set('search', search);
+  if (role) qs.set('role', role);
+  const res = await fetch(`${API}/admin/users${qs.toString() ? `?${qs}` : ''}`, { headers });
+  if (!res.ok) throw new Error('Failed to load users');
+  return res.json();
+}
+
+export async function suspendUser(id: string): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/suspend`, { method: 'PATCH', headers });
+  if (!res.ok) throw new Error('Failed to suspend user');
+  return res.json();
+}
+
+export async function unsuspendUser(id: string): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/unsuspend`, { method: 'PATCH', headers });
+  if (!res.ok) throw new Error('Failed to unsuspend user');
+  return res.json();
+}
+
+// ── KYC review ────────────────────────────────────────────────────────────────
+
+export interface AdminKycDetail {
+  id: string; userId: string; status: 'NOT_SUBMITTED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  aadhaarNumber: string | null; panNumber: string | null; gstNumber: string | null;
+  businessName: string | null; bankAccountNumber: string | null; bankIfsc: string | null;
+  bankAccountHolderName: string | null; panCardUrl: string | null; bankProofUrl: string | null;
+  rejectionReason: string | null; submittedAt: string | null; verifiedAt: string | null;
+  user?: { name: string; email: string; role: string };
+}
+
+export async function fetchAdminKyc(status?: string): Promise<AdminKycDetail[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/kyc${status ? `?status=${status}` : ''}`, { headers });
+  if (!res.ok) throw new Error('Failed to load KYC submissions');
+  return res.json();
+}
+
+export async function verifyKyc(userId: string): Promise<AdminKycDetail> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/kyc/${userId}/verify`, { method: 'PATCH', headers });
+  if (!res.ok) throw new Error('Failed to verify KYC');
+  return res.json();
+}
+
+export async function rejectKyc(userId: string, reason?: string): Promise<AdminKycDetail> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/kyc/${userId}/reject`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) throw new Error('Failed to reject KYC');
   return res.json();
 }

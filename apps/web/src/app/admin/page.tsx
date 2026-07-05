@@ -6,7 +6,9 @@ import { fetchAdminSummary, type AdminSummary } from '@/lib/admin';
 
 const QUICK_LINKS = [
   { href: '/admin/approvals', icon: '✅', label: 'Profile Approvals', desc: 'Review pending contractors, suppliers, and other professional profiles.' },
+  { href: '/admin/kyc', icon: '🪪', label: 'KYC Review', desc: 'Manual identity and bank verification ahead of escrow payouts.' },
   { href: '/admin/moderation', icon: '🚩', label: 'Content Moderation', desc: 'Hide or demote spam/low-quality reviews, projects, and listings.' },
+  { href: '/admin/users', icon: '👥', label: 'Users', desc: 'Search users and suspend/unsuspend accounts.' },
   { href: '/admin/projects', icon: '🏗️', label: 'Posted Projects', desc: 'Manage the open project bidding marketplace.' },
   { href: '/admin/careers', icon: '💼', label: 'Career Applications', desc: 'Internship applications submitted via the Careers page.' },
   { href: '/admin/early-access', icon: '🚀', label: 'Early Access Signups', desc: 'Email waitlist for the mobile app.' },
@@ -36,8 +38,9 @@ export default function AdminDashboardPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>
       )}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard icon="⏳" value={summary?.totalPendingApprovals} label="Pending approvals" href="/admin/approvals" highlight={!!summary?.totalPendingApprovals} />
+        <StatCard icon="🪪" value={summary?.kycPending} label="KYC pending" href="/admin/kyc" highlight={!!summary?.kycPending} />
         <StatCard icon="🚩" value={hiddenTotal} label="Hidden items" href="/admin/moderation" />
         <StatCard icon="💼" value={summary?.careerApplications} label="Career applications" href="/admin/careers" />
         <StatCard icon="🚀" value={summary?.earlyAccessSignups} label="Early access signups" href="/admin/early-access" />

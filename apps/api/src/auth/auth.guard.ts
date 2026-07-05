@@ -73,6 +73,8 @@ export class AuthGuard implements CanActivate {
       update: {},
     });
 
+    if (dbUser.isSuspended) throw new UnauthorizedException('This account has been suspended');
+
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).supabaseUser = user;
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).dbUser = dbUser;
     return true;

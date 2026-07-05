@@ -143,6 +143,7 @@ model User {
   bidsSubmitted              Bid[]            @relation("BidContractor")
   turnkeyProjectsAsCustomer  TurnkeyProject[] @relation("TurnkeyProjectCustomer")
   turnkeyProjectsAsProvider  TurnkeyProject[] @relation("TurnkeyProjectProvider")
+  kycDetail                  KycDetail?
 
   @@map("users")
 }
@@ -743,4 +744,41 @@ model TurnkeyProjectUpdate {
   createdAt       DateTime       @default(now()) @map("created_at")
 
   @@map("turnkey_project_updates")
+}
+
+// ---------------------------------------------------------------------------
+// KYC — identity/bank verification for supply-side accounts, ahead of
+// escrow-based payouts. One record per user; independent of profile
+// approval (a contractor profile can be APPROVED while KYC is still
+// PENDING — they just can't receive escrow payouts until both are done).
+// ---------------------------------------------------------------------------
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model KycDetail {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique @map("user_id")
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aadhaarNumber          String?   @map("aadhaar_number")
+  panNumber              String?   @map("pan_number")
+  gstNumber              String?   @map("gst_number")
+  businessName           String?   @map("business_name")
+  bankAccountNumber      String?   @map("bank_account_number")
+  bankIfsc               String?   @map("bank_ifsc")
+  bankAccountHolderName  String?   @map("bank_account_holder_name")
+  panCardUrl             String?   @map("pan_card_url")
+  bankProofUrl           String?   @map("bank_proof_url")
+  status                 KycStatus @default(NOT_SUBMITTED)
+  rejectionReason        String?   @map("rejection_reason")
+  submittedAt            DateTime? @map("submitted_at")
+  verifiedAt             DateTime? @map("verified_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@map("kyc_details")
 }

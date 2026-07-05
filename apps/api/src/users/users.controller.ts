@@ -2,12 +2,16 @@ import { Body, Controller, ForbiddenException, Get, Patch, UseGuards } from '@ne
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UsersService } from './users.service';
+import { KycService, type KycSubmitInput } from '../kyc/kyc.service';
 import { User, UserRole } from '@prisma/client';
 
 @Controller('users')
 @UseGuards(AuthGuard)
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly kyc: KycService,
+  ) {}
 
   @Get('me')
   getMe(@CurrentUser() user: User) {
@@ -40,5 +44,15 @@ export class UsersController {
   @Get('me/analytics')
   getMyAnalytics(@CurrentUser() user: User) {
     return this.users.getMyAnalytics(user.id);
+  }
+
+  @Get('me/kyc')
+  getMyKyc(@CurrentUser() user: User) {
+    return this.kyc.findMine(user.id);
+  }
+
+  @Patch('me/kyc')
+  submitMyKyc(@CurrentUser() user: User, @Body() body: KycSubmitInput) {
+    return this.kyc.submit(user.id, body);
   }
 }

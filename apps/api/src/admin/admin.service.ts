@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, KycStatus } from '@prisma/client';
+import { KycService } from '../kyc/kyc.service';
 
 type ProfileType =
   | 'contractor'
@@ -27,7 +28,10 @@ interface ModerateContentInput {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly kyc: KycService,
+  ) {}
 
   async listProfiles(type: ProfileType, status?: ApprovalStatus) {
     const where = status ? { approvalStatus: status } : {};
@@ -143,7 +147,7 @@ export class AdminService {
   }
 
   async getDashboardSummary() {
-    const [pendingByType, hiddenCounts, careerCount, earlyAccessCount, totalUsers] = await Promise.all([
+    const [pendingByType, hiddenCounts, careerCount, earlyAccessCount, totalUsers, kycPending] = await Promise.all([
       Promise.all(
         PROFILE_TYPES.map(async (type) => ({
           type,
@@ -160,6 +164,7 @@ export class AdminService {
       this.prisma.careerApplication.count(),
       this.prisma.earlyAccessSignup.count(),
       this.prisma.user.count(),
+      this.prisma.kycDetail.count({ where: { status: 'PENDING' } }),
     ]);
 
     const [hiddenReviews, hiddenProjects, hiddenLands, hiddenProperties, hiddenMaterials] = hiddenCounts;
@@ -171,6 +176,7 @@ export class AdminService {
       careerApplications: careerCount,
       earlyAccessSignups: earlyAccessCount,
       totalUsers,
+      kycPending,
     };
   }
 
@@ -185,5 +191,36 @@ export class AdminService {
       case 'builder': return this.prisma.builderProfile.count({ where: { approvalStatus: 'PENDING' } });
       case 'property-agent': return this.prisma.propertyAgentProfile.count({ where: { approvalStatus: 'PENDING' } });
     }
+  }
+
+  listUsers(search?: string, role?: UserRole) {
+    return this.prisma.user.findMany({
+      where: {
+        ...(role ? { role } : {}),
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  setUserSuspended(id: string, isSuspended: boolean) {
+    return this.prisma.user.update({ where: { id }, data: { isSuspended } });
+  }
+
+  listKyc(status?: KycStatus) {
+    return this.kyc.listAll(status);
+  }
+
+  setKycStatus(userId: string, status: KycStatus, rejectionReason?: string) {
+    return this.kyc.setStatus(userId, status, rejectionReason);
   }
 }
