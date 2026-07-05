@@ -93,7 +93,30 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── SECTION 2: 5 SERVICE CARDS ── */}
+      {/* ── SECTION 1B: TURNKEY BANNER ── */}
+      <section className="px-6 py-8">
+        <div className="max-w-[1200px] mx-auto">
+          <div className="bg-gradient-to-br from-[#2C1810] to-[#4A2E1E] rounded-2xl px-6 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+            <span className="text-5xl shrink-0">🔑</span>
+            <div className="flex-1 text-center sm:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Georgia, serif' }}>
+                Have land? We&apos;ll build your dream home end-to-end.
+              </h2>
+              <p className="text-sm text-[#D8C4B0]">
+                Design, contractors, materials & labour — all coordinated for you. You just need the land.
+              </p>
+            </div>
+            <Link
+              href="/post-project?type=turnkey"
+              className="shrink-0 bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors whitespace-nowrap"
+            >
+              Post a Turnkey Project →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 2: SERVICE CARDS ── */}
       <section className="px-6 py-16">
         <div className="max-w-[1200px] mx-auto">
           <p className="text-xs font-bold text-[#C0593A] uppercase tracking-widest mb-2 text-center">Our Services</p>
@@ -120,29 +143,6 @@ export default function HomePage() {
               ))}
             </div>
           )}
-        </div>
-      </section>
-
-      {/* ── SECTION 2B: TURNKEY BANNER ── */}
-      <section className="px-6 py-4">
-        <div className="max-w-[1200px] mx-auto">
-          <div className="bg-gradient-to-br from-[#2C1810] to-[#4A2E1E] rounded-2xl px-6 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-            <span className="text-5xl shrink-0">🔑</span>
-            <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-                Have land? We&apos;ll build your dream home end-to-end.
-              </h2>
-              <p className="text-sm text-[#D8C4B0]">
-                Post a turnkey project — design, contractors, materials & labour, all coordinated for you.
-              </p>
-            </div>
-            <Link
-              href="/post-project?type=turnkey"
-              className="shrink-0 bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors whitespace-nowrap"
-            >
-              Post a Turnkey Project →
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -397,11 +397,6 @@ const SERVICE_CARDS = [
     icon: '🏠', title: 'Buy / Rent Homes',
     desc: 'Apartments, villas, independent houses — ready to move or under construction',
     stats: '5,000+ properties listed', href: '/properties',
-  },
-  {
-    icon: '📋', title: 'Post a Project',
-    desc: 'Describe your project once, get bids from contractors — free to post, you pick the bid',
-    stats: 'Open bidding marketplace', href: '/post-project',
   },
 ].filter(Boolean) as { icon: string; title: string; desc: string; stats: string; href: string }[];
 

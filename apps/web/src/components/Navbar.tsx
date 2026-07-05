@@ -24,10 +24,12 @@ function getMarketplaceLinks() {
   ].filter(Boolean) as { href: string; label: string; icon: string }[];
 }
 
-const DIRECT_LINKS = [
-  { href: '/projects', label: 'Projects' },
-  { href: '/estimate', label: 'Estimate' },
-];
+function getDirectLinks(loggedIn: boolean) {
+  return [
+    loggedIn && { href: '/projects', label: 'Projects' },
+    { href: '/estimate', label: 'Estimate' },
+  ].filter(Boolean) as { href: string; label: string }[];
+}
 
 export default function Navbar() {
   const router   = useRouter();
@@ -55,6 +57,8 @@ export default function Navbar() {
     });
     return () => listener.subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const DIRECT_LINKS = getDirectLinks(!!user);
 
   async function handleLogout() {
     setMenuOpen(false);
