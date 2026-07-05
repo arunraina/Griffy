@@ -203,7 +203,7 @@ function SignupInner() {
       {/* Step indicator */}
       <div className="flex items-center justify-center mb-8">
         {steps.map((label, i) => (
-          <div key={label} className="flex items-center">
+          <div key={i} className="flex items-center">
             {i > 0 && (
               <div className={`h-px w-10 sm:w-16 mx-1 transition-colors ${i <= activeStep ? 'bg-[#C0593A]' : 'bg-gray-200'}`} />
             )}
