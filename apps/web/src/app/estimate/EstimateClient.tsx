@@ -5,12 +5,27 @@ import Link from 'next/link';
 
 type ProjectType = 'new_build' | 'renovation' | 'interior' | 'electrical' | 'plumbing';
 type Quality = 'basic' | 'standard' | 'premium';
+type CostUnit = 'sqft' | 'room' | 'bathroom' | 'kitchen' | 'flat';
 
 interface CostItem {
   label: string;
   emoji: string;
-  costPerSqft: { basic: number; standard: number; premium: number };
+  unit: CostUnit;
+  costPerUnit: { basic: number; standard: number; premium: number };
 }
+
+const UNIT_LABEL: Record<CostUnit, string> = {
+  sqft: '/sqft',
+  room: '/room',
+  bathroom: '/bathroom',
+  kitchen: 'per kitchen',
+  flat: 'fixed',
+};
+
+// Project types where cost is driven more by room/bathroom count than raw
+// area — a 3000 sqft house with 2 bathrooms shouldn't cost as much to
+// re-plumb as a 1200 sqft house with 4 bathrooms.
+const ROOM_DRIVEN_TYPES: ProjectType[] = ['interior', 'electrical', 'plumbing'];
 
 const PROJECTS: { id: ProjectType; label: string; emoji: string; desc: string }[] = [
   { id: 'new_build', label: 'New Construction', emoji: '🏗️', desc: 'Ground-up residential or commercial build' },
@@ -22,46 +37,46 @@ const PROJECTS: { id: ProjectType; label: string; emoji: string; desc: string }[
 
 const COST_ITEMS: Record<ProjectType, CostItem[]> = {
   new_build: [
-    { label: 'Foundation & RCC Structure', emoji: '🏛️', costPerSqft: { basic: 450, standard: 650, premium: 1100 } },
-    { label: 'Masonry & Plastering', emoji: '🧱', costPerSqft: { basic: 220, standard: 320, premium: 520 } },
-    { label: 'Plumbing', emoji: '🔧', costPerSqft: { basic: 110, standard: 165, premium: 280 } },
-    { label: 'Electrical', emoji: '⚡', costPerSqft: { basic: 90, standard: 140, premium: 240 } },
-    { label: 'Flooring', emoji: '🏠', costPerSqft: { basic: 90, standard: 180, premium: 420 } },
-    { label: 'Doors & Windows', emoji: '🚪', costPerSqft: { basic: 100, standard: 180, premium: 350 } },
-    { label: 'Painting & Finishing', emoji: '🎨', costPerSqft: { basic: 70, standard: 115, premium: 200 } },
-    { label: 'Labour Charges', emoji: '👷', costPerSqft: { basic: 320, standard: 430, premium: 620 } },
+    { label: 'Foundation & RCC Structure', emoji: '🏛️', unit: 'sqft', costPerUnit: { basic: 450, standard: 650, premium: 1100 } },
+    { label: 'Masonry & Plastering', emoji: '🧱', unit: 'sqft', costPerUnit: { basic: 220, standard: 320, premium: 520 } },
+    { label: 'Plumbing', emoji: '🔧', unit: 'sqft', costPerUnit: { basic: 110, standard: 165, premium: 280 } },
+    { label: 'Electrical', emoji: '⚡', unit: 'sqft', costPerUnit: { basic: 90, standard: 140, premium: 240 } },
+    { label: 'Flooring', emoji: '🏠', unit: 'sqft', costPerUnit: { basic: 90, standard: 180, premium: 420 } },
+    { label: 'Doors & Windows', emoji: '🚪', unit: 'sqft', costPerUnit: { basic: 100, standard: 180, premium: 350 } },
+    { label: 'Painting & Finishing', emoji: '🎨', unit: 'sqft', costPerUnit: { basic: 70, standard: 115, premium: 200 } },
+    { label: 'Labour Charges', emoji: '👷', unit: 'sqft', costPerUnit: { basic: 320, standard: 430, premium: 620 } },
   ],
   renovation: [
-    { label: 'Demolition & Disposal', emoji: '⛏️', costPerSqft: { basic: 60, standard: 90, premium: 130 } },
-    { label: 'Masonry & Plastering', emoji: '🧱', costPerSqft: { basic: 150, standard: 230, premium: 380 } },
-    { label: 'Plumbing Upgrades', emoji: '🔧', costPerSqft: { basic: 80, standard: 120, premium: 200 } },
-    { label: 'Electrical Upgrades', emoji: '⚡', costPerSqft: { basic: 70, standard: 110, premium: 180 } },
-    { label: 'Flooring', emoji: '🏠', costPerSqft: { basic: 100, standard: 200, premium: 450 } },
-    { label: 'Painting & Finishing', emoji: '🎨', costPerSqft: { basic: 80, standard: 130, premium: 220 } },
-    { label: 'Labour Charges', emoji: '👷', costPerSqft: { basic: 160, standard: 230, premium: 340 } },
+    { label: 'Demolition & Disposal', emoji: '⛏️', unit: 'sqft', costPerUnit: { basic: 60, standard: 90, premium: 130 } },
+    { label: 'Masonry & Plastering', emoji: '🧱', unit: 'sqft', costPerUnit: { basic: 150, standard: 230, premium: 380 } },
+    { label: 'Plumbing Upgrades', emoji: '🔧', unit: 'sqft', costPerUnit: { basic: 80, standard: 120, premium: 200 } },
+    { label: 'Electrical Upgrades', emoji: '⚡', unit: 'sqft', costPerUnit: { basic: 70, standard: 110, premium: 180 } },
+    { label: 'Flooring', emoji: '🏠', unit: 'sqft', costPerUnit: { basic: 100, standard: 200, premium: 450 } },
+    { label: 'Painting & Finishing', emoji: '🎨', unit: 'sqft', costPerUnit: { basic: 80, standard: 130, premium: 220 } },
+    { label: 'Labour Charges', emoji: '👷', unit: 'sqft', costPerUnit: { basic: 160, standard: 230, premium: 340 } },
   ],
   interior: [
-    { label: 'False Ceiling', emoji: '⬆️', costPerSqft: { basic: 80, standard: 130, premium: 280 } },
-    { label: 'Flooring', emoji: '🏠', costPerSqft: { basic: 120, standard: 220, premium: 500 } },
-    { label: 'Modular Kitchen', emoji: '🍳', costPerSqft: { basic: 150, standard: 280, premium: 600 } },
-    { label: 'Wardrobes & Storage', emoji: '🪟', costPerSqft: { basic: 120, standard: 240, premium: 550 } },
-    { label: 'Electrical & Lighting', emoji: '💡', costPerSqft: { basic: 80, standard: 130, premium: 250 } },
-    { label: 'Painting', emoji: '🎨', costPerSqft: { basic: 70, standard: 120, premium: 220 } },
-    { label: 'Labour Charges', emoji: '👷', costPerSqft: { basic: 180, standard: 280, premium: 400 } },
+    { label: 'False Ceiling', emoji: '⬆️', unit: 'sqft', costPerUnit: { basic: 80, standard: 130, premium: 280 } },
+    { label: 'Flooring', emoji: '🏠', unit: 'sqft', costPerUnit: { basic: 120, standard: 220, premium: 500 } },
+    { label: 'Modular Kitchen', emoji: '🍳', unit: 'kitchen', costPerUnit: { basic: 150000, standard: 320000, premium: 750000 } },
+    { label: 'Wardrobes & Storage', emoji: '🪟', unit: 'room', costPerUnit: { basic: 45000, standard: 90000, premium: 200000 } },
+    { label: 'Electrical & Lighting', emoji: '💡', unit: 'sqft', costPerUnit: { basic: 80, standard: 130, premium: 250 } },
+    { label: 'Painting', emoji: '🎨', unit: 'sqft', costPerUnit: { basic: 70, standard: 120, premium: 220 } },
+    { label: 'Labour Charges', emoji: '👷', unit: 'sqft', costPerUnit: { basic: 180, standard: 280, premium: 400 } },
   ],
   electrical: [
-    { label: 'Wiring & Conduits', emoji: '🔌', costPerSqft: { basic: 50, standard: 80, premium: 140 } },
-    { label: 'Electrical Panel', emoji: '⚡', costPerSqft: { basic: 30, standard: 50, premium: 90 } },
-    { label: 'Switches & Fixtures', emoji: '💡', costPerSqft: { basic: 40, standard: 70, premium: 150 } },
-    { label: 'Earthing & Safety', emoji: '🛡️', costPerSqft: { basic: 20, standard: 35, premium: 60 } },
-    { label: 'Labour Charges', emoji: '👷', costPerSqft: { basic: 60, standard: 85, premium: 120 } },
+    { label: 'Wiring & Conduits', emoji: '🔌', unit: 'sqft', costPerUnit: { basic: 50, standard: 80, premium: 140 } },
+    { label: 'Electrical Panel', emoji: '⚡', unit: 'flat', costPerUnit: { basic: 12000, standard: 22000, premium: 40000 } },
+    { label: 'Switches & Fixtures', emoji: '💡', unit: 'room', costPerUnit: { basic: 8000, standard: 15000, premium: 32000 } },
+    { label: 'Earthing & Safety', emoji: '🛡️', unit: 'flat', costPerUnit: { basic: 6000, standard: 10000, premium: 18000 } },
+    { label: 'Labour Charges', emoji: '👷', unit: 'sqft', costPerUnit: { basic: 60, standard: 85, premium: 120 } },
   ],
   plumbing: [
-    { label: 'Water Supply Lines', emoji: '💧', costPerSqft: { basic: 40, standard: 65, premium: 120 } },
-    { label: 'Drainage & Sewage', emoji: '🔩', costPerSqft: { basic: 35, standard: 55, premium: 100 } },
-    { label: 'Bathroom Fixtures', emoji: '🛁', costPerSqft: { basic: 50, standard: 90, premium: 200 } },
-    { label: 'Kitchen Plumbing', emoji: '🚰', costPerSqft: { basic: 30, standard: 50, premium: 90 } },
-    { label: 'Labour Charges', emoji: '👷', costPerSqft: { basic: 55, standard: 80, premium: 110 } },
+    { label: 'Water Supply Lines', emoji: '💧', unit: 'sqft', costPerUnit: { basic: 40, standard: 65, premium: 120 } },
+    { label: 'Drainage & Sewage', emoji: '🔩', unit: 'sqft', costPerUnit: { basic: 35, standard: 55, premium: 100 } },
+    { label: 'Bathroom Fixtures', emoji: '🛁', unit: 'bathroom', costPerUnit: { basic: 35000, standard: 75000, premium: 180000 } },
+    { label: 'Kitchen Plumbing', emoji: '🚰', unit: 'kitchen', costPerUnit: { basic: 15000, standard: 28000, premium: 55000 } },
+    { label: 'Labour Charges', emoji: '👷', unit: 'sqft', costPerUnit: { basic: 55, standard: 80, premium: 110 } },
   ],
 };
 
@@ -70,12 +85,6 @@ const QUALITY_OPTIONS: { id: Quality; label: string; desc: string }[] = [
   { id: 'standard', label: 'Standard', desc: 'Mid-range — popular choice for most homes' },
   { id: 'premium', label: 'Premium', desc: 'Luxury grade — high-end finishes & brands' },
 ];
-
-const QUALITY_MULTIPLIER: Record<Quality, string> = {
-  basic: '₹1,400–1,800/sqft',
-  standard: '₹2,000–2,800/sqft',
-  premium: '₹3,500–5,000/sqft',
-};
 
 function fmt(n: number) {
   if (n >= 10000000) return `₹${(n / 10000000).toFixed(2)} Cr`;
@@ -86,15 +95,28 @@ function fmt(n: number) {
 export default function EstimateClient() {
   const [projectType, setProjectType] = useState<ProjectType>('new_build');
   const [area, setArea] = useState<number | ''>(1000);
+  const [rooms, setRooms] = useState(3);
+  const [bathrooms, setBathrooms] = useState(2);
   const [quality, setQuality] = useState<Quality>('standard');
 
   const items = COST_ITEMS[projectType];
   const sqft = Number(area) || 0;
+  const isRoomDriven = ROOM_DRIVEN_TYPES.includes(projectType);
+
+  function unitCount(unit: CostUnit): number {
+    switch (unit) {
+      case 'sqft': return sqft;
+      case 'room': return rooms;
+      case 'bathroom': return bathrooms;
+      case 'kitchen': return 1;
+      case 'flat': return 1;
+    }
+  }
 
   const breakdown = items.map((item) => ({
     ...item,
-    total: item.costPerSqft[quality] * sqft,
-    rate: item.costPerSqft[quality],
+    total: item.costPerUnit[quality] * unitCount(item.unit),
+    rate: item.costPerUnit[quality],
   }));
 
   const grandTotal = breakdown.reduce((s, i) => s + i.total, 0);
@@ -180,6 +202,38 @@ export default function EstimateClient() {
               </div>
             </div>
 
+            {/* Rooms & bathrooms — only for room-driven trades */}
+            {isRoomDriven && (
+              <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-5">
+                <p className="font-bold text-[#2C1810] mb-1">Rooms &amp; Bathrooms</p>
+                <p className="text-xs text-[#A08070] mb-3">
+                  {projectType === 'plumbing'
+                    ? 'Fixtures and kitchen plumbing scale with these, not just area.'
+                    : projectType === 'electrical'
+                    ? 'Switches, sockets & fixtures scale with room count, not just area.'
+                    : 'Modular kitchen and wardrobes scale with these, not just area.'}
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-1.5">Bedrooms / Rooms</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setRooms((r) => Math.max(1, r - 1))} className="w-9 h-9 rounded-lg border border-[#EBE0D8] text-[#C0593A] font-bold hover:bg-[#FAEEE9]">−</button>
+                      <span className="flex-1 text-center font-bold text-[#2C1810]">{rooms}</span>
+                      <button onClick={() => setRooms((r) => Math.min(20, r + 1))} className="w-9 h-9 rounded-lg border border-[#EBE0D8] text-[#C0593A] font-bold hover:bg-[#FAEEE9]">+</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-1.5">Bathrooms</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setBathrooms((b) => Math.max(1, b - 1))} className="w-9 h-9 rounded-lg border border-[#EBE0D8] text-[#C0593A] font-bold hover:bg-[#FAEEE9]">−</button>
+                      <span className="flex-1 text-center font-bold text-[#2C1810]">{bathrooms}</span>
+                      <button onClick={() => setBathrooms((b) => Math.min(10, b + 1))} className="w-9 h-9 rounded-lg border border-[#EBE0D8] text-[#C0593A] font-bold hover:bg-[#FAEEE9]">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quality */}
             <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-5">
               <p className="font-bold text-[#2C1810] mb-3">Quality Level</p>
@@ -202,7 +256,11 @@ export default function EstimateClient() {
               </div>
               <p className="mt-3 text-xs text-[#A08070] flex items-start gap-1.5">
                 <span className="shrink-0">ℹ️</span>
-                Typical {PROJECTS.find((p) => p.id === projectType)?.label.toLowerCase()} cost: {QUALITY_MULTIPLIER[quality]}
+                {isRoomDriven
+                  ? 'Estimate updates live as you adjust rooms & bathrooms above.'
+                  : sqft > 0
+                  ? `Works out to ₹${Math.round(grandTotal / sqft).toLocaleString('en-IN')}/sqft at ${quality} quality.`
+                  : 'Enter your area to see a per-sqft rate.'}
               </p>
             </div>
           </div>
@@ -218,10 +276,13 @@ export default function EstimateClient() {
                     {fmt(low)} – {fmt(high)}
                   </p>
                   <p className="text-[#F5D9CC] text-sm">
-                    For {sqft.toLocaleString('en-IN')} sq ft · {PROJECTS.find((p) => p.id === projectType)?.label} · {quality.charAt(0).toUpperCase() + quality.slice(1)} quality
+                    For {sqft.toLocaleString('en-IN')} sq ft
+                    {isRoomDriven ? ` · ${rooms} room${rooms !== 1 ? 's' : ''} · ${bathrooms} bathroom${bathrooms !== 1 ? 's' : ''}` : ''}
+                    {' '}· {PROJECTS.find((p) => p.id === projectType)?.label} · {quality.charAt(0).toUpperCase() + quality.slice(1)} quality
                   </p>
                   <p className="text-[#EFC4B0] text-xs mt-3">
-                    Midpoint: {fmt(grandTotal)} · ₹{Math.round(grandTotal / sqft).toLocaleString('en-IN')}/sqft
+                    Midpoint: {fmt(grandTotal)}
+                    {!isRoomDriven && ` · ₹${Math.round(grandTotal / sqft).toLocaleString('en-IN')}/sqft`}
                   </p>
                 </>
               ) : (
@@ -242,6 +303,9 @@ export default function EstimateClient() {
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium text-[#3D2B22] flex items-center gap-1.5">
                             {item.emoji} {item.label}
+                            {item.unit !== 'sqft' && (
+                              <span className="text-[10px] text-[#A08070] font-normal">(₹{item.rate.toLocaleString('en-IN')} {UNIT_LABEL[item.unit]})</span>
+                            )}
                           </span>
                           <div className="text-right">
                             <span className="text-sm font-bold text-[#2C1810]">{fmt(item.total)}</span>
