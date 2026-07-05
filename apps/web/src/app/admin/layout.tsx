@@ -6,14 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
 const NAV = [
-  { href: '/admin',              icon: '📊', label: 'Dashboard'      },
-  { href: '/admin/contractors',  icon: '🔨', label: 'Contractors'    },
-  { href: '/admin/projects',     icon: '🏗️', label: 'Projects'       },
-  { href: '/admin/flags',        icon: '🚩', label: 'Flags'          },
-  { href: '/admin/land',         icon: '🌍', label: 'Land Listings'  },
-  { href: '/admin/materials',    icon: '📦', label: 'Materials'      },
-  { href: '/admin/users',        icon: '👥', label: 'Users'          },
-  { href: '/admin/reports',      icon: '📈', label: 'Reports'        },
+  { href: '/admin',              icon: '📊', label: 'Dashboard'           },
+  { href: '/admin/approvals',    icon: '✅', label: 'Profile Approvals'   },
+  { href: '/admin/moderation',   icon: '🚩', label: 'Content Moderation'  },
+  { href: '/admin/projects',     icon: '🏗️', label: 'Posted Projects'     },
+  { href: '/admin/careers',      icon: '💼', label: 'Career Applications' },
+  { href: '/admin/early-access', icon: '🚀', label: 'Early Access'        },
+  { href: '/admin/flags',        icon: '🎛️', label: 'Feature Flags'       },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

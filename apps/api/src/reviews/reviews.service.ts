@@ -20,9 +20,9 @@ export class ReviewsService {
 
   findByTarget(targetType: ReviewTargetType, targetId: string) {
     return this.prisma.review.findMany({
-      where: { targetType, [TARGET_FK[targetType]]: targetId },
+      where: { targetType, [TARGET_FK[targetType]]: targetId, isHidden: false },
       include: { reviewer: { select: { name: true, avatarUrl: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isDemoted: 'asc' }, { createdAt: 'desc' }],
     });
   }
 

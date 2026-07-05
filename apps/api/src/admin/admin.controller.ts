@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { AdminService } from './admin.service';
+import { AdminService, type ContentType } from './admin.service';
 import { ApprovalStatus, ProjectStatus, User } from '@prisma/client';
 
 @Controller('admin')
@@ -77,5 +77,28 @@ export class AdminController {
   async listEarlyAccessSignups(@CurrentUser() user: User) {
     await this.admin.assertAdmin(user.id);
     return this.admin.listEarlyAccessSignups();
+  }
+
+  @Get('summary')
+  async getSummary(@CurrentUser() user: User) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.getDashboardSummary();
+  }
+
+  @Get('content/:type')
+  async listContent(@CurrentUser() user: User, @Param('type') type: string) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.listContent(type as ContentType);
+  }
+
+  @Patch('content/:type/:id/moderate')
+  async moderateContent(
+    @CurrentUser() user: User,
+    @Param('type') type: string,
+    @Param('id') id: string,
+    @Body() body: { isHidden?: boolean; isDemoted?: boolean; moderationNote?: string },
+  ) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.moderateContent(type as ContentType, id, body);
   }
 }

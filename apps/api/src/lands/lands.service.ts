@@ -24,11 +24,12 @@ export class LandsService {
     return this.prisma.land.findMany({
       where: {
         isAvailable: true,
+        isHidden: false,
         ...(city ? { city } : {}),
         ...(landType ? { landType } : {}),
       },
       include: { owner: { select: { user: { select: { name: true } } } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isDemoted: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -37,7 +38,7 @@ export class LandsService {
       where: { id },
       include: { owner: { select: { user: { select: { name: true, phone: true } } } } },
     });
-    if (!land) throw new NotFoundException('Land listing not found');
+    if (!land || land.isHidden) throw new NotFoundException('Land listing not found');
     return land;
   }
 

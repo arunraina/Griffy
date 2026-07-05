@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Patch, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UsersService } from './users.service';
@@ -24,6 +24,11 @@ export class UsersController {
 
   @Patch('me/role')
   setRole(@CurrentUser() user: User, @Body() body: { role: UserRole }) {
+    // ADMIN must never be settable via self-service — see LEGACY_ROLE_MAP
+    // comment in auth.guard.ts for why client-supplied ADMIN is untrusted.
+    if (body.role === 'ADMIN') {
+      throw new ForbiddenException('Cannot self-assign the ADMIN role');
+    }
     return this.users.setRole(user.id, body.role);
   }
 

@@ -26,9 +26,9 @@ export class ProjectsService {
 
   findOpen(projectType?: string) {
     return this.prisma.project.findMany({
-      where: { status: 'OPEN', ...(projectType ? { projectType } : {}) },
+      where: { status: 'OPEN', isHidden: false, ...(projectType ? { projectType } : {}) },
       include: { _count: { select: { bids: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isDemoted: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -37,7 +37,7 @@ export class ProjectsService {
       where: { id },
       include: { owner: { select: { name: true } }, _count: { select: { bids: true } } },
     });
-    if (!project) throw new NotFoundException('Project not found');
+    if (!project || project.isHidden) throw new NotFoundException('Project not found');
     return project;
   }
 

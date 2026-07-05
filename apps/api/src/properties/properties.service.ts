@@ -27,11 +27,12 @@ export class PropertiesService {
     return this.prisma.property.findMany({
       where: {
         isAvailable: true,
+        isHidden: false,
         ...(city ? { city } : {}),
         ...(propertyType ? { propertyType } : {}),
       },
       include: { seller: { select: { user: { select: { name: true } } } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isDemoted: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -40,7 +41,7 @@ export class PropertiesService {
       where: { id },
       include: { seller: { select: { user: { select: { name: true, phone: true } } } } },
     });
-    if (!property) throw new NotFoundException('Property listing not found');
+    if (!property || property.isHidden) throw new NotFoundException('Property listing not found');
     return property;
   }
 

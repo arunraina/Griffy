@@ -20,6 +20,7 @@ export class MaterialsService {
   findAll(search?: string, category?: string, subcategory?: string) {
     return this.prisma.material.findMany({
       where: {
+        isHidden: false,
         ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
         ...(category ? { category } : {}),
         ...(subcategory ? { subcategory } : {}),
@@ -27,7 +28,7 @@ export class MaterialsService {
       include: {
         supplier: { select: { businessName: true, deliveryCities: true, user: { select: { name: true } } } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isDemoted: 'asc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -38,7 +39,7 @@ export class MaterialsService {
         supplier: { select: { id: true, businessName: true, user: { select: { name: true } } } },
       },
     });
-    if (!material) throw new NotFoundException('Material not found');
+    if (!material || material.isHidden) throw new NotFoundException('Material not found');
     return material;
   }
 
