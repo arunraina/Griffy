@@ -35,7 +35,7 @@ export class ServiceExpertProfilesController {
       experience: string;
       serviceCities: string[];
       consultationFee?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },
@@ -55,7 +55,7 @@ export class ServiceExpertProfilesController {
       experience?: string;
       serviceCities?: string[];
       consultationFee?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },

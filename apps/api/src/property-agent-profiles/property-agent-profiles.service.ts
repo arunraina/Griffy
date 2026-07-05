@@ -24,6 +24,7 @@ export class PropertyAgentProfilesService {
     return this.prisma.propertyAgentProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { serviceCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

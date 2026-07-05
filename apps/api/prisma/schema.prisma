@@ -37,8 +37,10 @@ enum DegreeStatus {
 }
 
 enum OrderStatus {
-  PENDING
-  CONFIRMED
+  PLACED
+  ACCEPTED
+  REJECTED
+  PACKED
   SHIPPED
   DELIVERED
   CANCELLED
@@ -105,17 +107,21 @@ enum FurnishingStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String   @id
-  email        String   @unique
-  phone        String?
-  name         String
-  role         UserRole
-  avatarUrl    String?  @map("avatar_url")
-  referredById String?  @map("referred_by_id")
-  referredBy   User?    @relation("Referrals", fields: [referredById], references: [id])
-  referrals    User[]   @relation("Referrals")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id               String   @id
+  email            String   @unique
+  phone            String?  @unique
+  name             String
+  role             UserRole
+  avatarUrl        String?  @map("avatar_url")
+  referredById     String?  @map("referred_by_id")
+  referredBy       User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals        User[]   @relation("Referrals")
+  isSuspended      Boolean  @default(false) @map("is_suspended")
+  isFirstParty     Boolean  @default(false) @map("is_first_party")
+  isGhost          Boolean  @default(false) @map("is_ghost")
+  createdByAdminId String?  @map("created_by_admin_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   // 1:1 supply-side profiles
   contractorProfile       ContractorProfile?
@@ -128,13 +134,15 @@ model User {
   propertyAgentProfile    PropertyAgentProfile?
 
   // transactional relations
-  orders             Order[]
-  bookingsAsCustomer Booking[]      @relation("BookingCustomer")
-  bookingsAsProvider Booking[]      @relation("BookingProvider")
-  reviewsGiven       Review[]       @relation("ReviewsGiven")
-  notifications      Notification[]
-  projectsPosted     Project[]      @relation("ProjectOwner")
-  bidsSubmitted      Bid[]          @relation("BidContractor")
+  orders                     Order[]
+  bookingsAsCustomer         Booking[]        @relation("BookingCustomer")
+  bookingsAsProvider         Booking[]        @relation("BookingProvider")
+  reviewsGiven               Review[]         @relation("ReviewsGiven")
+  notifications              Notification[]
+  projectsPosted             Project[]        @relation("ProjectOwner")
+  bidsSubmitted              Bid[]            @relation("BidContractor")
+  turnkeyProjectsAsCustomer  TurnkeyProject[] @relation("TurnkeyProjectCustomer")
+  turnkeyProjectsAsProvider  TurnkeyProject[] @relation("TurnkeyProjectProvider")
 
   @@map("users")
 }
@@ -154,7 +162,7 @@ model ContractorProfile {
   licenseNumber   String?        @map("license_number")
   dailyRate       Decimal?       @map("daily_rate") @db.Decimal(10, 2)
   projectRate     Decimal?       @map("project_rate") @db.Decimal(10, 2)
-  availability    Boolean        @default(true)
+  isAvailable     Boolean        @default(true) @map("is_available")
   bio             String?
   portfolioImages String[]       @map("portfolio_images")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
@@ -181,7 +189,7 @@ model LabourProfile {
   experience      String
   serviceCities   String[]       @map("service_cities")
   dailyRate       Decimal?       @map("daily_rate") @db.Decimal(10, 2)
-  availability    Boolean        @default(true)
+  isAvailable     Boolean        @default(true) @map("is_available")
   bio             String?
   portfolioImages String[]       @map("portfolio_images")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
@@ -208,7 +216,7 @@ model ServiceExpertProfile {
   experience      String
   serviceCities   String[]       @map("service_cities")
   consultationFee Decimal?       @map("consultation_fee") @db.Decimal(10, 2)
-  availability    Boolean        @default(true)
+  isAvailable     Boolean        @default(true) @map("is_available")
   bio             String?
   portfolioImages String[]       @map("portfolio_images")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
@@ -234,6 +242,7 @@ model MaterialSupplierProfile {
   gstNumber       String?        @map("gst_number")
   businessAddress String         @map("business_address")
   deliveryCities  String[]       @map("delivery_cities")
+  isAvailable     Boolean        @default(true) @map("is_available")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
   rejectionReason String?        @map("rejection_reason")
   approvedAt      DateTime?      @map("approved_at")
@@ -256,6 +265,7 @@ model LandOwnerProfile {
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   govtIdVerified  Boolean        @default(false) @map("govt_id_verified")
   bio             String?
+  isAvailable     Boolean        @default(true) @map("is_available")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
   rejectionReason String?        @map("rejection_reason")
   approvedAt      DateTime?      @map("approved_at")
@@ -274,6 +284,7 @@ model PropertySellerProfile {
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   govtIdVerified  Boolean        @default(false) @map("govt_id_verified")
   bio             String?
+  isAvailable     Boolean        @default(true) @map("is_available")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
   rejectionReason String?        @map("rejection_reason")
   approvedAt      DateTime?      @map("approved_at")
@@ -297,6 +308,7 @@ model BuilderProfile {
   serviceCities       String[]       @map("service_cities")
   bio                 String?
   portfolioImages     String[]       @map("portfolio_images")
+  isAvailable         Boolean        @default(true) @map("is_available")
   approvalStatus      ApprovalStatus @default(PENDING) @map("approval_status")
   rejectionReason     String?        @map("rejection_reason")
   approvedAt          DateTime?      @map("approved_at")
@@ -319,6 +331,7 @@ model PropertyAgentProfile {
   licenseNumber   String?        @map("license_number")
   serviceCities   String[]       @map("service_cities")
   bio             String?
+  isAvailable     Boolean        @default(true) @map("is_available")
   approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
   rejectionReason String?        @map("rejection_reason")
   approvedAt      DateTime?      @map("approved_at")
@@ -376,7 +389,8 @@ model Order {
   buyer             User        @relation(fields: [buyerId], references: [id])
   items             OrderItem[]
   totalAmount       Decimal     @map("total_amount") @db.Decimal(10, 2)
-  status            OrderStatus @default(PENDING)
+  status            OrderStatus @default(PLACED)
+  statusUpdatedAt   DateTime    @default(now()) @map("status_updated_at")
   shippingAddress   String?     @map("shipping_address")
   notes             String?
   razorpayOrderId   String?     @map("razorpay_order_id")
@@ -384,7 +398,20 @@ model Order {
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
+  statusEvents OrderStatusEvent[]
+
   @@map("orders")
+}
+
+model OrderStatusEvent {
+  id        String      @id @default(uuid())
+  orderId   String      @map("order_id")
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("order_status_events")
 }
 
 model OrderItem {
@@ -646,4 +673,74 @@ model EarlyAccessSignup {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("early_access_signups")
+}
+
+// ---------------------------------------------------------------------------
+// Homepage promotional banners — admin-managed
+// ---------------------------------------------------------------------------
+
+model Banner {
+  id        String   @id @default(uuid())
+  title     String
+  imageUrl  String   @map("image_url")
+  linkUrl   String?  @map("link_url")
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("banners")
+}
+
+// ---------------------------------------------------------------------------
+// Turnkey construction & land-plotting — Griffy (or a contractor) takes on
+// an entire build end-to-end. Distinct from the open-bid Project/Bid model
+// above: no bidding, one assigned provider, tracked via percent-complete
+// updates rather than a status a homeowner sets themselves.
+// ---------------------------------------------------------------------------
+
+enum TurnkeyProjectType {
+  TURNKEY
+  LAND_PLOTTING
+}
+
+enum TurnkeyProjectStatus {
+  REQUESTED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model TurnkeyProject {
+  id              String               @id @default(uuid())
+  customerId      String               @map("customer_id")
+  customer        User                 @relation("TurnkeyProjectCustomer", fields: [customerId], references: [id])
+  providerId      String?              @map("provider_id")
+  provider        User?                @relation("TurnkeyProjectProvider", fields: [providerId], references: [id])
+  type            TurnkeyProjectType
+  title           String
+  description     String
+  budget          Decimal              @db.Decimal(12, 2)
+  status          TurnkeyProjectStatus @default(REQUESTED)
+  startDate       DateTime?            @map("start_date")
+  targetEndDate   DateTime?            @map("target_end_date")
+  percentComplete Int                  @default(0) @map("percent_complete")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  updates TurnkeyProjectUpdate[]
+
+  @@map("turnkey_projects")
+}
+
+model TurnkeyProjectUpdate {
+  id              String         @id @default(uuid())
+  projectId       String         @map("project_id")
+  project         TurnkeyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  note            String
+  percentComplete Int            @map("percent_complete")
+  imageUrls       String[]       @default([]) @map("image_urls")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  @@map("turnkey_project_updates")
 }

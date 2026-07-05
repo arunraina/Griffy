@@ -24,6 +24,7 @@ export class MaterialSupplierProfilesService {
     return this.prisma.materialSupplierProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { deliveryCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

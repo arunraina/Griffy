@@ -12,7 +12,7 @@ type CreateDto = {
   experience: string;
   serviceCities: string[];
   dailyRate?: number;
-  availability?: boolean;
+  isAvailable?: boolean;
   bio?: string;
   portfolioImages?: string[];
 };
@@ -27,6 +27,7 @@ export class LabourProfilesService {
     return this.prisma.labourProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { serviceCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

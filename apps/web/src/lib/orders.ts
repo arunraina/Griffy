@@ -25,7 +25,7 @@ export interface Order {
   id: string;
   buyerId: string;
   totalAmount: string;
-  status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PLACED' | 'ACCEPTED' | 'REJECTED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   shippingAddress: string | null;
   notes: string | null;
   razorpayOrderId: string | null;

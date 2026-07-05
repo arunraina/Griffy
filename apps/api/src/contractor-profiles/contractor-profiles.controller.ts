@@ -37,7 +37,7 @@ export class ContractorProfilesController {
       licenseNumber?: string;
       dailyRate?: number;
       projectRate?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },
@@ -59,7 +59,7 @@ export class ContractorProfilesController {
       licenseNumber?: string;
       dailyRate?: number;
       projectRate?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },

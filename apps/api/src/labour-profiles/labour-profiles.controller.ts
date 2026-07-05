@@ -34,7 +34,7 @@ export class LabourProfilesController {
       experience: string;
       serviceCities: string[];
       dailyRate?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },
@@ -53,7 +53,7 @@ export class LabourProfilesController {
       experience?: string;
       serviceCities?: string[];
       dailyRate?: number;
-      availability?: boolean;
+      isAvailable?: boolean;
       bio?: string;
       portfolioImages?: string[];
     },

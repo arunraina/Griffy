@@ -48,7 +48,7 @@ export class PaymentsService {
     });
 
     if (entityType === 'order') {
-      await this.orders.updateStatus(entityId, 'PENDING');
+      await this.orders.updateStatus(entityId, 'PLACED');
     } else {
       await this.bookings.updateStatus(entityId, 'PENDING');
     }
@@ -80,7 +80,7 @@ export class PaymentsService {
       const { entityType, entityId } = notes;
 
       if (entityType === 'order') {
-        await this.orders.updateStatus(entityId, 'CONFIRMED', paymentId);
+        await this.orders.updateStatus(entityId, 'ACCEPTED', paymentId);
       } else if (entityType === 'booking') {
         await this.bookings.updateStatus(entityId, 'CONFIRMED', paymentId);
       }

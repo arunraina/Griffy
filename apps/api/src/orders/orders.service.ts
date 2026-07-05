@@ -4,7 +4,9 @@ import { OrderStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
 const STATUS_MESSAGE: Partial<Record<OrderStatus, string>> = {
-  CONFIRMED: 'Your order has been confirmed.',
+  ACCEPTED: 'Your order has been accepted.',
+  REJECTED: 'Your order was rejected by the seller.',
+  PACKED: 'Your order has been packed.',
   SHIPPED: 'Your order has shipped.',
   DELIVERED: 'Your order has been delivered.',
   CANCELLED: 'Your order has been cancelled.',

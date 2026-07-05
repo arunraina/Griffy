@@ -26,6 +26,7 @@ export class BuilderProfilesService {
     return this.prisma.builderProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { serviceCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

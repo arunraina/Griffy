@@ -53,23 +53,23 @@ async function main() {
   const contractors = [
     {
       user: { id: IDS.contractors[0], name: 'Mohammad Ashraf Bhat', email: 'ashraf.bhat@seed.griffy.dev', phone: '+919419000001', role: UserRole.CONTRACTOR },
-      profile: { contractorType: 'Civil Contractor', tradeSkills: ['Foundation Work', 'RCC Structure', 'Stone Masonry', 'Concrete'], experience: '14 years', serviceCities: ['Srinagar', 'Baramulla'], licenseNumber: 'JK-CIV-2010-001', dailyRate: 3800, projectRate: 280000, availability: true, bio: 'Experienced civil contractor based in Srinagar with 14 years of expertise in residential and commercial construction across the Kashmir Valley. Specializes in earthquake-resistant RCC structures suited to J&K terrain and climate. Known for quality concrete work, on-time delivery, and transparent costing.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 6, totalJobs: 52, completionRate: 96.2 },
+      profile: { contractorType: 'Civil Contractor', tradeSkills: ['Foundation Work', 'RCC Structure', 'Stone Masonry', 'Concrete'], experience: '14 years', serviceCities: ['Srinagar', 'Baramulla'], licenseNumber: 'JK-CIV-2010-001', dailyRate: 3800, projectRate: 280000, isAvailable: true, bio: 'Experienced civil contractor based in Srinagar with 14 years of expertise in residential and commercial construction across the Kashmir Valley. Specializes in earthquake-resistant RCC structures suited to J&K terrain and climate. Known for quality concrete work, on-time delivery, and transparent costing.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 6, totalJobs: 52, completionRate: 96.2 },
     },
     {
       user: { id: IDS.contractors[1], name: 'Rajeev Khajuria', email: 'rajeev.khajuria@seed.griffy.dev', phone: '+919419000002', role: UserRole.CONTRACTOR },
-      profile: { contractorType: 'Architect', tradeSkills: ['Architectural Design', 'Interior Design', '3D Rendering', 'Vastu Consultation'], experience: '9 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], dailyRate: 5500, projectRate: 420000, availability: true, bio: 'Jammu-based architect with 9 years of experience designing modern residential villas and commercial complexes. Specializes in climate-adaptive design for J&K — maximizing natural light in Kashmir winters and cross-ventilation in Jammu summers.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.9, totalReviews: 18, totalJobs: 24, completionRate: 100 },
+      profile: { contractorType: 'Architect', tradeSkills: ['Architectural Design', 'Interior Design', '3D Rendering', 'Vastu Consultation'], experience: '9 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], dailyRate: 5500, projectRate: 420000, isAvailable: true, bio: 'Jammu-based architect with 9 years of experience designing modern residential villas and commercial complexes. Specializes in climate-adaptive design for J&K — maximizing natural light in Kashmir winters and cross-ventilation in Jammu summers.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.9, totalReviews: 18, totalJobs: 24, completionRate: 100 },
     },
     {
       user: { id: IDS.contractors[2], name: 'Fayaz Ahmad Mir', email: 'fayaz.mir@seed.griffy.dev', phone: '+919419000003', role: UserRole.CONTRACTOR },
-      profile: { contractorType: 'Renovation Contractor', tradeSkills: ['Home Renovation', 'Traditional Taq Construction', 'Woodwork Restoration', 'Flooring'], experience: '11 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 4200, projectRate: 160000, availability: true, bio: 'Specialist in home renovation and Taq (traditional Kashmiri timber-brick) construction restoration. 11 years transforming old homes across the Kashmir Valley into modern living spaces while preserving heritage architecture.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 38, totalJobs: 61, completionRate: 93.4 },
+      profile: { contractorType: 'Renovation Contractor', tradeSkills: ['Home Renovation', 'Traditional Taq Construction', 'Woodwork Restoration', 'Flooring'], experience: '11 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 4200, projectRate: 160000, isAvailable: true, bio: 'Specialist in home renovation and Taq (traditional Kashmiri timber-brick) construction restoration. 11 years transforming old homes across the Kashmir Valley into modern living spaces while preserving heritage architecture.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 38, totalJobs: 61, completionRate: 93.4 },
     },
     {
       user: { id: IDS.contractors[3], name: 'Sunil Kumar Sharma', email: 'sunil.sharma@seed.griffy.dev', phone: '+919419000004', role: UserRole.CONTRACTOR },
-      profile: { contractorType: 'Civil Contractor', tradeSkills: ['Road Construction', 'Drainage Systems', 'Retaining Walls', 'Waterproofing'], experience: '16 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], licenseNumber: 'JK-CIV-2008-004', dailyRate: 4800, projectRate: 380000, availability: true, bio: 'Jammu-based civil contractor with 16 years of experience in residential buildings, retaining walls, and mountain-terrain civil infrastructure. Expert in J&K soil conditions and landslide-resistant construction techniques.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 54, totalJobs: 70, completionRate: 97.1 },
+      profile: { contractorType: 'Civil Contractor', tradeSkills: ['Road Construction', 'Drainage Systems', 'Retaining Walls', 'Waterproofing'], experience: '16 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], licenseNumber: 'JK-CIV-2008-004', dailyRate: 4800, projectRate: 380000, isAvailable: true, bio: 'Jammu-based civil contractor with 16 years of experience in residential buildings, retaining walls, and mountain-terrain civil infrastructure. Expert in J&K soil conditions and landslide-resistant construction techniques.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 54, totalJobs: 70, completionRate: 97.1 },
     },
     {
       user: { id: IDS.contractors[4], name: 'Sameena Akhtar', email: 'sameena.akhtar@seed.griffy.dev', phone: '+919419000005', role: UserRole.CONTRACTOR },
-      profile: { contractorType: 'Architect', tradeSkills: ['Green Building', 'Passive Solar Design', 'Interior Design', 'Space Planning'], experience: '7 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 6500, projectRate: 550000, availability: false, bio: 'Srinagar-based architect focused on energy-efficient and climate-responsive design. Specializes in passive solar homes for Kashmir\'s cold winters — reducing heating costs by up to 40% through smart orientation and insulation strategies.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 12, totalJobs: 16, completionRate: 100 },
+      profile: { contractorType: 'Architect', tradeSkills: ['Green Building', 'Passive Solar Design', 'Interior Design', 'Space Planning'], experience: '7 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 6500, projectRate: 550000, isAvailable: false, bio: 'Srinagar-based architect focused on energy-efficient and climate-responsive design. Specializes in passive solar homes for Kashmir\'s cold winters — reducing heating costs by up to 40% through smart orientation and insulation strategies.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 12, totalJobs: 16, completionRate: 100 },
     },
   ];
 
@@ -116,23 +116,23 @@ async function main() {
   const labourProfiles = [
     {
       user: { id: IDS.labour[0], name: 'Ghulam Nabi Sofi', email: 'ghulam.sofi@seed.griffy.dev', phone: '+919419000011', role: UserRole.LABOUR },
-      profile: { skillType: 'Mason', experience: '9 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 950, availability: true, bio: 'Skilled mason from Baramulla with expertise in stone masonry, brick work, and traditional Kashmiri Taq construction. Handles plastering, dado tiling, and compound walls.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 3 },
+      profile: { skillType: 'Mason', experience: '9 years', serviceCities: ['Srinagar', 'Baramulla'], dailyRate: 950, isAvailable: true, bio: 'Skilled mason from Baramulla with expertise in stone masonry, brick work, and traditional Kashmiri Taq construction. Handles plastering, dado tiling, and compound walls.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 3 },
     },
     {
       user: { id: IDS.labour[1], name: 'Rohit Bakshi', email: 'rohit.bakshi@seed.griffy.dev', phone: '+919419000012', role: UserRole.LABOUR },
-      profile: { skillType: 'Carpenter', experience: '12 years', serviceCities: ['Jammu', 'Srinagar'], dailyRate: 1300, availability: true, bio: 'Master carpenter from Jammu specializing in walnut wood furniture, traditional Kashmiri carved windows (Pinjra work), modular kitchen units, and custom wardrobes.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 31 },
+      profile: { skillType: 'Carpenter', experience: '12 years', serviceCities: ['Jammu', 'Srinagar'], dailyRate: 1300, isAvailable: true, bio: 'Master carpenter from Jammu specializing in walnut wood furniture, traditional Kashmiri carved windows (Pinjra work), modular kitchen units, and custom wardrobes.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 31 },
     },
     {
       user: { id: IDS.labour[2], name: 'Mushtaq Ahmad Dar', email: 'mushtaq.dar@seed.griffy.dev', phone: '+919419000013', role: UserRole.LABOUR },
-      profile: { skillType: 'Painter', experience: '7 years', serviceCities: ['Srinagar', 'Baramulla', 'Jammu'], dailyRate: 850, availability: true, bio: 'Professional painter based in Srinagar with expertise in interior/exterior painting, texture finishes, and POP ceiling work. Uses weather-resistant paints suited to Kashmir\'s cold-humid climate.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.4, totalReviews: 24 },
+      profile: { skillType: 'Painter', experience: '7 years', serviceCities: ['Srinagar', 'Baramulla', 'Jammu'], dailyRate: 850, isAvailable: true, bio: 'Professional painter based in Srinagar with expertise in interior/exterior painting, texture finishes, and POP ceiling work. Uses weather-resistant paints suited to Kashmir\'s cold-humid climate.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.4, totalReviews: 24 },
     },
     {
       user: { id: IDS.labour[3], name: 'Abdul Majid Wani', email: 'abdulmajid.wani@seed.griffy.dev', phone: '+919419000014', role: UserRole.LABOUR },
-      profile: { skillType: 'Mason', experience: '15 years', serviceCities: ['Baramulla', 'Srinagar'], dailyRate: 1150, availability: true, bio: 'Highly experienced mason and bricklayer from Baramulla. Handles large residential and commercial masonry projects. Expert in stone-facing work common to J&K architecture.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 47 },
+      profile: { skillType: 'Mason', experience: '15 years', serviceCities: ['Baramulla', 'Srinagar'], dailyRate: 1150, isAvailable: true, bio: 'Highly experienced mason and bricklayer from Baramulla. Handles large residential and commercial masonry projects. Expert in stone-facing work common to J&K architecture.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 47 },
     },
     {
       user: { id: IDS.labour[4], name: 'Savita Sharma', email: 'savita.sharma@seed.griffy.dev', phone: '+919419000015', role: UserRole.LABOUR },
-      profile: { skillType: 'Painter', experience: '6 years', serviceCities: ['Jammu', 'Srinagar'], dailyRate: 800, availability: true, bio: 'Skilled painter based in Jammu. Specializes in interior painting, decorative finishes, and anti-fungal coatings suitable for J&K\'s seasonal humidity.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 15 },
+      profile: { skillType: 'Painter', experience: '6 years', serviceCities: ['Jammu', 'Srinagar'], dailyRate: 800, isAvailable: true, bio: 'Skilled painter based in Jammu. Specializes in interior painting, decorative finishes, and anti-fungal coatings suitable for J&K\'s seasonal humidity.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 15 },
     },
   ];
 
@@ -162,23 +162,23 @@ async function main() {
   const serviceExperts = [
     {
       user: { id: IDS.serviceExperts[0], name: 'Arshad Hussain Electrical', email: 'arshad.electrical@seed.griffy.dev', phone: '+919419000021', role: UserRole.SERVICE_EXPERT },
-      profile: { expertiseType: 'Electrician', qualifications: ['ITI Electrical', 'J&K Licensing Board Certified'], experience: '10 years', serviceCities: ['Srinagar', 'Baramulla'], consultationFee: 500, availability: true, bio: 'Licensed electrician based in Srinagar with 10 years of experience in domestic and commercial wiring, DB board upgrades, and solar panel installations for J&K\'s frequent power-cut situations.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 3 },
+      profile: { expertiseType: 'Electrician', qualifications: ['ITI Electrical', 'J&K Licensing Board Certified'], experience: '10 years', serviceCities: ['Srinagar', 'Baramulla'], consultationFee: 500, isAvailable: true, bio: 'Licensed electrician based in Srinagar with 10 years of experience in domestic and commercial wiring, DB board upgrades, and solar panel installations for J&K\'s frequent power-cut situations.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.7, totalReviews: 3 },
     },
     {
       user: { id: IDS.serviceExperts[1], name: 'Rajinder Singh Plumbing', email: 'rajinder.plumbing@seed.griffy.dev', phone: '+919419000022', role: UserRole.SERVICE_EXPERT },
-      profile: { expertiseType: 'Plumber', qualifications: ['ITI Plumbing', 'Winterization Specialist'], experience: '14 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], consultationFee: 420, availability: true, bio: 'Expert plumber from Jammu specializing in pipe winterization, anti-freeze installations, and hot-water systems critical for J&K winters. Handles new installations and burst-pipe emergency repairs.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 82 },
+      profile: { expertiseType: 'Plumber', qualifications: ['ITI Plumbing', 'Winterization Specialist'], experience: '14 years', serviceCities: ['Jammu', 'Srinagar', 'Baramulla'], consultationFee: 420, isAvailable: true, bio: 'Expert plumber from Jammu specializing in pipe winterization, anti-freeze installations, and hot-water systems critical for J&K winters. Handles new installations and burst-pipe emergency repairs.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 82 },
     },
     {
       user: { id: IDS.serviceExperts[2], name: 'Farooq Ahmad AC Services', email: 'farooq.ac@seed.griffy.dev', phone: '+919419000023', role: UserRole.SERVICE_EXPERT },
-      profile: { expertiseType: 'AC Technician', qualifications: ['HVAC Certification', 'Inverter AC Specialist'], experience: '8 years', serviceCities: ['Srinagar', 'Jammu'], consultationFee: 380, availability: true, bio: 'AC installation, servicing, and repair specialist based in Srinagar. Also handles inverter ACs used as heat pumps for winter heating — increasingly popular in Kashmir. Works with all major brands.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 97 },
+      profile: { expertiseType: 'AC Technician', qualifications: ['HVAC Certification', 'Inverter AC Specialist'], experience: '8 years', serviceCities: ['Srinagar', 'Jammu'], consultationFee: 380, isAvailable: true, bio: 'AC installation, servicing, and repair specialist based in Srinagar. Also handles inverter ACs used as heat pumps for winter heating — increasingly popular in Kashmir. Works with all major brands.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.8, totalReviews: 97 },
     },
     {
       user: { id: IDS.serviceExperts[3], name: 'Deepa Bhat Electricals', email: 'deepa.electricals@seed.griffy.dev', phone: '+919419000024', role: UserRole.SERVICE_EXPERT },
-      profile: { expertiseType: 'Electrician', qualifications: ['ITI Electrical', 'Solar PV Installation Certified'], experience: '5 years', serviceCities: ['Jammu', 'Srinagar'], consultationFee: 450, availability: true, bio: 'Jammu-based electrician specializing in solar PV systems, smart home wiring, and backup power (UPS/inverter) setups — essential for J&K homes dealing with load shedding.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.9, totalReviews: 39 },
+      profile: { expertiseType: 'Electrician', qualifications: ['ITI Electrical', 'Solar PV Installation Certified'], experience: '5 years', serviceCities: ['Jammu', 'Srinagar'], consultationFee: 450, isAvailable: true, bio: 'Jammu-based electrician specializing in solar PV systems, smart home wiring, and backup power (UPS/inverter) setups — essential for J&K homes dealing with load shedding.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.9, totalReviews: 39 },
     },
     {
       user: { id: IDS.serviceExperts[4], name: 'Nazir Ahmad Plumbing', email: 'nazir.plumbing@seed.griffy.dev', phone: '+919419000025', role: UserRole.SERVICE_EXPERT },
-      profile: { expertiseType: 'Plumber', qualifications: ['NSDC Certified Plumber', 'Fire-Sprinkler Installer'], experience: '11 years', serviceCities: ['Baramulla', 'Srinagar', 'Jammu'], consultationFee: 400, availability: true, bio: 'Baramulla-based plumber with 11 years of experience in residential and commercial plumbing across J&K. Offers 24/7 emergency service during freeze-thaw pipe burst season.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 68 },
+      profile: { expertiseType: 'Plumber', qualifications: ['NSDC Certified Plumber', 'Fire-Sprinkler Installer'], experience: '11 years', serviceCities: ['Baramulla', 'Srinagar', 'Jammu'], consultationFee: 400, isAvailable: true, bio: 'Baramulla-based plumber with 11 years of experience in residential and commercial plumbing across J&K. Offers 24/7 emergency service during freeze-thaw pipe burst season.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 68 },
     },
   ];
 
@@ -377,13 +377,14 @@ async function main() {
   // real inventory and listings from day one instead of an empty catalog.
   await prisma.user.upsert({
     where: { id: IDS.griffyBrand },
-    update: {},
+    update: { isFirstParty: true },
     create: {
       id: IDS.griffyBrand,
       name: 'Griffy',
       email: 'store@griffy.in',
       phone: '+911145678900',
       role: UserRole.MATERIAL_SUPPLIER,
+      isFirstParty: true,
     },
   });
 
@@ -396,7 +397,7 @@ async function main() {
       tradeSkills: ['Turnkey Construction', 'Project Management', 'Full Home Building', 'Renovation'],
       experience: 'Platform-run — backed by Griffy\'s in-house project management team and vetted partner network',
       serviceCities: ['Gurgaon', 'Delhi', 'Noida', 'Mumbai', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune'],
-      availability: true,
+      isAvailable: true,
       bio: 'Griffy\'s own turnkey construction arm — for homeowners who\'d rather hand over the whole project than manage a dozen vendors. We run design, contractors, materials, and labour under one roof, with the same quality bar we hold every professional on the platform to.',
       approvalStatus: ApprovalStatus.APPROVED,
       approvedAt: NOW,

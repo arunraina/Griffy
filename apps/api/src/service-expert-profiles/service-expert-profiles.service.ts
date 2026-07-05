@@ -13,7 +13,7 @@ type CreateDto = {
   experience: string;
   serviceCities: string[];
   consultationFee?: number;
-  availability?: boolean;
+  isAvailable?: boolean;
   bio?: string;
   portfolioImages?: string[];
 };
@@ -28,6 +28,7 @@ export class ServiceExpertProfilesService {
     return this.prisma.serviceExpertProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { serviceCities: { has: city } } : {}),
         ...(expertiseType ? { expertiseType } : {}),
       },

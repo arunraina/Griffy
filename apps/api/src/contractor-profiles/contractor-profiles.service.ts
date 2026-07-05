@@ -15,7 +15,7 @@ type CreateDto = {
   licenseNumber?: string;
   dailyRate?: number;
   projectRate?: number;
-  availability?: boolean;
+  isAvailable?: boolean;
   bio?: string;
   portfolioImages?: string[];
 };
@@ -30,6 +30,7 @@ export class ContractorProfilesService {
     return this.prisma.contractorProfile.findMany({
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
+        isAvailable: true,
         ...(city ? { serviceCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },
