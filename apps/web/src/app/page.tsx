@@ -257,23 +257,33 @@ export default function HomePage() {
       {/* ── SECTION 8: TOP RATED PROVIDERS ── */}
       <section className="bg-white border-t border-[#EBE0D8] px-6 py-14">
         <div className="max-w-[1200px] mx-auto">
-          <p className="text-xs font-bold text-[#C0593A] uppercase tracking-widest mb-2">Top rated</p>
-          <h2 className="text-2xl font-bold text-[#2C1810] mb-8" style={{ fontFamily: 'Georgia, serif' }}>
-            Trusted by homeowners across India
-          </h2>
+          <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+            <div>
+              <p className="text-xs font-bold text-[#C0593A] uppercase tracking-widest mb-2">🏆 Leaderboard</p>
+              <h2 className="text-2xl font-bold text-[#2C1810]" style={{ fontFamily: 'Georgia, serif' }}>
+                Trusted by homeowners across India
+              </h2>
+            </div>
+            <Link href="/leaderboard" className="text-sm font-semibold text-[#C0593A] hover:underline whitespace-nowrap">
+              See full leaderboard →
+            </Link>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {PROVIDERS.map(p => (
-              <Link key={p.name} href={`/providers/${p.slug}`}
-                className="bg-white border border-[#EBE0D8] rounded-2xl p-5 hover:border-[#C0593A] hover:shadow-sm transition-all">
-                <div className="flex items-center gap-3 mb-4">
+              <div key={p.name}
+                className="bg-white border border-[#EBE0D8] rounded-2xl p-5">
+                <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24] flex-shrink-0">
                     {p.initials}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#2C1810]">{p.name}</p>
-                    <p className="text-xs text-[#A08070]">{p.role}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#2C1810] truncate">{p.name}</p>
+                    <p className="text-xs text-[#A08070] truncate">{p.role}</p>
                   </div>
                 </div>
+                <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border mb-3 ${TIER_STYLE[p.tier]}`}>
+                  {p.tier === 'Elite' ? '🏆' : '🏅'} {p.tier}
+                </span>
                 <div className="flex items-center gap-1 text-xs text-[#6B5248] mb-3">
                   <span className="text-yellow-500">★</span> {p.rating} · {p.reviews} reviews
                 </div>
@@ -284,7 +294,7 @@ export default function HomePage() {
                     </span>
                   ))}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
@@ -357,6 +367,11 @@ const SERVICE_CARDS = [
     icon: '🏠', title: 'Buy / Rent Homes',
     desc: 'Apartments, villas, independent houses — ready to move or under construction',
     stats: '5,000+ properties listed', href: '/properties',
+  },
+  {
+    icon: '📋', title: 'Post a Project',
+    desc: 'Describe your project once, get bids from contractors — free to post, you pick the bid',
+    stats: 'Open bidding marketplace', href: '/post-project',
   },
 ].filter(Boolean) as { icon: string; title: string; desc: string; stats: string; href: string }[];
 
@@ -435,8 +450,13 @@ const PROPERTY_CITIES = [
 ];
 
 const PROVIDERS = [
-  { name: 'Rajesh Sharma', initials: 'RS', role: 'Civil contractor · Delhi NCR', rating: '4.9', reviews: '63', tags: ['New construction', 'Renovation'],  slug: 'rajesh-sharma' },
-  { name: 'Priya Mehta',   initials: 'PM', role: 'Architect · Mumbai',           rating: '4.8', reviews: '41', tags: ['Interior design', '3D plans'],     slug: 'priya-mehta' },
-  { name: 'Anil Kumar',    initials: 'AK', role: 'Electrician · Bangalore',      rating: '4.7', reviews: '88', tags: ['Wiring', 'Solar setup'],            slug: 'anil-kumar' },
-  { name: 'Suresh Verma',  initials: 'SV', role: 'Plumber · Pune',               rating: '4.9', reviews: '52', tags: ['Sanitary', 'Waterproofing'],        slug: 'suresh-verma' },
+  { name: 'Rajesh Sharma', initials: 'RS', role: 'Civil contractor · Delhi NCR', rating: '4.9', reviews: '63', tier: 'Elite' as const,       tags: ['New construction', 'Renovation'] },
+  { name: 'Priya Mehta',   initials: 'PM', role: 'Architect · Mumbai',           rating: '4.8', reviews: '41', tier: 'Trusted Pro' as const,  tags: ['Interior design', '3D plans'] },
+  { name: 'Anil Kumar',    initials: 'AK', role: 'Electrician · Bangalore',      rating: '4.7', reviews: '88', tier: 'Elite' as const,        tags: ['Wiring', 'Solar setup'] },
+  { name: 'Suresh Verma',  initials: 'SV', role: 'Plumber · Pune',               rating: '4.9', reviews: '52', tier: 'Trusted Pro' as const,  tags: ['Sanitary', 'Waterproofing'] },
 ];
+
+const TIER_STYLE: Record<string, string> = {
+  Elite: 'bg-amber-50 text-amber-800 border-amber-300',
+  'Trusted Pro': 'bg-[#FAEEE9] text-[#9E3F24] border-[#E8C4B0]',
+};
