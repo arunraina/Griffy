@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/c
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AdminService } from './admin.service';
-import { ApprovalStatus, User } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, User } from '@prisma/client';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -49,5 +49,21 @@ export class AdminController {
       user.id,
       body.reason,
     );
+  }
+
+  @Get('projects')
+  async listProjects(@CurrentUser() user: User, @Query('status') status?: ProjectStatus) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.listAllProjects(status);
+  }
+
+  @Patch('projects/:id/status')
+  async moderateProject(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { status: ProjectStatus },
+  ) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.moderateProject(id, body.status);
   }
 }
