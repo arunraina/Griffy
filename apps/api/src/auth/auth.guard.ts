@@ -39,6 +39,8 @@ export class AuthGuard implements CanActivate {
 
     if (error || !user) throw new UnauthorizedException('Invalid token');
 
+    const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
+
     const dbUser = await this.prisma.user.upsert({
       where: { id: user.id },
       create: {
@@ -47,6 +49,7 @@ export class AuthGuard implements CanActivate {
         name: (user.user_metadata?.full_name as string | undefined) ?? user.email!.split('@')[0],
         phone: (user.phone as string | undefined) ?? null,
         role: 'HOMEOWNER',
+        referredById,
       },
       update: {},
     });
@@ -59,5 +62,16 @@ export class AuthGuard implements CanActivate {
   private extractBearerToken(request: Request): string | null {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : null;
+  }
+
+  // Referral codes are the first 8 chars of a user's id (see UsersService.getReferralStats) —
+  // no separate code storage/generation needed, just a prefix lookup.
+  private async resolveReferrer(code: string | undefined): Promise<string | undefined> {
+    if (!code) return undefined;
+    const referrer = await this.prisma.user.findFirst({
+      where: { id: { startsWith: code.toLowerCase() } },
+      select: { id: true },
+    });
+    return referrer?.id;
   }
 }

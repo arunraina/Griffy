@@ -39,3 +39,29 @@ export async function updateMe(data: { name?: string; phone?: string }): Promise
   if (!res.ok) throw new Error('Failed to save profile');
   return res.json();
 }
+
+export interface ReferralStats {
+  code: string;
+  referralCount: number;
+}
+
+export async function fetchReferralStats(): Promise<ReferralStats> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/users/me/referral`, { headers });
+  if (!res.ok) throw new Error('Failed to load referral stats');
+  return res.json();
+}
+
+export interface MyAnalytics {
+  completedJobs: number;
+  totalEarnings: number;
+  bidsSubmitted: number;
+  bidsWon: number;
+}
+
+export async function fetchMyAnalytics(): Promise<MyAnalytics> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/users/me/analytics`, { headers });
+  if (!res.ok) throw new Error('Failed to load analytics');
+  return res.json();
+}

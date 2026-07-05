@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { fetchMe, updateMe, type Me } from '@/lib/users';
+import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
 
 const ROLE_LABEL: Record<string, string> = {
   HOMEOWNER: '🏠 Homeowner',
@@ -29,16 +29,30 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', phone: '' });
+  const [referral, setReferral] = useState<ReferralStats | null>(null);
+  const [analytics, setAnalytics] = useState<MyAnalytics | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchMe()
       .then((data) => {
         setMe(data);
         setForm({ name: data.name, phone: data.phone ?? '' });
+        fetchReferralStats().then(setReferral).catch(() => undefined);
+        fetchMyAnalytics().then(setAnalytics).catch(() => undefined);
       })
       .catch(() => setNeedsAuth(true))
       .finally(() => setLoading(false));
   }, []);
+
+  function copyReferralLink() {
+    if (!referral) return;
+    const link = `${window.location.origin}/signup?ref=${referral.code}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -165,6 +179,46 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {analytics && (analytics.completedJobs > 0 || analytics.bidsSubmitted > 0 || analytics.totalEarnings > 0) && (
+          <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6 mt-6">
+            <p className="text-sm font-bold text-[#2C1810] mb-4">Your Activity</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xl font-bold text-[#C0593A]">{analytics.completedJobs}</p>
+                <p className="text-xs text-[#A08070]">Jobs completed</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#C0593A]">₹{analytics.totalEarnings.toLocaleString('en-IN')}</p>
+                <p className="text-xs text-[#A08070]">Total earnings</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#C0593A]">{analytics.bidsSubmitted}</p>
+                <p className="text-xs text-[#A08070]">Bids submitted</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#C0593A]">{analytics.bidsWon}</p>
+                <p className="text-xs text-[#A08070]">Bids won</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {referral && (
+          <div className="bg-gradient-to-br from-[#C0593A] to-[#9E3F24] rounded-2xl p-6 text-white mt-6">
+            <p className="text-sm font-bold mb-1">🎁 Refer &amp; Earn</p>
+            <p className="text-[#F5D9CC] text-xs mb-4">Share your link — {referral.referralCount} friend{referral.referralCount !== 1 ? 's have' : ' has'} joined so far.</p>
+            <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-4 py-3">
+              <code className="flex-1 text-sm truncate">griffy.in/signup?ref={referral.code}</code>
+              <button
+                onClick={copyReferralLink}
+                className="text-xs font-semibold bg-white text-[#9E3F24] px-3 py-1.5 rounded-lg hover:bg-[#FAEEE9] transition-colors shrink-0"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid sm:grid-cols-2 gap-3 mt-6">
           <Link href="/dashboard" className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-5 hover:border-[#D8B8A8] transition-colors">

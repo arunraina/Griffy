@@ -11,9 +11,11 @@ export default function AuthCallback() {
   useEffect(() => {
     async function finish() {
       const role = localStorage.getItem('griffy_signup_role');
-      if (role) {
-        await supabase.auth.updateUser({ data: { role } });
+      const referral_code = localStorage.getItem('griffy_signup_ref');
+      if (role || referral_code) {
+        await supabase.auth.updateUser({ data: { ...(role && { role }), ...(referral_code && { referral_code }) } });
         localStorage.removeItem('griffy_signup_role');
+        localStorage.removeItem('griffy_signup_ref');
       }
       router.replace('/dashboard');
     }

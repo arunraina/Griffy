@@ -69,8 +69,9 @@ function SignupInner() {
 
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [refCode, setRefCode] = useState('');
 
-  // Read ?type= URL param to pre-select side
+  // Read ?type= and ?ref= URL params
   useEffect(() => {
     const t = params.get('type');
     if (t === 'homeowner') {
@@ -81,6 +82,8 @@ function SignupInner() {
       setSide('professional');
       setFlowStep('role');
     }
+    const ref = params.get('ref');
+    if (ref) setRefCode(ref);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function go(m: Mode) { setMode(m); setError(''); }
@@ -109,6 +112,7 @@ function SignupInner() {
   async function handleGoogle() {
     if (role) localStorage.setItem('griffy_signup_role', role);
     if (proLabel) localStorage.setItem('griffy_signup_pro_label', proLabel);
+    if (refCode) localStorage.setItem('griffy_signup_ref', refCode);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -129,7 +133,7 @@ function SignupInner() {
   async function verifyWpOtp(token: string) {
     setError(''); setLoading(true);
     const { error } = await supabase.auth.verifyOtp({ phone: fmt(phone), token, type: 'sms' });
-    if (!error) await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel } });
+    if (!error) await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel, referral_code: refCode || undefined } });
     setLoading(false);
     if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
     router.push('/onboarding');
@@ -158,7 +162,7 @@ function SignupInner() {
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { name, role, pro_label: proLabel } },
+      options: { data: { name, role, pro_label: proLabel, referral_code: refCode || undefined } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }

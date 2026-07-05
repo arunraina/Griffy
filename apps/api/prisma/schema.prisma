@@ -100,14 +100,17 @@ enum FurnishingStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id        String   @id
-  email     String   @unique
-  phone     String?
-  name      String
-  role      UserRole
-  avatarUrl String?  @map("avatar_url")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id
+  email        String   @unique
+  phone        String?
+  name         String
+  role         UserRole
+  avatarUrl    String?  @map("avatar_url")
+  referredById String?  @map("referred_by_id")
+  referredBy   User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals    User[]   @relation("Referrals")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // 1:1 supply-side profiles
   contractorProfile       ContractorProfile?
