@@ -1,6 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useSaved, type SavedType } from '@/context/SavedContext';
+import { useAuthUser } from '@/lib/useAuthUser';
 
 interface Props {
   type: SavedType;
@@ -13,7 +15,9 @@ interface Props {
 }
 
 export default function SaveButton({ type, id, title, subtitle, href, emoji, className = '' }: Props) {
+  const router = useRouter();
   const { isSaved, toggle } = useSaved();
+  const { user } = useAuthUser();
   const saved = isSaved(type, id);
 
   return (
@@ -22,6 +26,10 @@ export default function SaveButton({ type, id, title, subtitle, href, emoji, cla
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (!user) {
+          router.push('/login');
+          return;
+        }
         toggle({ type, id, title, subtitle, href, emoji });
       }}
       title={saved ? 'Remove from saved' : 'Save'}

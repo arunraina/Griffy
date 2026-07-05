@@ -43,6 +43,7 @@ const IDS = {
   propertySeller:  'c0000006-0000-0000-0000-000000000001',
   rentSeller:      'c0000007-0000-0000-0000-000000000001',
   builderSeller:   'c0000008-0000-0000-0000-000000000001',
+  griffyBrand:     'c0000011-0000-0000-0000-000000000001',
 };
 
 async function main() {
@@ -369,6 +370,114 @@ async function main() {
     if (!exists) await prisma.property.create({ data: { sellerId: builderSeller.id, ...prop } });
   }
   console.log('✅ 3 new project listings seeded');
+
+  // ── Griffy — first-party brand: contractor + material seller + land lister ──
+  // Griffy operates on its own marketplace the way Cloudtail sells on Amazon —
+  // one account, multiple seller/provider roles, so the platform itself has
+  // real inventory and listings from day one instead of an empty catalog.
+  await prisma.user.upsert({
+    where: { id: IDS.griffyBrand },
+    update: {},
+    create: {
+      id: IDS.griffyBrand,
+      name: 'Griffy',
+      email: 'store@griffy.in',
+      phone: '+911145678900',
+      role: UserRole.MATERIAL_SUPPLIER,
+    },
+  });
+
+  await prisma.contractorProfile.upsert({
+    where: { userId: IDS.griffyBrand },
+    update: {},
+    create: {
+      userId: IDS.griffyBrand,
+      contractorType: 'Turnkey / Full Construction',
+      tradeSkills: ['Turnkey Construction', 'Project Management', 'Full Home Building', 'Renovation'],
+      experience: 'Platform-run — backed by Griffy\'s in-house project management team and vetted partner network',
+      serviceCities: ['Gurgaon', 'Delhi', 'Noida', 'Mumbai', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune'],
+      availability: true,
+      bio: 'Griffy\'s own turnkey construction arm — for homeowners who\'d rather hand over the whole project than manage a dozen vendors. We run design, contractors, materials, and labour under one roof, with the same quality bar we hold every professional on the platform to.',
+      approvalStatus: ApprovalStatus.APPROVED,
+      approvedAt: NOW,
+      avgRating: 4.7,
+      totalReviews: 42,
+      totalJobs: 58,
+      completionRate: 98.1,
+    },
+  });
+  console.log('✅ Griffy contractor profile seeded');
+
+  const griffySupplier = await prisma.materialSupplierProfile.upsert({
+    where: { userId: IDS.griffyBrand },
+    update: {},
+    create: {
+      userId: IDS.griffyBrand,
+      businessName: 'Griffy Store (Official)',
+      gstNumber: '06AABCG5678H1Z5',
+      businessAddress: 'Griffy IT Services Pvt. Ltd., Sector 56, Gurgaon, Haryana 122011',
+      deliveryCities: ['Gurgaon', 'Delhi', 'Noida', 'Mumbai', 'Bangalore', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Ahmedabad'],
+      approvalStatus: ApprovalStatus.APPROVED,
+      approvedAt: NOW,
+      avgRating: 4.6,
+      totalReviews: 612,
+      totalOrders: 340,
+    },
+  });
+
+  const griffyMaterials = [
+    { name: 'UltraTech OPC 53 Grade Cement', description: '50 kg bag — high-strength cement for RCC structural work, foundations, and columns.', category: 'structure', subcategory: 'cement', roomTypes: ['structure'], price: 410, unit: 'per 50kg bag', stock: 5000 },
+    { name: 'Griffy Choice M-Sand (Manufactured Sand)', description: 'Washed, graded M-Sand for plastering and masonry — consistent quality, delivered by the truckload.', category: 'structure', subcategory: 'sand', roomTypes: ['structure'], price: 48, unit: 'per cft', stock: 20000 },
+    { name: 'AAC Block 600×200×150mm', description: 'Autoclaved Aerated Concrete blocks — lightweight, fire-resistant, faster to lay than red brick.', category: 'structure', subcategory: 'bricks', roomTypes: ['structure'], price: 70, unit: 'per piece', stock: 15000 },
+    { name: 'Tata Tiscon TMT Bar 12mm Fe500D', description: 'Fe-500D grade TMT rebar — corrosion resistant, ductile, BIS certified for seismic zones.', category: 'steel', subcategory: 'tmt', roomTypes: ['structure', 'stairs'], price: 68, unit: 'per kg', stock: 25000 },
+    { name: 'Tata Tiscon TMT Bar 8mm Fe500D', description: 'Fe-500D grade TMT rebar — ideal for stirrups and distribution bars.', category: 'steel', subcategory: 'tmt', roomTypes: ['structure'], price: 66, unit: 'per kg', stock: 18000 },
+    { name: 'Kajaria Kitchen Floor Tile 600×600 Matt', description: 'Slip-resistant matt-finish kitchen floor tile, stain and oil resistant.', category: 'tiles', subcategory: 'ceramic', roomTypes: ['kitchen'], price: 46, unit: 'per sqft', stock: 8000 },
+    { name: 'Kajaria Washroom Wall Tile 300×600 Glossy', description: 'High-gloss ceramic wall tile for bathrooms — water resistant, easy to clean.', category: 'tiles', subcategory: 'ceramic', roomTypes: ['washroom'], price: 40, unit: 'per sqft', stock: 9000 },
+    { name: 'Kajaria Eternity Vitrified GVT 600×600', description: 'Glazed vitrified floor tile for living rooms and bedrooms — polished, large-format finish.', category: 'tiles', subcategory: 'vitrified', roomTypes: ['living_room', 'bedroom'], price: 50, unit: 'per sqft', stock: 6000 },
+    { name: 'Prince Pipes CPVC Pipe 3/4" (3m)', description: 'CPVC pipe for hot and cold water supply lines — corrosion-free, 50-year design life.', category: 'plumbing', subcategory: 'pipes_plumb', roomTypes: ['washroom', 'kitchen'], price: 210, unit: 'per 3m length', stock: 4000 },
+    { name: 'Prince Pipes PVC SWR Pipe 4" (3m)', description: 'PVC soil-waste-rain pipe for drainage lines — ISI marked, solvent-weld joints.', category: 'plumbing', subcategory: 'pipes_plumb', roomTypes: ['washroom'], price: 580, unit: 'per 3m length', stock: 2500 },
+    { name: 'Hindware Rimless Western WC', description: 'Rimless flush design for easier cleaning — S-trap, ceramic, includes soft-close seat.', category: 'plumbing', subcategory: 'wc_toilet', roomTypes: ['washroom'], price: 5200, unit: 'per piece', stock: 300 },
+    { name: 'Cera Wall-Hung Wash Basin', description: 'Compact wall-hung basin — ideal for small bathrooms, includes concealed fitting hardware.', category: 'plumbing', subcategory: 'basins', roomTypes: ['washroom'], price: 2600, unit: 'per piece', stock: 400 },
+    { name: 'Jaquar Single Lever Basin Mixer', description: 'Chrome-finish single-lever basin mixer tap with ceramic disc cartridge.', category: 'plumbing', subcategory: 'faucets', roomTypes: ['washroom'], price: 2900, unit: 'per piece', stock: 500 },
+    { name: 'Carysil Single Bowl Granite Kitchen Sink', description: 'Granite-composite sink — scratch and heat resistant, includes waste coupling.', category: 'kitchen', subcategory: 'kitchen_sink', roomTypes: ['kitchen'], price: 6800, unit: 'per piece', stock: 250 },
+    { name: 'Jaquar Pull-out Kitchen Tap Chrome', description: 'Pull-out spray kitchen tap — 360° swivel, chrome finish.', category: 'kitchen', subcategory: 'kitchen_faucet', roomTypes: ['kitchen'], price: 4300, unit: 'per piece', stock: 300 },
+    { name: 'Faber Auto-Clean Chimney 60cm', description: 'Auto-clean kitchen chimney, 1200 m³/hr suction — filterless technology.', category: 'kitchen', subcategory: 'chimney', roomTypes: ['kitchen'], price: 14800, unit: 'per piece', stock: 150 },
+    { name: 'Black Galaxy Granite Kitchen Countertop', description: 'Polished granite slab for kitchen countertops — heat and scratch resistant.', category: 'kitchen', subcategory: 'countertop', roomTypes: ['kitchen'], price: 210, unit: 'per sqft', stock: 3000 },
+    { name: 'Havells Ventilair 150mm Exhaust Fan', description: 'High-speed exhaust fan for bathrooms and kitchens — rust-proof body.', category: 'plumbing', subcategory: 'accessories', roomTypes: ['washroom', 'kitchen'], price: 1250, unit: 'per piece', stock: 600 },
+    { name: 'Havells 2.5mm FRLS Wire 90m', description: 'Fire-retardant low-smoke wiring — for household electrical circuits across all rooms.', category: 'electricals', subcategory: 'wires', roomTypes: ['structure', 'washroom', 'kitchen', 'bedroom', 'living_room'], price: 1980, unit: 'per roll (90m)', stock: 2000 },
+    { name: 'Asian Paints Royale Luxury Emulsion 20L', description: 'Premium interior emulsion — washable, low-odour, wide shade range.', category: 'paints', subcategory: 'interior_paint', roomTypes: ['living_room', 'bedroom'], price: 5900, unit: 'per 20L', stock: 800 },
+  ];
+
+  for (const mat of griffyMaterials) {
+    const exists = await prisma.material.findFirst({ where: { name: mat.name, supplierId: griffySupplier.id } });
+    if (!exists) {
+      await prisma.material.create({ data: { supplierId: griffySupplier.id, ...mat } });
+    }
+  }
+  console.log(`✅ Griffy material supplier + ${griffyMaterials.length} materials seeded`);
+
+  const griffyLandOwner = await prisma.landOwnerProfile.upsert({
+    where: { userId: IDS.griffyBrand },
+    update: {},
+    create: {
+      userId: IDS.griffyBrand,
+      govtIdVerified: true,
+      bio: 'Griffy\'s own curated and verified land & plot listings — title-checked before they go live.',
+      approvalStatus: ApprovalStatus.APPROVED,
+      approvedAt: NOW,
+    },
+  });
+
+  const griffyLands = [
+    { title: 'Residential Plot in Sohna Road, Gurgaon', description: 'HUDA-approved residential plot on Sohna Road — 30x50, road-facing, all utility connections ready. Title verified by Griffy.', landType: LandType.RESIDENTIAL, areaSqFt: 1500, price: 8500000, location: 'Sohna Road, Sector 68, Gurgaon', city: 'Gurgaon', state: 'Haryana' },
+    { title: 'Commercial Plot on NH-48, Gurgaon', description: 'Highway-facing commercial land on NH-48 — ideal for showroom or warehousing. Clear title, no encumbrances.', landType: LandType.COMMERCIAL, areaSqFt: 5400, price: 45000000, location: 'NH-48, Sector 37, Gurgaon', city: 'Gurgaon', state: 'Haryana' },
+  ];
+
+  for (const land of griffyLands) {
+    const exists = await prisma.land.findFirst({ where: { title: land.title, ownerId: griffyLandOwner.id } });
+    if (!exists) await prisma.land.create({ data: { ownerId: griffyLandOwner.id, ...land } });
+  }
+  console.log('✅ Griffy land owner profile + 2 plot listings seeded');
 
   console.log('\n🎉 Seed complete!');
 }

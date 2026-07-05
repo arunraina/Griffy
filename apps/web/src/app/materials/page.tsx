@@ -29,8 +29,8 @@ function mapMaterial(m: any): Product {
     rating: Number(m.avgRating ?? 0),
     reviewCount: m.reviewCount ?? 0,
     sellerName: m.supplier?.user?.name ?? 'Unknown',
-    sellerCity: m.supplier?.serviceCities?.[0] ?? '',
-    roomTypes: [],
+    sellerCity: m.supplier?.deliveryCities?.[0] ?? '',
+    roomTypes: m.roomTypes ?? [],
     imageUrl: m.imageUrls?.[0] ?? '',
     imageIcon: '🏗️',
   };

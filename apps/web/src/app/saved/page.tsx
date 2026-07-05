@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSaved, type SavedType } from '@/context/SavedContext';
+import { useAuthUser } from '@/lib/useAuthUser';
 
 const TYPE_LABEL: Record<SavedType, string> = {
   material: 'Materials',
@@ -12,6 +13,29 @@ const TYPE_LABEL: Record<SavedType, string> = {
 
 export default function SavedPage() {
   const { items, remove } = useSaved();
+  const { user, loading } = useAuthUser();
+
+  if (!loading && !user) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-[#FAEEE9] rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
+            ♡
+          </div>
+          <h1 className="text-xl font-bold text-[#2C1810] mb-2">Log in to see your saved items</h1>
+          <p className="text-[#6B5248] mb-6">
+            Saved materials, contractors, labour, and service experts live on your account.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+          >
+            Log in
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (

@@ -32,6 +32,7 @@ export class MaterialsController {
       description?: string;
       category: string;
       subcategory: string;
+      roomTypes?: string[];
       price: number;
       unit: string;
       stock: number;
@@ -52,6 +53,7 @@ export class MaterialsController {
       description?: string;
       category?: string;
       subcategory?: string;
+      roomTypes?: string[];
       price?: number;
       unit?: string;
       stock?: number;

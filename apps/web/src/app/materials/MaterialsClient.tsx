@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { getRegionData, type RegionKey } from '@/lib/regionUtils';
 import { isSubEnabled } from '@/lib/featureFlags';
@@ -452,7 +453,9 @@ export default function MaterialsClient({ sourceProducts }: { sourceProducts: Pr
 
 function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   const supabase = createClient();
+  const router = useRouter();
 
+  const [loggedIn,        setLoggedIn]       = useState(false);
   const [city,           setCity]           = useState('');
   const { factor: priceFactor, label: priceCity } = getCityPriceFactor(city);
   const [bannerDismissed,setBannerDismissed] = useState(false);
@@ -481,6 +484,7 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCity(user?.user_metadata?.city ?? '');
+      setLoggedIn(!!user);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -556,6 +560,10 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   function toggleType(t: string) { setCheckedTypes(prev => toggleSet(prev, t)); }
   function toggleBrand(b: string) { setSelectedBrands(prev => toggleSet(prev, b)); }
   function addToCart(p: Product) {
+    if (!loggedIn) {
+      router.push('/login');
+      return;
+    }
     addItem({ id: p.id, name: p.name, imageIcon: p.imageIcon, price: p.price, unit: p.unit, sellerName: p.sellerName });
   }
   function removeFromCart(id: string) {

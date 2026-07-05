@@ -6,6 +6,7 @@ type CreateDto = {
   description?: string;
   category: string;
   subcategory: string;
+  roomTypes?: string[];
   price: number;
   unit: string;
   stock: number;
@@ -24,7 +25,7 @@ export class MaterialsService {
         ...(subcategory ? { subcategory } : {}),
       },
       include: {
-        supplier: { select: { businessName: true, user: { select: { name: true } } } },
+        supplier: { select: { businessName: true, deliveryCities: true, user: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     });
