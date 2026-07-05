@@ -104,7 +104,9 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
-              <span className="text-sm text-gray-500 max-w-[120px] truncate">{user.name}</span>
+              <Link href="/profile" className="text-sm text-gray-500 max-w-[120px] truncate hover:text-[#C0593A]" title="View profile">
+                {user.name}
+              </Link>
               <Link href="/orders"
                 className="text-sm font-semibold text-[#C0593A] hover:underline">
                 Orders
@@ -202,7 +204,9 @@ export default function Navbar() {
             <div className="border-t border-[#f0ebe6] pt-4 flex flex-col gap-3">
               {user ? (
                 <>
-                  <p className="text-xs text-gray-400">{user.name}</p>
+                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="text-xs text-gray-400 hover:text-[#C0593A]">
+                    {user.name}
+                  </Link>
                   <Link href="/orders" onClick={() => setMenuOpen(false)}
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Orders
