@@ -53,10 +53,11 @@ export default function TeamPage() {
               <p className="text-sm font-semibold text-[#C0593A] mb-1">Founder &amp; CEO</p>
               <p className="text-xs text-[#A08070] mb-4">IIM Calcutta · Stanford Graduate School of Business</p>
               <p className="text-sm text-[#4A3528] leading-relaxed">
-                10+ years building startups and running data and retail programs for multinational retailers,
-                including Tesco, Walmart, and Foodstuffs. Previously at Dunnhumby and Nojoto. Started Griffy to
-                bring the same rigor around trust, verification, and pricing transparency to how India hires
-                contractors and buys construction materials.
+                10+ years building and scaling startups. Built SaaS data and retail products for global
+                retailers including Tesco, Walmart, and Foodstuffs at Dunnhumby. Prior to Griffy, built and
+                scaled Nojoto — India&apos;s largest storytelling platform — to 30 million monthly active
+                users. Started Griffy to bring that same rigor around trust, verification, and pricing
+                transparency to how India hires contractors and buys construction materials.
               </p>
             </div>
           </div>

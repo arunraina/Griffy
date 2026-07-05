@@ -80,4 +80,8 @@ export class AdminService {
   listCareerApplications() {
     return this.prisma.careerApplication.findMany({ orderBy: { createdAt: 'desc' } });
   }
+
+  listEarlyAccessSignups() {
+    return this.prisma.earlyAccessSignup.findMany({ orderBy: { createdAt: 'desc' } });
+  }
 }

@@ -619,3 +619,16 @@ model CareerApplication {
 
   @@map("career_applications")
 }
+
+// ---------------------------------------------------------------------------
+// Early access signups — email capture for the mobile app / new-feature
+// waitlist. No auth required; a signup here is not a Griffy account.
+
+model EarlyAccessSignup {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  interest  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("early_access_signups")
+}

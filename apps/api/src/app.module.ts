@@ -23,6 +23,7 @@ import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProjectsModule } from './projects/projects.module';
 import { CareerApplicationsModule } from './career-applications/career-applications.module';
+import { EarlyAccessModule } from './early-access/early-access.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { CareerApplicationsModule } from './career-applications/career-applicati
     NotificationsModule,
     ProjectsModule,
     CareerApplicationsModule,
+    EarlyAccessModule,
   ],
 })
 export class AppModule {}

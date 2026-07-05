@@ -331,6 +331,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── SECTION 10: EARLY ACCESS (APP) ── */}
+      <section className="px-6 pb-14">
+        <div className="max-w-[1200px] mx-auto">
+          <div className="bg-white border border-[#EBE0D8] rounded-2xl px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div>
+              <p className="text-xs font-bold text-[#C0593A] uppercase tracking-widest mb-1.5">🚀 Coming soon</p>
+              <h3 className="text-lg font-bold text-[#2C1810]">The Griffy app is on its way</h3>
+              <p className="text-sm text-[#6B5248]">Get on the list to be first to try it.</p>
+            </div>
+            <Link href="/early-access"
+              className="shrink-0 inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm px-6 py-3 rounded-xl transition-colors">
+              Get Early Access →
+            </Link>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

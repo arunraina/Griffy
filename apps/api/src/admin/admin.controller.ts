@@ -72,4 +72,10 @@ export class AdminController {
     await this.admin.assertAdmin(user.id);
     return this.admin.listCareerApplications();
   }
+
+  @Get('early-access-signups')
+  async listEarlyAccessSignups(@CurrentUser() user: User) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.listEarlyAccessSignups();
+  }
 }
