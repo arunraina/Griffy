@@ -8,6 +8,7 @@ const COLUMNS = [
       { label: 'Materials',   href: '/materials' },
       { label: 'Services',    href: '/providers' },
       { label: 'Labour',      href: '/contractors?type=labour' },
+      { label: 'Leaderboard', href: '/leaderboard' },
     ],
   },
   {

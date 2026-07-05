@@ -10,6 +10,7 @@ interface LabourProfile {
   available: boolean;
   rating: number;
   reviewCount: number;
+  completedJobs: number;
   verified: boolean;
 }
 
@@ -27,6 +28,7 @@ function mapLabour(p: any): LabourProfile {
     available: p.availability ?? true,
     rating: Number(p.avgRating ?? 0),
     reviewCount: p.totalReviews ?? 0,
+    completedJobs: p.totalJobs ?? 0,
     verified: p.approvalStatus === 'APPROVED',
   };
 }

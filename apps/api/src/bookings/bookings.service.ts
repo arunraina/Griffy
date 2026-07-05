@@ -80,6 +80,24 @@ export class BookingsService {
       );
     }
 
+    if (status === 'COMPLETED') {
+      await this.incrementCompletedJobs(booking.providerId, booking.providerRole);
+    }
+
     return updated;
+  }
+
+  private async incrementCompletedJobs(providerId: string, providerRole: UserRole) {
+    if (providerRole === 'CONTRACTOR') {
+      await this.prisma.contractorProfile.updateMany({
+        where: { userId: providerId },
+        data: { totalJobs: { increment: 1 } },
+      });
+    } else if (providerRole === 'LABOUR') {
+      await this.prisma.labourProfile.updateMany({
+        where: { userId: providerId },
+        data: { totalJobs: { increment: 1 } },
+      });
+    }
   }
 }

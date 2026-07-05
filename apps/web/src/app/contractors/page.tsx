@@ -12,6 +12,7 @@ interface Contractor {
   experience: number;
   rating: number;
   reviewCount: number;
+  completedJobs: number;
   available: boolean;
   rateType: 'daily' | 'project';
   rate: number;
@@ -39,6 +40,7 @@ function mapProfile(p: any): Contractor {
     experience: parseInt(p.experience) || 0,
     rating: Number(p.avgRating ?? 0),
     reviewCount: p.totalReviews ?? 0,
+    completedJobs: p.totalJobs ?? 0,
     available: p.availability ?? true,
     rateType: p.dailyRate != null ? 'daily' : 'project',
     rate: Number(p.dailyRate ?? p.projectRate ?? 0),

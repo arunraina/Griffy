@@ -4,6 +4,7 @@ import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
+import TierBadge from '@/components/TierBadge';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ interface Contractor {
   experience: number;
   rating: number;
   reviewCount: number;
+  completedJobs: number;
   available: boolean;
   rateType: 'daily' | 'project';
   rate: number;
@@ -318,6 +320,7 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_BADGE[c.type]}`}>
               {c.type}
             </span>
+            <TierBadge completedJobs={c.completedJobs} rating={c.rating} />
             {c.featured && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700">
                 ⭐ Featured

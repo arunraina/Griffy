@@ -4,6 +4,7 @@ import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
+import TierBadge from '@/components/TierBadge';
 
 type SortKey = 'relevance' | 'rating' | 'price';
 type RatingFilter = 'any' | '4' | '4.5';
@@ -18,6 +19,7 @@ interface LabourProfile {
   available: boolean;
   rating: number;
   reviewCount: number;
+  completedJobs: number;
   verified: boolean;
 }
 
@@ -224,6 +226,7 @@ function LabourCard({ profile: p, rank }: { profile: LabourProfile; rank: number
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-orange-100 text-orange-700 border-orange-200">
               {p.skillType}
             </span>
+            <TierBadge completedJobs={p.completedJobs} rating={p.rating} />
           </div>
           <div className="flex items-center gap-1.5 mt-1">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.available ? 'bg-green-500' : 'bg-gray-300'}`} />
