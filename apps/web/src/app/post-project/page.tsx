@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createProject } from '@/lib/projects';
-import { fetchMe } from '@/lib/users';
+import { fetchMe, NotAuthenticatedError } from '@/lib/users';
 
 const PROJECT_TYPES = [
   { id: 'turnkey', label: 'Turnkey / Full Construction', emoji: '🔑', desc: 'Have land? We handle design to move-in' },
@@ -32,6 +32,7 @@ function PostProjectForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authChecked, setAuthChecked] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,14 +45,37 @@ function PostProjectForm() {
     budgetMin: '', budgetMax: '', timeline: '',
   });
 
-  useEffect(() => {
-    fetchMe().catch(() => router.replace('/login?redirect=/post-project')).finally(() => setAuthChecked(true));
-  }, [router]);
+  function checkAuth() {
+    setAuthChecked(false);
+    setAuthError('');
+    fetchMe()
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) {
+          router.replace('/login?redirect=/post-project');
+        } else {
+          setAuthError('Could not verify your session — check your connection and try again.');
+        }
+      })
+      .finally(() => setAuthChecked(true));
+  }
+
+  useEffect(checkAuth, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-[#C0593A] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-4">{authError}</p>
+          <button onClick={checkAuth} className="text-[#C0593A] hover:underline font-semibold">Try again →</button>
+        </div>
       </div>
     );
   }
