@@ -9,9 +9,10 @@ const SECTIONS = [
   {
     title: '1. What we collect',
     body: `We collect information you give us directly — name, email, phone number, and city when you sign up;
-project details when you post a project or request a quote; payment details when you check out (handled by
-our payment processor, Razorpay — we never store your card or UPI details ourselves); and profile information
-(business name, service areas, portfolio, pricing) if you register as a contractor, labourer, service expert,
+project details when you post a project or request a quote, including site location, budget, timeline, and any
+photos or descriptions you choose to add; payment details when you check out (handled by our payment
+processor, Razorpay — we never store your card or UPI details ourselves); and profile information (business
+name, service areas, portfolio, licenses, pricing) if you register as a contractor, labourer, service expert,
 or material supplier.
 
 We also collect information automatically: pages you visit, searches you run, and device/browser information,
@@ -30,13 +31,20 @@ We do not sell your personal data to third parties.`,
   {
     title: '3. Who we share it with',
     body: `With the other party in a transaction — e.g., a contractor you book sees your name, phone number, and
-project details; a homeowner who posts a project sees the name and profile of anyone who bids on it.
+project details; a homeowner who posts a project sees the name and profile of anyone who bids on it. Because
+Griffy is a marketplace connecting you with independent suppliers and professionals (see our Terms of Service),
+once that data reaches them, they are independently responsible for how they handle it in connection with the
+job or order — the same way a seller on Amazon or a driver on Uber independently handles the customer contact
+details needed to complete that transaction.
 
 With service providers who help us run Griffy: Supabase (authentication and database hosting), Razorpay
 (payments), AWS (file and image storage), and Twilio (WhatsApp/SMS OTP verification). Each only receives the
-data it needs to do its job.
+data it needs to do its job, under contractual confidentiality obligations.
 
-With law enforcement or regulators, only if legally required.`,
+With law enforcement or regulators, only if legally required.
+
+We do not sell personal data, and we do not share more than the minimum needed for the other party to complete
+your transaction or booking.`,
   },
   {
     title: '4. Your choices',
@@ -48,24 +56,35 @@ You can opt out of non-essential notifications from your account settings; trans
 (order status, booking confirmations) can't be turned off since they're necessary to use the service.`,
   },
   {
-    title: '5. Data retention & security',
+    title: '5. Your rights under the DPDP Act',
+    body: `Under India's Digital Personal Data Protection Act, 2023, you have the right to access the personal
+data we hold about you, request correction of inaccurate data, request erasure (subject to legal retention
+requirements described in Section 6), withdraw consent for non-essential processing, and file a grievance if
+you believe we've mishandled your data.
+
+To exercise any of these rights, contact our Grievance Officer at privacy@griffy.in. We aim to acknowledge
+requests within 7 days and resolve them within 30 days, as required by law.`,
+  },
+  {
+    title: '6. Data retention & security',
     body: `We retain account data for as long as your account is active, and transaction records for as long as
 required by Indian tax and consumer-protection law. Passwords are never stored in plain text — authentication
 is handled by Supabase using industry-standard hashing. Payment card details never touch our servers; they go
 directly to Razorpay.`,
   },
   {
-    title: '6. Children',
+    title: '7. Children',
     body: `Griffy is not directed at anyone under 18. We don't knowingly collect data from minors.`,
   },
   {
-    title: '7. Changes to this policy',
+    title: '8. Changes to this policy',
     body: `We'll post updates here and, for material changes, notify account holders by email. Continued use of
 Griffy after a change means you accept the updated policy.`,
   },
   {
-    title: '8. Contact',
-    body: `Questions about this policy or your data — email privacy@griffy.in or use our Contact page.`,
+    title: '9. Contact',
+    body: `Questions about this policy or your data — email privacy@griffy.in, or write to our Grievance Officer
+at the same address. You can also use our Contact page.`,
   },
 ];
 
@@ -82,7 +101,8 @@ export default function PrivacyPage() {
         <p className="text-[#4A3528] leading-relaxed mb-10">
           This policy explains what information Griffy IT Services Pvt. Ltd. (&quot;Griffy&quot;, &quot;we&quot;) collects
           when you use griffy.in, and how we use, share, and protect it. It applies to homeowners, contractors,
-          labour, service experts, material suppliers, and anyone else using the platform.
+          labour, service experts, material suppliers, and anyone else using the platform, and is framed around
+          the Digital Personal Data Protection Act, 2023 (DPDP Act) and other applicable Indian law.
         </p>
 
         <div className="space-y-10">
