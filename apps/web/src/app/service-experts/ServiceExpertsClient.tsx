@@ -40,7 +40,10 @@ function ServiceExpertsInner({ profiles }: { profiles: ServiceExpertProfile[] })
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen]   = useState(false);
 
-  const EXPERTISE_TYPES = ['Architect', 'Structural Engineer', 'Interior Designer', 'MEP Engineer', 'Vastu Consultant', 'Project Manager', 'Quantity Surveyor'];
+  // Matches the `service_experts` category's subcategories in lib/featureFlags.ts.
+  // Architect/Structural Engineer/Interior Designer/Project Manager belong to
+  // Contractors, not here — that was the bug: these two pages had swapped lists.
+  const EXPERTISE_TYPES = ['Electrician', 'Plumber', 'AC Technician', 'Waterproofing Expert', 'CCTV & Security', 'Solar Installer', 'Gas & Plumbing', 'Glazing Expert'];
 
   function toggleType(t: string) {
     setSelectedTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);

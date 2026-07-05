@@ -39,7 +39,9 @@ function LabourInner({ profiles }: { profiles: LabourProfile[] }) {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen]   = useState(false);
 
-  const SKILLS = ['Plumbing', 'Electrical', 'Masonry', 'Carpentry', 'Painting', 'Welding', 'Tiling', 'Helper'];
+  // Matches the `labour` category's subcategories in lib/featureFlags.ts.
+  // Electrical/Plumbing are deliberately excluded — those are Service Experts, not Labour.
+  const SKILLS = ['Mason', 'Carpenter', 'Painter', 'Tile Fixer', 'Helper', 'Welder', 'Scaffolding'];
 
   function toggleSkill(s: string) {
     setSelectedSkills(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);

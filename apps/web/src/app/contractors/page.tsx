@@ -1,7 +1,7 @@
 import ContractorsClient from './ContractorsClient';
 
 type ContractorType = 'Labour' | 'Sub-Contractor' | 'Full Contractor';
-type TradeSkill = 'Civil' | 'Electrical' | 'Plumbing' | 'Carpentry' | 'Painting' | 'Mason' | 'Helper';
+type TradeSkill = 'Civil Contractor' | 'Renovation Contractor' | 'Architect' | 'Interior Designer' | 'Structural Engineer' | 'Project Manager';
 
 interface Contractor {
   id: string;

@@ -8,7 +8,10 @@ import SaveButton from '@/components/SaveButton';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ContractorType = 'Labour' | 'Sub-Contractor' | 'Full Contractor';
-type TradeSkill = 'Civil' | 'Electrical' | 'Plumbing' | 'Carpentry' | 'Painting' | 'Mason' | 'Helper';
+// Kept in sync with the `contractors` category's subcategories in lib/featureFlags.ts —
+// these are contractor-level specializations, distinct from Labour's trades and
+// Service Experts' on-call services.
+type TradeSkill = 'Civil Contractor' | 'Renovation Contractor' | 'Architect' | 'Interior Designer' | 'Structural Engineer' | 'Project Manager';
 type SortKey = 'relevance' | 'rating' | 'experience' | 'price';
 type ExperienceBand = 'any' | '0-2' | '2-5' | '5-10' | '10+';
 type RatingFilter = 'any' | '4' | '4.5';
@@ -29,51 +32,6 @@ interface Contractor {
   featured: boolean;
 }
 
-// ── Mock data (only approved contractors are stored here) ─────────────────────
-// TODO: Replace mock sort with AI recommendation engine
-// Inputs: userLocation, projectType, budget, pastBookings
-// API: POST /api/recommendations/contractors
-// Returns: ranked contractor list with match scores
-
-const CONTRACTORS: Contractor[] = [
-  {
-    id: '1', name: 'Rajesh Kumar',    type: 'Full Contractor',
-    skills: ['Civil'],                 location: 'Delhi NCR',
-    experience: 12, rating: 4.8, reviewCount: 63, available: true,
-    rateType: 'project', rate: 250000, verified: true, featured: true,
-  },
-  {
-    id: '2', name: 'Priya Verma',     type: 'Labour',
-    skills: ['Mason', 'Civil'],        location: 'Mumbai',
-    experience: 5,  rating: 4.7, reviewCount: 41, available: true,
-    rateType: 'daily', rate: 800,      verified: true, featured: false,
-  },
-  {
-    id: '3', name: 'Anil Singh',      type: 'Sub-Contractor',
-    skills: ['Electrical'],            location: 'Bangalore',
-    experience: 8,  rating: 4.9, reviewCount: 88, available: true,
-    rateType: 'project', rate: 120000, verified: true, featured: true,
-  },
-  {
-    id: '4', name: 'Suresh Mehta',    type: 'Labour',
-    skills: ['Plumbing'],              location: 'Pune',
-    experience: 3,  rating: 4.5, reviewCount: 29, available: false,
-    rateType: 'daily', rate: 700,      verified: false, featured: false,
-  },
-  {
-    id: '5', name: 'Kavita Sharma',   type: 'Full Contractor',
-    skills: ['Carpentry', 'Painting'], location: 'Chennai',
-    experience: 15, rating: 4.6, reviewCount: 52, available: true,
-    rateType: 'project', rate: 300000, verified: true, featured: false,
-  },
-  {
-    id: '6', name: 'Mohammed Iqbal',  type: 'Labour',
-    skills: ['Helper', 'Mason'],       location: 'Hyderabad',
-    experience: 2,  rating: 4.2, reviewCount: 18, available: false,
-    rateType: 'daily', rate: 600,      verified: false, featured: false,
-  },
-];
-
 // ── URL param → filter value maps ─────────────────────────────────────────────
 
 const TYPE_PARAM_MAP: Record<string, ContractorType> = {
@@ -81,6 +39,17 @@ const TYPE_PARAM_MAP: Record<string, ContractorType> = {
   sub_contractor:  'Sub-Contractor',
   full_contractor: 'Full Contractor',
 };
+
+// Matches the `contractors` category's subcategory keys in lib/featureFlags.ts
+const SKILL_PARAM_MAP: Record<string, TradeSkill> = {
+  civil_contractor:      'Civil Contractor',
+  renovation_contractor: 'Renovation Contractor',
+  architect:              'Architect',
+  interior_designer:      'Interior Designer',
+  structural_engineer:    'Structural Engineer',
+  project_manager:        'Project Manager',
+};
+const TRADE_SKILLS = Object.values(SKILL_PARAM_MAP);
 
 // ── Root export ───────────────────────────────────────────────────────────────
 
@@ -103,10 +72,7 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
   })();
   const initialSkills: TradeSkill[] = (() => {
     const s = params.get('skill');
-    if (!s) return [];
-    const label = (s.charAt(0).toUpperCase() + s.slice(1)) as TradeSkill;
-    return (['Civil','Electrical','Plumbing','Carpentry','Painting','Mason','Helper'] as TradeSkill[]).includes(label)
-      ? [label] : [];
+    return s && SKILL_PARAM_MAP[s] ? [SKILL_PARAM_MAP[s]] : [];
   })();
 
   const [selectedTypes,  setSelectedTypes]  = useState<ContractorType[]>(initialTypes);
@@ -233,8 +199,8 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
                 ))}
               </FilterSection>
 
-              <FilterSection title="Trade / Skill">
-                {(['Civil','Electrical','Plumbing','Carpentry','Painting','Mason','Helper'] as TradeSkill[]).map(s => (
+              <FilterSection title="Specialization">
+                {TRADE_SKILLS.map(s => (
                   <label key={s} className="flex items-center gap-2.5 cursor-pointer group">
                     <input type="checkbox" checked={selectedSkills.includes(s)} onChange={() => toggleSkill(s)}
                       className="w-4 h-4 rounded border-gray-300 accent-[#C0593A] cursor-pointer" />
