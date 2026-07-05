@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import ChatWidget from '@/components/ChatWidget';
 import { CartProvider } from '@/context/CartContext';
 import { SavedProvider } from '@/context/SavedContext';
 import { NotificationProvider } from '@/context/NotificationContext';
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Navbar />
               {children}
               <Footer />
+              <ChatWidget />
             </NotificationProvider>
           </SavedProvider>
         </CartProvider>

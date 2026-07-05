@@ -6,7 +6,7 @@ const COLUMNS = [
     links: [
       { label: 'Contractors', href: '/contractors' },
       { label: 'Materials',   href: '/materials' },
-      { label: 'Services',    href: '/providers' },
+      { label: 'Services',    href: '/service-experts' },
       { label: 'Labour',      href: '/contractors?type=labour' },
       { label: 'Leaderboard', href: '/leaderboard' },
     ],
