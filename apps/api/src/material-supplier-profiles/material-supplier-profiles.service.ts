@@ -25,6 +25,7 @@ export class MaterialSupplierProfilesService {
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
         isAvailable: true,
+        user: { isSuspended: false },
         ...(city ? { deliveryCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

@@ -13,7 +13,7 @@ export class LandOwnerProfilesService {
 
   findAll() {
     return this.prisma.landOwnerProfile.findMany({
-      where: { approvalStatus: ApprovalStatus.APPROVED, isAvailable: true },
+      where: { approvalStatus: ApprovalStatus.APPROVED, isAvailable: true, user: { isSuspended: false } },
       include: { user: { select: { name: true, avatarUrl: true } } },
     });
   }

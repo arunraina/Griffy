@@ -27,6 +27,7 @@ export class BuilderProfilesService {
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
         isAvailable: true,
+        user: { isSuspended: false },
         ...(city ? { serviceCities: { has: city } } : {}),
       },
       include: { user: { select: { name: true, avatarUrl: true } } },

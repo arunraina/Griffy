@@ -21,6 +21,7 @@ export class MaterialsService {
     return this.prisma.material.findMany({
       where: {
         isHidden: false,
+        supplier: { user: { isSuspended: false } },
         ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
         ...(category ? { category } : {}),
         ...(subcategory ? { subcategory } : {}),

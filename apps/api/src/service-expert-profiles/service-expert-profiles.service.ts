@@ -29,6 +29,7 @@ export class ServiceExpertProfilesService {
       where: {
         approvalStatus: ApprovalStatus.APPROVED,
         isAvailable: true,
+        user: { isSuspended: false },
         ...(city ? { serviceCities: { has: city } } : {}),
         ...(expertiseType ? { expertiseType } : {}),
       },

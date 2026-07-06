@@ -28,6 +28,7 @@ export class PropertiesService {
       where: {
         isAvailable: true,
         isHidden: false,
+        seller: { user: { isSuspended: false } },
         ...(city ? { city } : {}),
         ...(propertyType ? { propertyType } : {}),
       },

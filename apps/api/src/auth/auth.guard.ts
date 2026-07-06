@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -66,14 +67,14 @@ export class AuthGuard implements CanActivate {
           (user.user_metadata?.name as string | undefined) ??
           (user.user_metadata?.full_name as string | undefined) ??
           user.email!.split('@')[0],
-        phone: (user.phone as string | undefined) ?? null,
+        phone: (user.phone as string | undefined) || null,
         role: this.resolveRole(user.user_metadata),
         referredById,
       },
       update: {},
     });
 
-    if (dbUser.isSuspended) throw new UnauthorizedException('This account has been suspended');
+    if (dbUser.isSuspended) throw new ForbiddenException('This account has been suspended');
 
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).supabaseUser = user;
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).dbUser = dbUser;

@@ -25,6 +25,7 @@ export class LandsService {
       where: {
         isAvailable: true,
         isHidden: false,
+        owner: { user: { isSuspended: false } },
         ...(city ? { city } : {}),
         ...(landType ? { landType } : {}),
       },
