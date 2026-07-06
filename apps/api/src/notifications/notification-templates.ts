@@ -17,6 +17,8 @@ export type NotificationEvent =
   | 'order.placed'
   | 'order.status_changed'
   | 'order.rejected'
+  | 'order.payment_failed'
+  | 'booking.payment_failed'
   | 'profile.approved'
   | 'profile.rejected'
   | 'project.bid_received'
@@ -83,6 +85,20 @@ const templates: Record<NotificationEvent, (payload: Payload, appBaseUrl: string
     whatsappText: `Your Griffy order was rejected by the seller. View: ${base}/orders/${p.orderId}`,
     emailSubject: 'Your Griffy order was rejected',
     linkUrl: `${base}/orders/${p.orderId}`,
+  }),
+  'order.payment_failed': (p, base) => ({
+    title: 'Payment failed',
+    body: 'Your payment did not go through. Please retry to complete your order.',
+    whatsappText: `Your Griffy payment did not go through. Please retry: ${base}/orders/${p.orderId}`,
+    emailSubject: 'Your Griffy payment did not go through',
+    linkUrl: `${base}/orders/${p.orderId}`,
+  }),
+  'booking.payment_failed': (_p, base) => ({
+    title: 'Payment failed',
+    body: 'Your payment did not go through. Please retry to confirm your booking.',
+    whatsappText: `Your Griffy payment did not go through. Please retry: ${base}/dashboard`,
+    emailSubject: 'Your Griffy payment did not go through',
+    linkUrl: `${base}/dashboard`,
   }),
   'profile.approved': (_p, base) => ({
     title: 'Your Griffy profile is live!',

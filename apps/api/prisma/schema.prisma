@@ -387,23 +387,51 @@ model Material {
 // ---------------------------------------------------------------------------
 
 model Order {
-  id                String      @id @default(uuid())
-  buyerId           String      @map("buyer_id")
-  buyer             User        @relation(fields: [buyerId], references: [id])
+  id                String        @id @default(uuid())
+  buyerId           String        @map("buyer_id")
+  buyer             User          @relation(fields: [buyerId], references: [id])
   items             OrderItem[]
-  totalAmount       Decimal     @map("total_amount") @db.Decimal(10, 2)
-  status            OrderStatus @default(PLACED)
-  statusUpdatedAt   DateTime    @default(now()) @map("status_updated_at")
-  shippingAddress   String?     @map("shipping_address")
+  totalAmount       Decimal       @map("total_amount") @db.Decimal(10, 2)
+  status            OrderStatus   @default(PLACED)
+  statusUpdatedAt   DateTime      @default(now()) @map("status_updated_at")
+  shippingAddress   String?       @map("shipping_address")
   notes             String?
-  razorpayOrderId   String?     @map("razorpay_order_id")
-  razorpayPaymentId String?     @map("razorpay_payment_id")
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
+  paymentStatus     PaymentStatus @default(UNPAID) @map("payment_status")
+  razorpayOrderId   String?       @map("razorpay_order_id")
+  razorpayPaymentId String?       @map("razorpay_payment_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   statusEvents OrderStatusEvent[]
 
   @@map("orders")
+}
+
+// Orthogonal to OrderStatus (the fulfillment workflow) — this tracks money
+// state only. Set exclusively by PaymentsService.markOrderPaid() and the
+// webhook/refund handlers, never by the order-status transition logic.
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUND_INITIATED
+  REFUNDED
+}
+
+// Idempotency + audit ledger for every Razorpay webhook delivery, keyed on
+// Razorpay's X-Razorpay-Event-Id header (not anything inside the JSON body).
+// Generic across entity types (order/booking) — protects both.
+model PaymentEvent {
+  id                String    @id @default(uuid())
+  razorpayEventId   String    @unique @map("razorpay_event_id")
+  eventType         String    @map("event_type")
+  razorpayOrderId   String    @map("razorpay_order_id")
+  razorpayPaymentId String?   @map("razorpay_payment_id")
+  payloadJson       Json      @map("payload_json")
+  processedAt       DateTime? @map("processed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@map("payment_events")
 }
 
 model OrderStatusEvent {

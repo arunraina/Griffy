@@ -82,6 +82,19 @@ export class BookingsService {
     return updated;
   }
 
+  // Idempotent — called from both the Razorpay webhook and /payments/verify.
+  async markPaid(bookingId: string, razorpayPaymentId: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking || booking.status !== 'PENDING') return booking;
+    return this.updateStatus(bookingId, 'CONFIRMED', undefined, razorpayPaymentId);
+  }
+
+  async markPaymentFailed(bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) return;
+    await this.notifications.notify(booking.customerId, 'booking.payment_failed', {});
+  }
+
   private async incrementCompletedJobs(providerId: string, providerRole: UserRole) {
     if (providerRole === 'CONTRACTOR') {
       await this.prisma.contractorProfile.updateMany({

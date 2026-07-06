@@ -110,6 +110,31 @@ export class OrdersService {
     return order;
   }
 
+  // Idempotent — called from both the Razorpay webhook and /payments/verify,
+  // whichever arrives first wins. paymentStatus is orthogonal to the
+  // fulfillment `status` workflow; only auto-advances PLACED -> ACCEPTED
+  // (today's existing behavior) and leaves any later status untouched.
+  async markPaid(orderId: string, razorpayPaymentId: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.paymentStatus === 'PAID') return order;
+
+    await this.prisma.order.update({ where: { id: orderId }, data: { paymentStatus: 'PAID' } });
+
+    if (order.status === 'PLACED') {
+      return this.updateStatus(orderId, 'ACCEPTED', razorpayPaymentId);
+    }
+    return this.prisma.order.update({ where: { id: orderId }, data: { razorpayPaymentId } });
+  }
+
+  async markPaymentFailed(orderId: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order || order.paymentStatus === 'FAILED') return order;
+
+    await this.prisma.order.update({ where: { id: orderId }, data: { paymentStatus: 'FAILED' } });
+    await this.prisma.orderStatusEvent.create({ data: { orderId, status: order.status, note: 'Payment failed via Razorpay.' } });
+    await this.notifications.notify(order.buyerId, 'order.payment_failed', { orderId });
+  }
+
   findIncoming(userId: string) {
     return this.prisma.order.findMany({
       where: { items: { some: { material: { supplier: { userId } } } } },
