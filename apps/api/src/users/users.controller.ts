@@ -2,8 +2,10 @@ import { Body, Controller, ForbiddenException, Get, Patch, UseGuards } from '@ne
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { UsersService } from './users.service';
-import { KycService, type KycSubmitInput } from '../kyc/kyc.service';
-import { User, UserRole } from '@prisma/client';
+import { KycService } from '../kyc/kyc.service';
+import { KycSubmitDto } from '../kyc/dto/kyc.dto';
+import { User } from '@prisma/client';
+import { UpdateMeDto, SetRoleDto } from './dto/user.dto';
 
 @Controller('users')
 @UseGuards(AuthGuard)
@@ -19,15 +21,12 @@ export class UsersController {
   }
 
   @Patch('me')
-  updateMe(
-    @CurrentUser() user: User,
-    @Body() body: Partial<Pick<User, 'name' | 'phone' | 'avatarUrl'>>,
-  ) {
+  updateMe(@CurrentUser() user: User, @Body() body: UpdateMeDto) {
     return this.users.update(user.id, body);
   }
 
   @Patch('me/role')
-  setRole(@CurrentUser() user: User, @Body() body: { role: UserRole }) {
+  setRole(@CurrentUser() user: User, @Body() body: SetRoleDto) {
     // ADMIN must never be settable via self-service — see LEGACY_ROLE_MAP
     // comment in auth.guard.ts for why client-supplied ADMIN is untrusted.
     if (body.role === 'ADMIN') {
@@ -52,7 +51,7 @@ export class UsersController {
   }
 
   @Patch('me/kyc')
-  submitMyKyc(@CurrentUser() user: User, @Body() body: KycSubmitInput) {
+  submitMyKyc(@CurrentUser() user: User, @Body() body: KycSubmitDto) {
     return this.kyc.submit(user.id, body);
   }
 }

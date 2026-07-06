@@ -3,6 +3,8 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AdminService, type ContentType } from './admin.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus } from '@prisma/client';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto } from './dto/admin.dto';
+import { RejectKycDto } from '../kyc/dto/kyc.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -39,7 +41,7 @@ export class AdminController {
     @CurrentUser() user: User,
     @Param('type') type: string,
     @Param('id') id: string,
-    @Body() body: { reason?: string },
+    @Body() body: RejectProfileDto,
   ) {
     await this.admin.assertAdmin(user.id);
     return this.admin.setApproval(
@@ -61,7 +63,7 @@ export class AdminController {
   async moderateProject(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body() body: { status: ProjectStatus },
+    @Body() body: ModerateProjectDto,
   ) {
     await this.admin.assertAdmin(user.id);
     return this.admin.moderateProject(id, body.status);
@@ -96,7 +98,7 @@ export class AdminController {
     @CurrentUser() user: User,
     @Param('type') type: string,
     @Param('id') id: string,
-    @Body() body: { isHidden?: boolean; isDemoted?: boolean; moderationNote?: string },
+    @Body() body: ModerateContentDto,
   ) {
     await this.admin.assertAdmin(user.id);
     return this.admin.moderateContent(type as ContentType, id, body);
@@ -141,7 +143,7 @@ export class AdminController {
   async rejectKyc(
     @CurrentUser() user: User,
     @Param('userId') userId: string,
-    @Body() body: { reason?: string },
+    @Body() body: RejectKycDto,
   ) {
     await this.admin.assertAdmin(user.id);
     return this.admin.setKycStatus(userId, KycStatus.REJECTED, body.reason);

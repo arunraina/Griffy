@@ -1,6 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
-import { StorageService, StorageFolder } from './storage.service';
+import { StorageService } from './storage.service';
+import { GetPresignedUrlDto } from './dto/presigned-url.dto';
 
 @Controller('storage')
 @UseGuards(AuthGuard)
@@ -8,7 +9,7 @@ export class StorageController {
   constructor(private readonly storage: StorageService) {}
 
   @Post('presigned-url')
-  getPresignedUrl(@Body() body: { folder: StorageFolder; contentType: string }) {
+  getPresignedUrl(@Body() body: GetPresignedUrlDto) {
     return this.storage.getPresignedUrl(body.folder, body.contentType);
   }
 }

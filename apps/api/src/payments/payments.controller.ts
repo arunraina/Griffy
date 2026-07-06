@@ -1,7 +1,8 @@
 import { Body, Controller, Headers, Post, RawBodyRequest, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
-import { PaymentsService, PaymentEntityType, RazorpayWebhookPayload } from './payments.service';
+import { PaymentsService, RazorpayWebhookPayload } from './payments.service';
+import { CreatePaymentOrderDto, VerifyPaymentDto } from './dto/payment.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -9,13 +10,13 @@ export class PaymentsController {
 
   @Post('create-order')
   @UseGuards(AuthGuard)
-  createOrder(@Body() body: { entityType: PaymentEntityType; entityId: string; amountInPaise: number }) {
+  createOrder(@Body() body: CreatePaymentOrderDto) {
     return this.payments.createOrder(body.entityType, body.entityId, body.amountInPaise);
   }
 
   @Post('verify')
   @UseGuards(AuthGuard)
-  verify(@Body() body: { razorpayOrderId: string; razorpayPaymentId: string; signature: string }) {
+  verify(@Body() body: VerifyPaymentDto) {
     const isValid = this.payments.verifySignature(
       body.razorpayOrderId,
       body.razorpayPaymentId,

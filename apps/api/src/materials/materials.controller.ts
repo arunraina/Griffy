@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MaterialsService } from './materials.service';
 import { User } from '@prisma/client';
+import { CreateMaterialDto, UpdateMaterialDto } from './dto/material.dto';
 
 @Controller('materials')
 export class MaterialsController {
@@ -24,42 +25,13 @@ export class MaterialsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      name: string;
-      description?: string;
-      category: string;
-      subcategory: string;
-      roomTypes?: string[];
-      price: number;
-      unit: string;
-      stock: number;
-      imageUrls?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateMaterialDto) {
     return this.materials.create(user.id, body);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard)
-  update(
-    @CurrentUser() user: User,
-    @Param('id') id: string,
-    @Body()
-    body: {
-      name?: string;
-      description?: string;
-      category?: string;
-      subcategory?: string;
-      roomTypes?: string[];
-      price?: number;
-      unit?: string;
-      stock?: number;
-      imageUrls?: string[];
-    },
-  ) {
+  update(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateMaterialDto) {
     return this.materials.update(id, user.id, body);
   }
 

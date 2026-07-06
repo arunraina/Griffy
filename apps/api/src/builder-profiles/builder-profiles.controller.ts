@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BuilderProfilesService } from './builder-profiles.service';
 import { User } from '@prisma/client';
+import { CreateBuilderProfileDto, UpdateBuilderProfileDto } from './dto/builder-profile.dto';
 
 @Controller('builder-profiles')
 export class BuilderProfilesController {
@@ -26,18 +27,7 @@ export class BuilderProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      companyName: string;
-      serviceCities: string[];
-      registrationNumber?: string;
-      specializations?: string[];
-      bio?: string;
-      portfolioImages?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateBuilderProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -46,15 +36,7 @@ export class BuilderProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body()
-    body: {
-      companyName?: string;
-      serviceCities?: string[];
-      registrationNumber?: string;
-      specializations?: string[];
-      bio?: string;
-      portfolioImages?: string[];
-    },
+    @Body() body: UpdateBuilderProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

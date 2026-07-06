@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@ne
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ProjectsService } from './projects.service';
-import { BidStatus, User } from '@prisma/client';
+import { User } from '@prisma/client';
+import { CreateProjectDto, SubmitBidDto, UpdateBidStatusDto } from './dto/project.dto';
 
 @Controller('projects')
 export class ProjectsController {
@@ -20,20 +21,7 @@ export class ProjectsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      projectType: string;
-      title: string;
-      description: string;
-      city: string;
-      state: string;
-      budgetMin: number;
-      budgetMax: number;
-      timeline: string;
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateProjectDto) {
     return this.projects.create(user.id, body);
   }
 
@@ -48,7 +36,7 @@ export class ProjectsController {
   submitBid(
     @Param('id') id: string,
     @CurrentUser() user: User,
-    @Body() body: { bidAmount: number; message: string },
+    @Body() body: SubmitBidDto,
   ) {
     return this.projects.submitBid(id, user.id, body);
   }
@@ -59,7 +47,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('bidId') bidId: string,
     @CurrentUser() user: User,
-    @Body() body: { status: BidStatus },
+    @Body() body: UpdateBidStatusDto,
   ) {
     return this.projects.updateBidStatus(id, bidId, user.id, body.status);
   }

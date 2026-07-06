@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ServiceExpertProfilesService } from './service-expert-profiles.service';
 import { User } from '@prisma/client';
+import { CreateServiceExpertProfileDto, UpdateServiceExpertProfileDto } from './dto/service-expert-profile.dto';
 
 @Controller('service-expert-profiles')
 export class ServiceExpertProfilesController {
@@ -26,20 +27,7 @@ export class ServiceExpertProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      expertiseType: string;
-      qualifications?: string[];
-      experience: string;
-      serviceCities: string[];
-      consultationFee?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateServiceExpertProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -48,17 +36,7 @@ export class ServiceExpertProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body()
-    body: {
-      expertiseType?: string;
-      qualifications?: string[];
-      experience?: string;
-      serviceCities?: string[];
-      consultationFee?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
+    @Body() body: UpdateServiceExpertProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

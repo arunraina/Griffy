@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PropertyAgentProfilesService } from './property-agent-profiles.service';
 import { User } from '@prisma/client';
+import { CreatePropertyAgentProfileDto, UpdatePropertyAgentProfileDto } from './dto/property-agent-profile.dto';
 
 @Controller('property-agent-profiles')
 export class PropertyAgentProfilesController {
@@ -26,10 +27,7 @@ export class PropertyAgentProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body() body: { agencyName?: string; licenseNumber?: string; serviceCities?: string[]; bio?: string },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreatePropertyAgentProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -38,7 +36,7 @@ export class PropertyAgentProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body() body: { agencyName?: string; licenseNumber?: string; serviceCities?: string[]; bio?: string },
+    @Body() body: UpdatePropertyAgentProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

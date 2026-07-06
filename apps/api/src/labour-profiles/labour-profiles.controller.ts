@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { LabourProfilesService } from './labour-profiles.service';
 import { User } from '@prisma/client';
+import { CreateLabourProfileDto, UpdateLabourProfileDto } from './dto/labour-profile.dto';
 
 @Controller('labour-profiles')
 export class LabourProfilesController {
@@ -26,19 +27,7 @@ export class LabourProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      skillType: string;
-      experience: string;
-      serviceCities: string[];
-      dailyRate?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateLabourProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -47,16 +36,7 @@ export class LabourProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body()
-    body: {
-      skillType?: string;
-      experience?: string;
-      serviceCities?: string[];
-      dailyRate?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
+    @Body() body: UpdateLabourProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

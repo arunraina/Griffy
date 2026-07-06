@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { LandsService } from './lands.service';
 import { LandType, User } from '@prisma/client';
+import { CreateLandDto, UpdateLandDto } from './dto/land.dto';
 
 @Controller('lands')
 export class LandsController {
@@ -26,47 +27,13 @@ export class LandsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      title: string;
-      description?: string;
-      landType: LandType;
-      areaSqFt: number;
-      price: number;
-      location: string;
-      city: string;
-      state: string;
-      latitude?: number;
-      longitude?: number;
-      imageUrls?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateLandDto) {
     return this.lands.create(user.id, body);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard)
-  update(
-    @CurrentUser() user: User,
-    @Param('id') id: string,
-    @Body()
-    body: {
-      title?: string;
-      description?: string;
-      landType?: LandType;
-      areaSqFt?: number;
-      price?: number;
-      location?: string;
-      city?: string;
-      state?: string;
-      latitude?: number;
-      longitude?: number;
-      imageUrls?: string[];
-      isAvailable?: boolean;
-    },
-  ) {
+  update(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateLandDto) {
     return this.lands.update(id, user.id, body);
   }
 

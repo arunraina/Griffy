@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ReviewsService } from './reviews.service';
 import { ReviewTargetType, User } from '@prisma/client';
+import { CreateReviewDto } from './dto/review.dto';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -18,11 +19,7 @@ export class ReviewsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: { targetType: ReviewTargetType; targetId: string; rating: number; comment?: string },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateReviewDto) {
     return this.reviews.create(user.id, body);
   }
 }

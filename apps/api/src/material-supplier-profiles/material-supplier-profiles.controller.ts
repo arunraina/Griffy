@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MaterialSupplierProfilesService } from './material-supplier-profiles.service';
 import { User } from '@prisma/client';
+import { CreateMaterialSupplierProfileDto, UpdateMaterialSupplierProfileDto } from './dto/material-supplier-profile.dto';
 
 @Controller('material-supplier-profiles')
 export class MaterialSupplierProfilesController {
@@ -26,16 +27,7 @@ export class MaterialSupplierProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      businessName: string;
-      businessAddress: string;
-      deliveryCities: string[];
-      gstNumber?: string;
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateMaterialSupplierProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -44,13 +36,7 @@ export class MaterialSupplierProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body()
-    body: {
-      businessName?: string;
-      businessAddress?: string;
-      deliveryCities?: string[];
-      gstNumber?: string;
-    },
+    @Body() body: UpdateMaterialSupplierProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

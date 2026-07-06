@@ -3,6 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ContractorProfilesService } from './contractor-profiles.service';
 import { User } from '@prisma/client';
+import { CreateContractorProfileDto, UpdateContractorProfileDto } from './dto/contractor-profile.dto';
 
 @Controller('contractor-profiles')
 export class ContractorProfilesController {
@@ -26,22 +27,7 @@ export class ContractorProfilesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      contractorType: string;
-      tradeSkills: string[];
-      experience: string;
-      serviceCities: string[];
-      licenseNumber?: string;
-      dailyRate?: number;
-      projectRate?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateContractorProfileDto) {
     return this.service.create(user.id, body);
   }
 
@@ -50,19 +36,7 @@ export class ContractorProfilesController {
   update(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body()
-    body: {
-      contractorType?: string;
-      tradeSkills?: string[];
-      experience?: string;
-      serviceCities?: string[];
-      licenseNumber?: string;
-      dailyRate?: number;
-      projectRate?: number;
-      isAvailable?: boolean;
-      bio?: string;
-      portfolioImages?: string[];
-    },
+    @Body() body: UpdateContractorProfileDto,
   ) {
     return this.service.update(id, user.id, body);
   }

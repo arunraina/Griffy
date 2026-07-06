@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/co
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { OrdersService } from './orders.service';
-import { OrderStatus, User } from '@prisma/client';
+import { User } from '@prisma/client';
+import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 
 @Controller('orders')
 @UseGuards(AuthGuard)
@@ -30,10 +31,7 @@ export class OrdersController {
   }
 
   @Post()
-  create(
-    @CurrentUser() user: User,
-    @Body() body: { items: { materialId: string; quantity: number }[]; shippingAddress: string; notes?: string },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateOrderDto) {
     return this.orders.create(user.id, body);
   }
 
@@ -41,7 +39,7 @@ export class OrdersController {
   updateStatus(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body() body: { status: OrderStatus; note?: string },
+    @Body() body: UpdateOrderStatusDto,
   ) {
     return this.orders.updateStatusForSupplier(id, user.id, body.status, body.note);
   }

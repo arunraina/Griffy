@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/co
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BookingsService } from './bookings.service';
-import { BookingStatus, User, UserRole } from '@prisma/client';
+import { BookingStatus, User } from '@prisma/client';
+import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 
 @Controller('bookings')
 @UseGuards(AuthGuard)
@@ -25,17 +26,7 @@ export class BookingsController {
   }
 
   @Post()
-  create(
-    @CurrentUser() user: User,
-    @Body()
-    body: {
-      providerId: string;
-      providerRole: UserRole;
-      scheduledAt: string;
-      notes?: string;
-      amount?: number;
-    },
-  ) {
+  create(@CurrentUser() user: User, @Body() body: CreateBookingDto) {
     return this.bookings.create(user.id, {
       providerId:   body.providerId,
       providerRole: body.providerRole,
@@ -59,7 +50,7 @@ export class BookingsController {
   updateStatus(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body() body: { status: BookingStatus },
+    @Body() body: UpdateBookingStatusDto,
   ) {
     return this.bookings.updateStatus(id, body.status, user.id);
   }

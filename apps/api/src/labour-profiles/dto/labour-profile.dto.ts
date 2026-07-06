@@ -1,0 +1,37 @@
+import { PartialType } from '@nestjs/mapped-types';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+
+export class CreateLabourProfileDto {
+  @IsString()
+  @MaxLength(100)
+  skillType!: string;
+
+  @IsString()
+  @MaxLength(100)
+  experience!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  serviceCities!: string[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dailyRate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  bio?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  portfolioImages?: string[];
+}
+
+export class UpdateLabourProfileDto extends PartialType(CreateLabourProfileDto) {}
