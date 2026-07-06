@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -28,6 +30,14 @@ import { EarlyAccessModule } from './early-access/early-access.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // ThrottlerGuard applies every named throttler below to every route; `short`/`long`
+    // are effectively unlimited by default and only tightened via @Throttle() on the
+    // specific OTP routes that need a dual per-minute + per-hour limit.
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60000, limit: 100 },
+      { name: 'short', ttl: 60000, limit: 1000 },
+      { name: 'long', ttl: 3600000, limit: 1000 },
+    ]),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -53,5 +63,6 @@ import { EarlyAccessModule } from './early-access/early-access.module';
     CareerApplicationsModule,
     EarlyAccessModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

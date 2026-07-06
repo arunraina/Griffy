@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { BookingsService } from './bookings.service';
@@ -26,6 +27,7 @@ export class BookingsController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   create(@CurrentUser() user: User, @Body() body: CreateBookingDto) {
     return this.bookings.create(user.id, {
       providerId:   body.providerId,
