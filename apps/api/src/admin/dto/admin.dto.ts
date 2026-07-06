@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 import { ProjectStatus } from '@prisma/client';
 
 export class RejectProfileDto {
@@ -11,6 +11,17 @@ export class RejectProfileDto {
 export class ModerateProjectDto {
   @IsEnum(ProjectStatus)
   status!: ProjectStatus;
+}
+
+export class CreateRefundDto {
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  amount?: number; // paise; defaults to full remaining refundable balance
+
+  @IsString()
+  @MaxLength(500)
+  reason!: string;
 }
 
 export class ModerateContentDto {

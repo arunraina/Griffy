@@ -19,6 +19,7 @@ export type NotificationEvent =
   | 'order.rejected'
   | 'order.payment_failed'
   | 'booking.payment_failed'
+  | 'order.refunded'
   | 'profile.approved'
   | 'profile.rejected'
   | 'project.bid_received'
@@ -99,6 +100,13 @@ const templates: Record<NotificationEvent, (payload: Payload, appBaseUrl: string
     whatsappText: `Your Griffy payment did not go through. Please retry: ${base}/dashboard`,
     emailSubject: 'Your Griffy payment did not go through',
     linkUrl: `${base}/dashboard`,
+  }),
+  'order.refunded': (p, base) => ({
+    title: 'Refund processed',
+    body: `A refund of ₹${Number(p.amountRupees).toLocaleString('en-IN')} for your order has been processed.`,
+    whatsappText: `A refund of ₹${Number(p.amountRupees).toLocaleString('en-IN')} has been processed for your Griffy order. View: ${base}/orders/${p.orderId}`,
+    emailSubject: 'Your Griffy refund has been processed',
+    linkUrl: `${base}/orders/${p.orderId}`,
   }),
   'profile.approved': (_p, base) => ({
     title: 'Your Griffy profile is live!',

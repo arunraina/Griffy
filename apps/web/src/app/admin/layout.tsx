@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/kyc',          icon: '🪪', label: 'KYC Review'          },
   { href: '/admin/moderation',   icon: '🚩', label: 'Content Moderation'  },
   { href: '/admin/users',        icon: '👥', label: 'Users'               },
+  { href: '/admin/orders',       icon: '📦', label: 'Orders & Refunds'    },
   { href: '/admin/projects',     icon: '🏗️', label: 'Posted Projects'     },
   { href: '/admin/careers',      icon: '💼', label: 'Career Applications' },
   { href: '/admin/early-access', icon: '🚀', label: 'Early Access'        },

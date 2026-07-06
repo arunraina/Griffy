@@ -233,3 +233,47 @@ export async function rejectKyc(userId: string, reason?: string): Promise<AdminK
   if (!res.ok) throw new Error('Failed to reject KYC');
   return res.json();
 }
+
+// ── Orders / refunds ─────────────────────────────────────────────────────────
+
+export interface AdminRefund {
+  id: string;
+  orderId: string;
+  amount: number; // paise
+  reason: string;
+  status: 'INITIATED' | 'PROCESSED' | 'FAILED';
+  createdAt: string;
+  processedAt: string | null;
+}
+
+export interface AdminOrder {
+  id: string;
+  totalAmount: string;
+  status: string;
+  paymentStatus: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUND_INITIATED' | 'REFUNDED';
+  createdAt: string;
+  buyer?: { name: string; email: string };
+  refunds: AdminRefund[];
+  items: { id: string }[];
+}
+
+export async function fetchAdminOrders(paymentStatus?: string): Promise<AdminOrder[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/orders${paymentStatus ? `?paymentStatus=${paymentStatus}` : ''}`, { headers });
+  if (!res.ok) throw new Error('Failed to load orders');
+  return res.json();
+}
+
+export async function createRefund(orderId: string, reason: string, amount?: number): Promise<AdminRefund> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/orders/${orderId}/refund`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ reason, ...(amount !== undefined && { amount }) }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to create refund');
+  }
+  return res.json();
+}

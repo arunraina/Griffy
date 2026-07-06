@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, KycStatus } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, KycStatus, PaymentStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -91,6 +91,19 @@ export class AdminService {
   async assertAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+  }
+
+  listOrders(paymentStatus?: PaymentStatus) {
+    return this.prisma.order.findMany({
+      where: paymentStatus ? { paymentStatus } : {},
+      include: {
+        buyer: { select: { name: true, email: true } },
+        refunds: true,
+        items: { select: { id: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   }
 
   listAllProjects(status?: ProjectStatus) {

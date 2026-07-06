@@ -1,15 +1,19 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AdminService, type ContentType } from './admin.service';
-import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto } from './dto/admin.dto';
+import { PaymentsService } from '../payments/payments.service';
+import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus } from '@prisma/client';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly payments: PaymentsService,
+  ) {}
 
   @Get('profiles/:type')
   async listProfiles(
@@ -51,6 +55,28 @@ export class AdminController {
       user.id,
       body.reason,
     );
+  }
+
+  @Get('orders')
+  async listOrders(@CurrentUser() user: User, @Query('paymentStatus') paymentStatus?: PaymentStatus) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.listOrders(paymentStatus);
+  }
+
+  @Post('orders/:id/refund')
+  async createRefund(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: CreateRefundDto,
+  ) {
+    await this.admin.assertAdmin(user.id);
+    return this.payments.createRefund(user.id, id, body.amount, body.reason);
+  }
+
+  @Get('refunds')
+  async listRefunds(@CurrentUser() user: User, @Query('status') status?: RefundStatus) {
+    await this.admin.assertAdmin(user.id);
+    return this.payments.listRefunds(status);
   }
 
   @Get('projects')

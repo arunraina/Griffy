@@ -22,12 +22,25 @@ export interface OrderItem {
 }
 
 export type OrderStatusValue = 'PLACED' | 'ACCEPTED' | 'REJECTED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type PaymentStatusValue = 'UNPAID' | 'PAID' | 'FAILED' | 'REFUND_INITIATED' | 'REFUNDED';
+export type RefundStatusValue = 'INITIATED' | 'PROCESSED' | 'FAILED';
+
+export interface Refund {
+  id: string;
+  orderId: string;
+  amount: number; // paise
+  reason: string;
+  status: RefundStatusValue;
+  createdAt: string;
+  processedAt: string | null;
+}
 
 export interface Order {
   id: string;
   buyerId: string;
   totalAmount: string;
   status: OrderStatusValue;
+  paymentStatus: PaymentStatusValue;
   shippingAddress: string | null;
   notes: string | null;
   razorpayOrderId: string | null;
@@ -35,6 +48,7 @@ export interface Order {
   createdAt: string;
   items: OrderItem[];
   buyer?: { name: string; phone: string | null };
+  refunds?: Refund[];
 }
 
 export interface OrderStatusEvent {

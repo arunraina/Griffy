@@ -113,6 +113,29 @@ export default function OrderDetailPage() {
               <p className="text-sm text-[#2C1810]">{order.shippingAddress}</p>
             </div>
           )}
+
+          {order.refunds && order.refunds.length > 0 && (
+            <div className="bg-[#FDF8F5] rounded-xl p-4 mt-2">
+              <p className="text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-2">Refunds</p>
+              <div className="space-y-2">
+                {order.refunds.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="text-[#2C1810] font-semibold">₹{(r.amount / 100).toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-[#A08070]">{r.reason}</p>
+                    </div>
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
+                      r.status === 'PROCESSED' ? 'bg-green-100 text-green-800 border-green-200'
+                      : r.status === 'FAILED' ? 'bg-red-100 text-red-800 border-red-200'
+                      : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}>
+                      {r.status === 'PROCESSED' ? 'Refunded' : r.status === 'FAILED' ? 'Failed' : 'Processing'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

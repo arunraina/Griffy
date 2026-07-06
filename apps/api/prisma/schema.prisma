@@ -146,6 +146,7 @@ model User {
   turnkeyProjectsAsCustomer  TurnkeyProject[] @relation("TurnkeyProjectCustomer")
   turnkeyProjectsAsProvider  TurnkeyProject[] @relation("TurnkeyProjectProvider")
   kycDetail                  KycDetail?
+  refundsInitiated           Refund[]
 
   @@map("users")
 }
@@ -403,6 +404,7 @@ model Order {
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   statusEvents OrderStatusEvent[]
+  refunds      Refund[]
 
   @@map("orders")
 }
@@ -432,6 +434,28 @@ model PaymentEvent {
   createdAt         DateTime  @default(now()) @map("created_at")
 
   @@map("payment_events")
+}
+
+enum RefundStatus {
+  INITIATED
+  PROCESSED
+  FAILED
+}
+
+model Refund {
+  id               String       @id @default(uuid())
+  orderId          String       @map("order_id")
+  order            Order        @relation(fields: [orderId], references: [id])
+  razorpayRefundId String?      @map("razorpay_refund_id")
+  amount           Int          // paise
+  reason           String
+  status           RefundStatus @default(INITIATED)
+  initiatedById    String       @map("initiated_by_id")
+  initiatedBy      User         @relation(fields: [initiatedById], references: [id])
+  createdAt        DateTime     @default(now()) @map("created_at")
+  processedAt      DateTime?    @map("processed_at")
+
+  @@map("refunds")
 }
 
 model OrderStatusEvent {
