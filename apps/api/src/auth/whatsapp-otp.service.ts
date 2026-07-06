@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { WhatsappSenderService } from '../notifications/whatsapp-sender.service';
 
 @Injectable()
 export class WhatsappOtpService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
+    private readonly whatsapp: WhatsappSenderService,
   ) {}
 
   async sendWhatsappOtp(phone: string): Promise<void> {
@@ -16,7 +16,11 @@ export class WhatsappOtpService {
     await this.prisma.whatsappOtp.deleteMany({ where: { phone } });
     await this.prisma.whatsappOtp.create({ data: { phone, otp, expiresAt } });
 
-    await this.sendViaTwilio(phone, otp);
+    try {
+      await this.whatsapp.send(phone, `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`);
+    } catch (err) {
+      throw new BadRequestException((err as Error).message);
+    }
   }
 
   async verifyWhatsappOtp(phone: string, otp: string): Promise<void> {
@@ -34,34 +38,5 @@ export class WhatsappOtpService {
 
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  private async sendViaTwilio(phone: string, otp: string): Promise<void> {
-    const accountSid = this.config.getOrThrow('TWILIO_ACCOUNT_SID');
-    const authToken  = this.config.getOrThrow('TWILIO_AUTH_TOKEN');
-    const from       = this.config.getOrThrow('TWILIO_WHATSAPP_FROM');
-
-    const to = `whatsapp:${phone.startsWith('+') ? phone : `+91${phone}`}`;
-
-    const res = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: from,
-          To: to,
-          Body: `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`,
-        }).toString(),
-      },
-    );
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new BadRequestException(`Twilio error: ${body}`);
-    }
   }
 }

@@ -33,7 +33,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
     if (!authed) return;
-    const interval = setInterval(refresh, 30_000);
+    const interval = setInterval(refresh, 60_000);
     return () => clearInterval(interval);
   }, [authed, refresh]);
 

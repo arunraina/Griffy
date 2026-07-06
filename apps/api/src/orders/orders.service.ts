@@ -66,7 +66,7 @@ export class OrdersService {
 
     const totalAmount = lineItems.reduce((sum, i) => sum + Number(i.lineTotal), 0);
 
-    return this.prisma.order.create({
+    const order = await this.prisma.order.create({
       data: {
         buyerId,
         totalAmount,
@@ -74,8 +74,16 @@ export class OrdersService {
         notes: data.notes,
         items: { create: lineItems },
       },
-      include: { items: { include: { material: { select: { name: true, imageUrls: true } } } } },
+      include: { items: { include: { material: { select: { name: true, imageUrls: true, supplier: { select: { userId: true } } } } } } },
     });
+
+    const supplierUserIds = Array.from(new Set(order.items.map((i) => i.material.supplier.userId)));
+    const itemSummary = order.items.map((i) => i.material.name).join(', ');
+    await Promise.all(
+      supplierUserIds.map((supplierUserId) => this.notifications.notify(supplierUserId, 'order.placed', { itemSummary })),
+    );
+
+    return order;
   }
 
   async updateStatus(id: string, status: OrderStatus, razorpayPaymentId?: string, note?: string) {
@@ -88,7 +96,11 @@ export class OrdersService {
 
     const message = STATUS_MESSAGE[status];
     if (message) {
-      await this.notifications.create(order.buyerId, 'ORDER_STATUS_CHANGED', 'Order update', message, `/orders/${order.id}`);
+      if (status === 'REJECTED') {
+        await this.notifications.notify(order.buyerId, 'order.rejected', { orderId: order.id });
+      } else {
+        await this.notifications.notify(order.buyerId, 'order.status_changed', { orderId: order.id, message });
+      }
     }
 
     if (status === 'DELIVERED') {

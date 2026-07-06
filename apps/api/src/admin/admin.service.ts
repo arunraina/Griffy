@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalStatus, ProjectStatus, UserRole, KycStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type ProfileType =
   | 'contractor'
@@ -31,6 +32,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly kyc: KycService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async listProfiles(type: ProfileType, status?: ApprovalStatus) {
@@ -64,17 +66,26 @@ export class AdminService {
       rejectionReason: rejectionReason ?? null,
     };
 
+    let profile: { userId: string };
     switch (type) {
-      case 'contractor': return this.prisma.contractorProfile.update({ where: { id }, data });
-      case 'labour': return this.prisma.labourProfile.update({ where: { id }, data });
-      case 'service-expert': return this.prisma.serviceExpertProfile.update({ where: { id }, data });
-      case 'material-supplier': return this.prisma.materialSupplierProfile.update({ where: { id }, data });
-      case 'land-owner': return this.prisma.landOwnerProfile.update({ where: { id }, data });
-      case 'property-seller': return this.prisma.propertySellerProfile.update({ where: { id }, data });
-      case 'builder': return this.prisma.builderProfile.update({ where: { id }, data });
-      case 'property-agent': return this.prisma.propertyAgentProfile.update({ where: { id }, data });
+      case 'contractor': profile = await this.prisma.contractorProfile.update({ where: { id }, data }); break;
+      case 'labour': profile = await this.prisma.labourProfile.update({ where: { id }, data }); break;
+      case 'service-expert': profile = await this.prisma.serviceExpertProfile.update({ where: { id }, data }); break;
+      case 'material-supplier': profile = await this.prisma.materialSupplierProfile.update({ where: { id }, data }); break;
+      case 'land-owner': profile = await this.prisma.landOwnerProfile.update({ where: { id }, data }); break;
+      case 'property-seller': profile = await this.prisma.propertySellerProfile.update({ where: { id }, data }); break;
+      case 'builder': profile = await this.prisma.builderProfile.update({ where: { id }, data }); break;
+      case 'property-agent': profile = await this.prisma.propertyAgentProfile.update({ where: { id }, data }); break;
       default: throw new NotFoundException('Unknown profile type');
     }
+
+    await this.notifications.notify(
+      profile.userId,
+      status === ApprovalStatus.APPROVED ? 'profile.approved' : 'profile.rejected',
+      { reason: rejectionReason },
+    );
+
+    return profile;
   }
 
   async assertAdmin(userId: string) {

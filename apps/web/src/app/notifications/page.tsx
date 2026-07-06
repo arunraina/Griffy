@@ -5,12 +5,24 @@ import Link from 'next/link';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/notifications';
 import { useNotifications } from '@/context/NotificationContext';
 
-const TYPE_EMOJI: Record<Notification['type'], string> = {
-  BOOKING_CREATED: '📅',
-  BOOKING_CONFIRMED: '✅',
-  BOOKING_CANCELLED: '❌',
-  ORDER_STATUS_CHANGED: '📦',
+const TYPE_EMOJI: Record<string, string> = {
+  'booking.created': '📅',
+  'booking.confirmed': '✅',
+  'booking.cancelled': '❌',
+  'booking.completed': '🏁',
+  'order.placed': '🛒',
+  'order.status_changed': '📦',
+  'order.rejected': '🚫',
+  'profile.approved': '🎉',
+  'profile.rejected': '✏️',
+  'project.bid_received': '💰',
+  'project.bid_accepted': '✅',
+  'project.bid_rejected': '📄',
 };
+
+function emojiFor(type: string): string {
+  return TYPE_EMOJI[type] ?? '🔔';
+}
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -30,20 +42,20 @@ export default function NotificationsPage() {
   const { refresh } = useNotifications();
 
   useEffect(() => {
-    fetchNotifications()
-      .then(setItems)
+    fetchNotifications({ pageSize: 50 })
+      .then((page) => setItems(page.items))
       .catch(() => setNeedsAuth(true))
       .finally(() => setLoading(false));
   }, []);
 
   async function handleMarkRead(id: string) {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     await markNotificationRead(id);
     refresh();
   }
 
   async function handleMarkAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     await markAllNotificationsRead();
     refresh();
   }
@@ -59,7 +71,7 @@ export default function NotificationsPage() {
     );
   }
 
-  const hasUnread = items.some((n) => !n.read);
+  const hasUnread = items.some((n) => !n.isRead);
 
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
@@ -87,25 +99,25 @@ export default function NotificationsPage() {
               const content = (
                 <div
                   className={`flex items-start gap-3 p-4 rounded-2xl border transition-colors ${
-                    n.read ? 'bg-white border-[#EBE0D8]' : 'bg-[#FAEEE9] border-[#E8C4B0]'
+                    n.isRead ? 'bg-white border-[#EBE0D8]' : 'bg-[#FAEEE9] border-[#E8C4B0]'
                   }`}
                 >
-                  <span className="text-xl shrink-0">{TYPE_EMOJI[n.type]}</span>
+                  <span className="text-xl shrink-0">{emojiFor(n.type)}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[#2C1810]">{n.title}</p>
-                    <p className="text-sm text-[#6B5248] mt-0.5">{n.message}</p>
+                    <p className="text-sm text-[#6B5248] mt-0.5">{n.body}</p>
                     <p className="text-xs text-[#A08070] mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
-                  {!n.read && <span className="w-2 h-2 rounded-full bg-[#C0593A] shrink-0 mt-1.5" />}
+                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#C0593A] shrink-0 mt-1.5" />}
                 </div>
               );
 
-              return n.link ? (
-                <Link key={n.id} href={n.link} onClick={() => !n.read && handleMarkRead(n.id)}>
+              return n.linkUrl ? (
+                <Link key={n.id} href={n.linkUrl} onClick={() => !n.isRead && handleMarkRead(n.id)}>
                   {content}
                 </Link>
               ) : (
-                <button key={n.id} onClick={() => !n.read && handleMarkRead(n.id)} className="w-full text-left">
+                <button key={n.id} onClick={() => !n.isRead && handleMarkRead(n.id)} className="w-full text-left">
                   {content}
                 </button>
               );

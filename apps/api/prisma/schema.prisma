@@ -120,6 +120,8 @@ model User {
   isFirstParty     Boolean  @default(false) @map("is_first_party")
   isGhost          Boolean  @default(false) @map("is_ghost")
   createdByAdminId String?  @map("created_by_admin_id")
+  // Per-channel opt-out, e.g. { "whatsapp": false }. Absent key/null = on.
+  notificationPrefs Json?   @map("notification_prefs")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -573,31 +575,42 @@ model WhatsappOtp {
 }
 
 // ---------------------------------------------------------------------------
-// Notifications — in-app only for now, no email/SMS/push fan-out.
+// Notifications — multi-channel (in-app, WhatsApp, email) fan-out via
+// NotificationsService.notify(). See notification-templates.ts for copy.
 // ---------------------------------------------------------------------------
 
-enum NotificationType {
-  BOOKING_CREATED
-  BOOKING_CONFIRMED
-  BOOKING_CANCELLED
-  ORDER_STATUS_CHANGED
-  PROJECT_BID_RECEIVED
-  PROJECT_BID_ACCEPTED
-  PROJECT_BID_REJECTED
+enum NotificationChannel {
+  IN_APP
+  WHATSAPP
+  EMAIL
 }
 
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String           @map("user_id")
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  message   String
-  link      String?
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now()) @map("created_at")
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
 
-  @@index([userId, read])
+// `type` is a free-string event key (e.g. "booking.created"), not an enum —
+// new events are added in notification-templates.ts without a migration.
+// notify() writes one row per channel attempted for a single event: an
+// IN_APP row always, plus a WHATSAPP and/or EMAIL row recording that
+// channel's delivery outcome. The bell only ever reads channel=IN_APP.
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id")
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  linkUrl   String?             @map("link_url")
+  isRead    Boolean             @default(false) @map("is_read")
+  channel   NotificationChannel @default(IN_APP)
+  status    NotificationStatus  @default(SENT)
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@index([userId, isRead])
+  @@index([userId, channel])
   @@map("notifications")
 }
 

@@ -46,14 +46,11 @@ export class BookingsService {
     customerId: string,
     data: { providerId: string; providerRole: UserRole; scheduledAt: Date; notes?: string; amount: number },
   ) {
-    const booking = await this.prisma.booking.create({ data: { customerId, ...data } });
-    await this.notifications.create(
-      data.providerId,
-      'BOOKING_CREATED',
-      'New booking request',
-      `You have a new booking request for ${data.scheduledAt.toLocaleDateString('en-IN')}.`,
-      '/dashboard',
-    );
+    const [booking, customer] = await Promise.all([
+      this.prisma.booking.create({ data: { customerId, ...data } }),
+      this.prisma.user.findUnique({ where: { id: customerId }, select: { name: true } }),
+    ]);
+    await this.notifications.notify(data.providerId, 'booking.created', { customerName: customer?.name ?? 'a customer' });
     return booking;
   }
 
@@ -68,19 +65,17 @@ export class BookingsService {
       data: { status, ...(razorpayPaymentId && { razorpayPaymentId }) },
     });
 
-    if (status === 'CONFIRMED' || status === 'CANCELLED') {
-      await this.notifications.create(
-        booking.customerId,
-        status === 'CONFIRMED' ? 'BOOKING_CONFIRMED' : 'BOOKING_CANCELLED',
-        status === 'CONFIRMED' ? 'Booking confirmed' : 'Booking cancelled',
-        status === 'CONFIRMED'
-          ? 'Your booking has been confirmed by the provider.'
-          : 'Your booking has been cancelled.',
-        '/dashboard',
-      );
+    if (status === 'CONFIRMED') {
+      await this.notifications.notify(booking.customerId, 'booking.confirmed', {});
+    }
+
+    if (status === 'CANCELLED') {
+      const otherParty = userId === booking.customerId ? booking.providerId : booking.customerId;
+      await this.notifications.notify(otherParty, 'booking.cancelled', {});
     }
 
     if (status === 'COMPLETED') {
+      await this.notifications.notify(booking.customerId, 'booking.completed', {});
       await this.incrementCompletedJobs(booking.providerId, booking.providerRole);
     }
 

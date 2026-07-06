@@ -14,18 +14,30 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 export interface Notification {
   id: string;
-  type: 'BOOKING_CREATED' | 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'ORDER_STATUS_CHANGED';
+  type: string;
   title: string;
-  message: string;
-  link: string | null;
-  read: boolean;
+  body: string;
+  linkUrl: string | null;
+  isRead: boolean;
   createdAt: string;
 }
 
-export async function fetchNotifications(): Promise<Notification[]> {
+export interface NotificationPage {
+  items: Notification[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function fetchNotifications(opts: { unread?: boolean; page?: number; pageSize?: number } = {}): Promise<NotificationPage> {
   const headers = await authHeaders();
-  const res = await fetch(`${API}/notifications`, { headers });
-  if (!res.ok) return [];
+  const params = new URLSearchParams();
+  if (opts.unread) params.set('unread', 'true');
+  if (opts.page) params.set('page', String(opts.page));
+  if (opts.pageSize) params.set('pageSize', String(opts.pageSize));
+
+  const res = await fetch(`${API}/notifications?${params.toString()}`, { headers });
+  if (!res.ok) return { items: [], total: 0, page: 1, pageSize: opts.pageSize ?? 20 };
   return res.json();
 }
 

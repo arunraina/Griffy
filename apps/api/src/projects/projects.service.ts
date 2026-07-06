@@ -76,13 +76,11 @@ export class ProjectsService {
       data: { projectId, contractorId, bidAmount: data.bidAmount, message: data.message },
     });
 
-    await this.notifications.create(
-      project.ownerId,
-      'PROJECT_BID_RECEIVED',
-      'New bid on your project',
-      `You received a new bid of ₹${data.bidAmount.toLocaleString('en-IN')} on "${project.title}".`,
-      `/projects/${projectId}`,
-    );
+    await this.notifications.notify(project.ownerId, 'project.bid_received', {
+      bidAmount: data.bidAmount,
+      projectTitle: project.title,
+      projectId,
+    });
 
     return bid;
   }
@@ -101,14 +99,10 @@ export class ProjectsService {
       await this.prisma.project.update({ where: { id: projectId }, data: { status: 'AWARDED' } });
     }
 
-    await this.notifications.create(
+    await this.notifications.notify(
       bid.contractorId,
-      status === 'ACCEPTED' ? 'PROJECT_BID_ACCEPTED' : 'PROJECT_BID_REJECTED',
-      status === 'ACCEPTED' ? 'Bid accepted!' : 'Bid update',
-      status === 'ACCEPTED'
-        ? `Your bid on "${project.title}" was accepted.`
-        : `Your bid on "${project.title}" was not selected this time.`,
-      `/projects/${projectId}`,
+      status === 'ACCEPTED' ? 'project.bid_accepted' : 'project.bid_rejected',
+      { projectTitle: project.title, projectId },
     );
 
     return updated;
