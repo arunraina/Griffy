@@ -75,64 +75,107 @@ export default function AdminProjectsPage() {
           <p className="font-semibold text-[#2C1810]">No projects in this filter</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
-                <th className="px-5 py-3 font-semibold">Project</th>
-                <th className="px-5 py-3 font-semibold">Owner</th>
-                <th className="px-5 py-3 font-semibold">Budget</th>
-                <th className="px-5 py-3 font-semibold">Bids</th>
-                <th className="px-5 py-3 font-semibold">Status</th>
-                <th className="px-5 py-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((p) => (
-                <tr key={p.id} className="border-b border-[#F0E8E2] last:border-none">
-                  <td className="px-5 py-3">
-                    <Link href={`/projects/${p.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A]">
-                      {p.title}
-                    </Link>
-                    <p className="text-xs text-[#A08070] mt-0.5">{p.city}{p.state ? `, ${p.state}` : ''} · {p.projectType}</p>
-                  </td>
-                  <td className="px-5 py-3 text-[#6B5248]">
-                    {p.owner?.name ?? '—'}
-                    {p.owner?.email && <p className="text-xs text-[#A08070]">{p.owner.email}</p>}
-                  </td>
-                  <td className="px-5 py-3 text-[#6B5248]">
-                    ₹{Number(p.budgetMin).toLocaleString('en-IN')}–{Number(p.budgetMax).toLocaleString('en-IN')}
-                  </td>
-                  <td className="px-5 py-3 text-[#6B5248]">{p._count?.bids ?? 0}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_BADGE[p.status]}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    {p.status === 'CLOSED' ? (
-                      <button
-                        onClick={() => handleModerate(p.id, 'OPEN')}
-                        disabled={updating === p.id}
-                        className="text-xs font-semibold text-[#C0593A] hover:underline disabled:opacity-50"
-                      >
-                        Reopen
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleModerate(p.id, 'CLOSED')}
-                        disabled={updating === p.id}
-                        className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
-                      >
-                        Take down
-                      </button>
-                    )}
-                  </td>
+        <>
+          <div className="md:hidden space-y-3">
+            {projects.map((p) => (
+              <div key={p.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <Link href={`/projects/${p.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A]">
+                    {p.title}
+                  </Link>
+                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_BADGE[p.status]}`}>
+                    {p.status}
+                  </span>
+                </div>
+                <p className="text-xs text-[#A08070] mt-0.5">{p.city}{p.state ? `, ${p.state}` : ''} · {p.projectType}</p>
+                <p className="text-sm text-[#6B5248] mt-1.5">
+                  {p.owner?.name ?? '—'} {p.owner?.email && <span className="text-xs text-[#A08070]">({p.owner.email})</span>}
+                </p>
+                <p className="text-sm text-[#6B5248] mt-1">
+                  ₹{Number(p.budgetMin).toLocaleString('en-IN')}–{Number(p.budgetMax).toLocaleString('en-IN')} · {p._count?.bids ?? 0} bids
+                </p>
+                <div className="mt-3 pt-3 border-t border-[#F0E8E2]">
+                  {p.status === 'CLOSED' ? (
+                    <button
+                      onClick={() => handleModerate(p.id, 'OPEN')}
+                      disabled={updating === p.id}
+                      className="text-xs font-semibold text-[#C0593A] hover:underline disabled:opacity-50"
+                    >
+                      Reopen
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleModerate(p.id, 'CLOSED')}
+                      disabled={updating === p.id}
+                      className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      Take down
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
+                  <th className="px-5 py-3 font-semibold">Project</th>
+                  <th className="px-5 py-3 font-semibold">Owner</th>
+                  <th className="px-5 py-3 font-semibold">Budget</th>
+                  <th className="px-5 py-3 font-semibold">Bids</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {projects.map((p) => (
+                  <tr key={p.id} className="border-b border-[#F0E8E2] last:border-none">
+                    <td className="px-5 py-3">
+                      <Link href={`/projects/${p.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A]">
+                        {p.title}
+                      </Link>
+                      <p className="text-xs text-[#A08070] mt-0.5">{p.city}{p.state ? `, ${p.state}` : ''} · {p.projectType}</p>
+                    </td>
+                    <td className="px-5 py-3 text-[#6B5248]">
+                      {p.owner?.name ?? '—'}
+                      {p.owner?.email && <p className="text-xs text-[#A08070]">{p.owner.email}</p>}
+                    </td>
+                    <td className="px-5 py-3 text-[#6B5248]">
+                      ₹{Number(p.budgetMin).toLocaleString('en-IN')}–{Number(p.budgetMax).toLocaleString('en-IN')}
+                    </td>
+                    <td className="px-5 py-3 text-[#6B5248]">{p._count?.bids ?? 0}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_BADGE[p.status]}`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      {p.status === 'CLOSED' ? (
+                        <button
+                          onClick={() => handleModerate(p.id, 'OPEN')}
+                          disabled={updating === p.id}
+                          className="text-xs font-semibold text-[#C0593A] hover:underline disabled:opacity-50"
+                        >
+                          Reopen
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleModerate(p.id, 'CLOSED')}
+                          disabled={updating === p.id}
+                          className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          Take down
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

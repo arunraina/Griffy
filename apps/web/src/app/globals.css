@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/* Referenced by several horizontally-scrolling chip/tab rows (properties,
+   land, materials filters) but was never actually defined — the scrollbar
+   was silently still showing on all of them until now. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

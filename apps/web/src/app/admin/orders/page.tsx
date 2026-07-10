@@ -60,74 +60,121 @@ export default function AdminOrdersPage() {
           <p className="font-semibold text-[#2C1810]">No orders match</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
-                <th className="px-5 py-3 font-semibold">Order</th>
-                <th className="px-5 py-3 font-semibold">Buyer</th>
-                <th className="px-5 py-3 font-semibold">Amount</th>
-                <th className="px-5 py-3 font-semibold">Status</th>
-                <th className="px-5 py-3 font-semibold">Payment</th>
-                <th className="px-5 py-3 font-semibold">Placed</th>
-                <th className="px-5 py-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((o) => {
-                const remaining = Math.round(Number(o.totalAmount) * 100) - refundedSoFar(o);
-                return (
-                  <tr key={o.id} className="border-b border-[#F0E8E2] last:border-none align-top">
-                    <td className="px-5 py-3">
+        <>
+          <div className="md:hidden space-y-3">
+            {rows.map((o) => {
+              const remaining = Math.round(Number(o.totalAmount) * 100) - refundedSoFar(o);
+              return (
+                <div key={o.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
                       <p className="font-semibold text-[#2C1810]">#{o.id.slice(0, 8)}</p>
                       <p className="text-xs text-[#A08070]">{o.items.length} item{o.items.length === 1 ? '' : 's'}</p>
-                    </td>
-                    <td className="px-5 py-3 text-[#6B5248]">
-                      <p>{o.buyer?.name ?? '—'}</p>
-                      <p className="text-xs text-[#A08070]">{o.buyer?.email}</p>
-                    </td>
-                    <td className="px-5 py-3 font-semibold text-[#2C1810]">₹{Number(o.totalAmount).toLocaleString('en-IN')}</td>
-                    <td className="px-5 py-3 text-xs text-[#6B5248]">{o.status}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLE[o.paymentStatus] ?? ''}`}>
-                        {o.paymentStatus}
-                      </span>
-                      {o.refunds.length > 0 && (
-                        <p className="text-[10px] text-[#A08070] mt-1">
-                          ₹{(refundedSoFar(o) / 100).toLocaleString('en-IN')} refunded
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-xs text-[#6B5248]">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex flex-col gap-1 items-start">
-                        {['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
-                          <button
-                            onClick={() => downloadInvoice(o.id).catch(() => undefined)}
-                            className="text-xs font-semibold text-[#C0593A] hover:underline"
-                          >
-                            Invoice
-                          </button>
+                    </div>
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLE[o.paymentStatus] ?? ''}`}>
+                      {o.paymentStatus}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[#6B5248] mt-1.5">
+                    {o.buyer?.name ?? '—'} <span className="text-xs text-[#A08070]">({o.buyer?.email})</span>
+                  </p>
+                  <p className="text-sm font-semibold text-[#2C1810] mt-1">₹{Number(o.totalAmount).toLocaleString('en-IN')}</p>
+                  {o.refunds.length > 0 && (
+                    <p className="text-xs text-[#A08070] mt-0.5">₹{(refundedSoFar(o) / 100).toLocaleString('en-IN')} refunded</p>
+                  )}
+                  <p className="text-xs text-[#A08070] mt-1">{o.status} · Placed {new Date(o.createdAt).toLocaleDateString('en-IN')}</p>
+                  <div className="flex gap-4 mt-3 pt-3 border-t border-[#F0E8E2]">
+                    {['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
+                      <button
+                        onClick={() => downloadInvoice(o.id).catch(() => undefined)}
+                        className="text-xs font-semibold text-[#C0593A] hover:underline"
+                      >
+                        Invoice
+                      </button>
+                    )}
+                    {(o.paymentStatus === 'PAID' || o.paymentStatus === 'REFUND_INITIATED') && remaining > 0 && (
+                      <button
+                        onClick={() => setRefundTarget(o)}
+                        className="text-xs font-semibold text-[#C0593A] hover:underline"
+                      >
+                        Refund
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
+                  <th className="px-5 py-3 font-semibold">Order</th>
+                  <th className="px-5 py-3 font-semibold">Buyer</th>
+                  <th className="px-5 py-3 font-semibold">Amount</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Payment</th>
+                  <th className="px-5 py-3 font-semibold">Placed</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((o) => {
+                  const remaining = Math.round(Number(o.totalAmount) * 100) - refundedSoFar(o);
+                  return (
+                    <tr key={o.id} className="border-b border-[#F0E8E2] last:border-none align-top">
+                      <td className="px-5 py-3">
+                        <p className="font-semibold text-[#2C1810]">#{o.id.slice(0, 8)}</p>
+                        <p className="text-xs text-[#A08070]">{o.items.length} item{o.items.length === 1 ? '' : 's'}</p>
+                      </td>
+                      <td className="px-5 py-3 text-[#6B5248]">
+                        <p>{o.buyer?.name ?? '—'}</p>
+                        <p className="text-xs text-[#A08070]">{o.buyer?.email}</p>
+                      </td>
+                      <td className="px-5 py-3 font-semibold text-[#2C1810]">₹{Number(o.totalAmount).toLocaleString('en-IN')}</td>
+                      <td className="px-5 py-3 text-xs text-[#6B5248]">{o.status}</td>
+                      <td className="px-5 py-3">
+                        <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLE[o.paymentStatus] ?? ''}`}>
+                          {o.paymentStatus}
+                        </span>
+                        {o.refunds.length > 0 && (
+                          <p className="text-[10px] text-[#A08070] mt-1">
+                            ₹{(refundedSoFar(o) / 100).toLocaleString('en-IN')} refunded
+                          </p>
                         )}
-                        {(o.paymentStatus === 'PAID' || o.paymentStatus === 'REFUND_INITIATED') && remaining > 0 && (
-                          <button
-                            onClick={() => setRefundTarget(o)}
-                            className="text-xs font-semibold text-[#C0593A] hover:underline"
-                          >
-                            Refund
-                          </button>
-                        )}
-                        {!['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
-                          <span className="text-xs text-[#A08070]">—</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="px-5 py-3 text-xs text-[#6B5248]">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex flex-col gap-1 items-start">
+                          {['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
+                            <button
+                              onClick={() => downloadInvoice(o.id).catch(() => undefined)}
+                              className="text-xs font-semibold text-[#C0593A] hover:underline"
+                            >
+                              Invoice
+                            </button>
+                          )}
+                          {(o.paymentStatus === 'PAID' || o.paymentStatus === 'REFUND_INITIATED') && remaining > 0 && (
+                            <button
+                              onClick={() => setRefundTarget(o)}
+                              className="text-xs font-semibold text-[#C0593A] hover:underline"
+                            >
+                              Refund
+                            </button>
+                          )}
+                          {!['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
+                            <span className="text-xs text-[#A08070]">—</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {refundTarget && (

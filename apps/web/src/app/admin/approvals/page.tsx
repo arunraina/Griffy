@@ -111,68 +111,118 @@ function ApprovalsInner() {
           <p className="font-semibold text-[#2C1810]">Nothing here</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
-                <th className="px-5 py-3 font-semibold">Name</th>
-                <th className="px-5 py-3 font-semibold">Contact</th>
-                <th className="px-5 py-3 font-semibold">Status</th>
-                <th className="px-5 py-3 font-semibold">Applied</th>
-                <th className="px-5 py-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-[#F0E8E2] last:border-none">
-                  <td className="px-5 py-3">
+        <>
+          <div className="md:hidden space-y-3">
+            {rows.map((r) => (
+              <div key={r.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
                     <p className="font-semibold text-[#2C1810]">{r.user?.name ?? r.businessName ?? '—'}</p>
                     {r.businessName && r.user?.name && <p className="text-xs text-[#A08070]">{r.businessName}</p>}
-                  </td>
-                  <td className="px-5 py-3 text-[#6B5248]">
-                    {r.user?.email && <p>{r.user.email}</p>}
-                    {r.user?.phone && <p className="text-xs text-[#A08070]">{r.user.phone}</p>}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
-                      r.approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200'
-                      : r.approvalStatus === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-200'
-                      : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                    }`}>
-                      {r.approvalStatus}
-                    </span>
-                    {r.rejectionReason && <p className="text-xs text-[#A08070] mt-1 max-w-[200px]">{r.rejectionReason}</p>}
-                  </td>
-                  <td className="px-5 py-3 text-[#6B5248] text-xs">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex gap-3">
-                      {r.approvalStatus !== 'APPROVED' && (
-                        <button
-                          onClick={() => handleApprove(r.id)}
-                          disabled={updating === r.id}
-                          className="text-xs font-semibold text-green-700 hover:underline disabled:opacity-50"
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {r.approvalStatus !== 'REJECTED' && (
-                        <button
-                          onClick={() => handleReject(r.id)}
-                          disabled={updating === r.id}
-                          className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${
+                    r.approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200'
+                    : r.approvalStatus === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-200'
+                    : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  }`}>
+                    {r.approvalStatus}
+                  </span>
+                </div>
+                <div className="text-sm text-[#6B5248] mt-1.5">
+                  {r.user?.email && <p>{r.user.email}</p>}
+                  {r.user?.phone && <p className="text-xs text-[#A08070]">{r.user.phone}</p>}
+                </div>
+                {r.rejectionReason && <p className="text-xs text-[#A08070] mt-1">{r.rejectionReason}</p>}
+                <p className="text-xs text-[#A08070] mt-1">
+                  Applied {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
+                </p>
+                <div className="flex gap-4 mt-3 pt-3 border-t border-[#F0E8E2]">
+                  {r.approvalStatus !== 'APPROVED' && (
+                    <button
+                      onClick={() => handleApprove(r.id)}
+                      disabled={updating === r.id}
+                      className="text-xs font-semibold text-green-700 hover:underline disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {r.approvalStatus !== 'REJECTED' && (
+                    <button
+                      onClick={() => handleReject(r.id)}
+                      disabled={updating === r.id}
+                      className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden md:block bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
+                  <th className="px-5 py-3 font-semibold">Name</th>
+                  <th className="px-5 py-3 font-semibold">Contact</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Applied</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-[#F0E8E2] last:border-none">
+                    <td className="px-5 py-3">
+                      <p className="font-semibold text-[#2C1810]">{r.user?.name ?? r.businessName ?? '—'}</p>
+                      {r.businessName && r.user?.name && <p className="text-xs text-[#A08070]">{r.businessName}</p>}
+                    </td>
+                    <td className="px-5 py-3 text-[#6B5248]">
+                      {r.user?.email && <p>{r.user.email}</p>}
+                      {r.user?.phone && <p className="text-xs text-[#A08070]">{r.user.phone}</p>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
+                        r.approvalStatus === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200'
+                        : r.approvalStatus === 'REJECTED' ? 'bg-red-100 text-red-800 border-red-200'
+                        : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                      }`}>
+                        {r.approvalStatus}
+                      </span>
+                      {r.rejectionReason && <p className="text-xs text-[#A08070] mt-1 max-w-[200px]">{r.rejectionReason}</p>}
+                    </td>
+                    <td className="px-5 py-3 text-[#6B5248] text-xs">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN') : '—'}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex gap-3">
+                        {r.approvalStatus !== 'APPROVED' && (
+                          <button
+                            onClick={() => handleApprove(r.id)}
+                            disabled={updating === r.id}
+                            className="text-xs font-semibold text-green-700 hover:underline disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {r.approvalStatus !== 'REJECTED' && (
+                          <button
+                            onClick={() => handleReject(r.id)}
+                            disabled={updating === r.id}
+                            className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

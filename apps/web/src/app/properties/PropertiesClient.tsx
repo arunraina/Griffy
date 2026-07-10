@@ -351,17 +351,19 @@ function PropertiesInner({ initialProperties }: { initialProperties: Property[] 
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-white border border-[#EBE0D8] rounded-2xl p-1.5 w-fit">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => handleTabChange(t.key)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                tab === t.key
-                  ? 'bg-[#C0593A] text-white shadow-sm'
-                  : 'text-[#6B5248] hover:text-[#2C1810] hover:bg-[#FDF8F5]'
-              }`}>
-              <span>{t.icon}</span> {t.label}
-            </button>
-          ))}
+        <div className="overflow-x-auto scrollbar-hide max-w-full">
+          <div className="flex gap-1 bg-white border border-[#EBE0D8] rounded-2xl p-1.5 w-fit min-w-max">
+            {TABS.map(t => (
+              <button key={t.key} onClick={() => handleTabChange(t.key)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                  tab === t.key
+                    ? 'bg-[#C0593A] text-white shadow-sm'
+                    : 'text-[#6B5248] hover:text-[#2C1810] hover:bg-[#FDF8F5]'
+                }`}>
+                <span>{t.icon}</span> {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Land tab — redirect */}
