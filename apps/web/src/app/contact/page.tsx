@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { LEGAL_ENTITY_NAME, SUPPORT_EMAIL, SUPPORT_PHONE, OFFICE_ADDRESS } from '@/lib/brand';
 
 const CHANNELS = [
-  { icon: '📧', label: 'Email', value: 'support@griffy.in', href: 'mailto:support@griffy.in' },
-  { icon: '📞', label: 'Phone', value: '+91 11 4567 8900', href: 'tel:+911145678900' },
-  { icon: '📍', label: 'Office', value: 'Griffy IT Services Pvt. Ltd., Sector 56, Gurgaon, Haryana 122011', href: undefined },
+  { icon: '📧', label: 'Email', value: SUPPORT_EMAIL, href: `mailto:${SUPPORT_EMAIL}` },
+  { icon: '📞', label: 'Phone', value: SUPPORT_PHONE, href: `tel:${SUPPORT_PHONE.replace(/\s/g, '')}` },
+  { icon: '📍', label: 'Office', value: `${LEGAL_ENTITY_NAME}, ${OFFICE_ADDRESS}`, href: undefined },
 ];
 
 const TOPICS = ['General question', 'Report a problem', 'Contractor / supplier onboarding', 'Partnership', 'Press'];

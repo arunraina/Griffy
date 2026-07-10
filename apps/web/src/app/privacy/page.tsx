@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { BRAND_NAME, LEGAL_ENTITY_NAME, PRIVACY_EMAIL } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Griffy',
-  description: 'How Griffy collects, uses, and protects your data.',
+  title: `Privacy Policy — ${BRAND_NAME}`,
+  description: `How ${BRAND_NAME} collects, uses, and protects your data.`,
 };
 
 const SECTIONS = [
@@ -62,7 +63,7 @@ data we hold about you, request correction of inaccurate data, request erasure (
 requirements described in Section 6), withdraw consent for non-essential processing, and file a grievance if
 you believe we've mishandled your data.
 
-To exercise any of these rights, contact our Grievance Officer at privacy@griffy.in. We aim to acknowledge
+To exercise any of these rights, contact our Grievance Officer at ${PRIVACY_EMAIL}. We aim to acknowledge
 requests within 7 days and resolve them within 30 days, as required by law.`,
   },
   {
@@ -83,7 +84,7 @@ Griffy after a change means you accept the updated policy.`,
   },
   {
     title: '9. Contact',
-    body: `Questions about this policy or your data — email privacy@griffy.in, or write to our Grievance Officer
+    body: `Questions about this policy or your data — email ${PRIVACY_EMAIL}, or write to our Grievance Officer
 at the same address. You can also use our Contact page.`,
   },
 ];
@@ -99,7 +100,7 @@ export default function PrivacyPage() {
         <p className="text-sm text-[#A08070] mb-10">Last updated: July 2026</p>
 
         <p className="text-[#4A3528] leading-relaxed mb-10">
-          This policy explains what information Griffy IT Services Pvt. Ltd. (&quot;Griffy&quot;, &quot;we&quot;) collects
+          This policy explains what information {LEGAL_ENTITY_NAME} (&quot;{BRAND_NAME}&quot;, &quot;we&quot;) collects
           when you use griffy.in, and how we use, share, and protect it. It applies to homeowners, contractors,
           labour, service experts, material suppliers, and anyone else using the platform, and is framed around
           the Digital Personal Data Protection Act, 2023 (DPDP Act) and other applicable Indian law.

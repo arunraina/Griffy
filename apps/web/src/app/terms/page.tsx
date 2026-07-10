@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { BRAND_NAME, LEGAL_ENTITY_NAME, DOMAIN } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Griffy',
-  description: 'The terms that govern use of the Griffy platform.',
+  title: `Terms of Service — ${BRAND_NAME}`,
+  description: `The terms that govern use of the ${BRAND_NAME} platform.`,
 };
 
 const SECTIONS = [
@@ -43,8 +44,12 @@ the supplier/professional in any transaction. Your purchase of materials or serv
 professional is a transaction between you and that party — not with Griffy.`,
   },
   {
-    title: '3. Accounts',
-    body: `You must provide accurate information when creating an account and keep your login credentials
+    title: '3. Eligibility & accounts',
+    body: `You must be at least 18 years old and capable of entering into a legally binding contract under
+Indian law to create an account or use Griffy, whether as a homeowner, contractor, labourer, service expert, or
+material supplier. By creating an account, you confirm you meet this requirement.
+
+You must provide accurate information when creating an account and keep your login credentials
 confidential. You're responsible for activity under your account. We may suspend or terminate accounts that
 violate these terms, provide false information, or are used for fraud or abuse.`,
   },
@@ -147,8 +152,8 @@ export default function TermsPage() {
         <p className="text-sm text-[#A08070] mb-10">Last updated: July 2026</p>
 
         <p className="text-[#4A3528] leading-relaxed mb-10">
-          These terms govern your use of griffy.in, operated by Griffy IT Services Pvt. Ltd.
-          (&quot;Griffy&quot;, &quot;we&quot;). By creating an account or using the platform, you agree to them.
+          These terms govern your use of {DOMAIN}, operated by {LEGAL_ENTITY_NAME}
+          (&quot;{BRAND_NAME}&quot;, &quot;we&quot;). By creating an account or using the platform, you agree to them.
         </p>
 
         <div className="space-y-10">

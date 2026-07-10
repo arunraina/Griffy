@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BRAND_NAME } from '@/lib/brand';
 
 const COLUMNS = [
   {
@@ -29,6 +30,7 @@ const COLUMNS = [
       { label: 'Contact Us',      href: '/contact' },
       { label: 'Privacy Policy',  href: '/privacy' },
       { label: 'Terms',           href: '/terms' },
+      { label: 'Refund Policy',   href: '/refund-policy' },
     ],
   },
 ];
@@ -43,7 +45,7 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="lg:col-span-2">
-            <span className="text-[#C0593A] font-bold text-2xl tracking-tight">Griffy</span>
+            <span className="text-[#C0593A] font-bold text-2xl tracking-tight">{BRAND_NAME}</span>
             <p className="text-gray-500 text-sm mt-3 leading-relaxed max-w-xs">
               India's construction marketplace — find contractors, source materials, and hire skilled labour all in one place.
             </p>
@@ -88,10 +90,11 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-gray-600 text-xs">© 2026 Griffy. All rights reserved.</p>
+          <p className="text-gray-600 text-xs">© {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <Link href="/privacy" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Privacy</Link>
             <Link href="/terms"   className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Terms</Link>
+            <Link href="/refund-policy" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Refund Policy</Link>
             <Link href="/contact" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Contact</Link>
           </div>
         </div>
