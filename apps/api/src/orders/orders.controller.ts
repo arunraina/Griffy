@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { OrdersService } from './orders.service';
@@ -28,6 +29,15 @@ export class OrdersController {
   @Get(':id/history')
   getHistory(@Param('id') id: string) {
     return this.orders.getStatusHistory(id);
+  }
+
+  @Get(':id/invoice')
+  async getInvoice(@CurrentUser() user: User, @Param('id') id: string, @Res() res: Response) {
+    const result = await this.orders.getInvoicePdf(id, user.id, user.role);
+    if (!result) throw new NotFoundException('Invoice not available for this order yet.');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${result.invoiceNumber.replace(/\//g, '_')}.pdf"`);
+    res.send(result.buffer);
   }
 
   @Post()

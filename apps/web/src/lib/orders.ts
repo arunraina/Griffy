@@ -118,3 +118,16 @@ export async function updateOrderStatus(id: string, status: OrderStatusValue, no
   }
   return res.json();
 }
+
+export async function downloadInvoice(id: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/orders/${id}/invoice`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Invoice not available for this order.');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}

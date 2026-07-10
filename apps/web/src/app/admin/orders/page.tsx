@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAdminOrders, createRefund, type AdminOrder } from '@/lib/admin';
+import { downloadInvoice } from '@/lib/orders';
 
 const PAYMENT_STATUSES = ['', 'UNPAID', 'PAID', 'FAILED', 'REFUND_INITIATED', 'REFUNDED'];
 
@@ -99,16 +100,27 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-5 py-3 text-xs text-[#6B5248]">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
                     <td className="px-5 py-3">
-                      {(o.paymentStatus === 'PAID' || o.paymentStatus === 'REFUND_INITIATED') && remaining > 0 ? (
-                        <button
-                          onClick={() => setRefundTarget(o)}
-                          className="text-xs font-semibold text-[#C0593A] hover:underline"
-                        >
-                          Refund
-                        </button>
-                      ) : (
-                        <span className="text-xs text-[#A08070]">—</span>
-                      )}
+                      <div className="flex flex-col gap-1 items-start">
+                        {['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
+                          <button
+                            onClick={() => downloadInvoice(o.id).catch(() => undefined)}
+                            className="text-xs font-semibold text-[#C0593A] hover:underline"
+                          >
+                            Invoice
+                          </button>
+                        )}
+                        {(o.paymentStatus === 'PAID' || o.paymentStatus === 'REFUND_INITIATED') && remaining > 0 && (
+                          <button
+                            onClick={() => setRefundTarget(o)}
+                            className="text-xs font-semibold text-[#C0593A] hover:underline"
+                          >
+                            Refund
+                          </button>
+                        )}
+                        {!['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(o.paymentStatus) && (
+                          <span className="text-xs text-[#A08070]">—</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { InvoicesService } from '../invoices/invoices.service';
 
 const STATUS_MESSAGE: Partial<Record<OrderStatus, string>> = {
   ACCEPTED: 'Your order has been accepted.',
@@ -23,9 +24,12 @@ const LEGAL_TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly invoices: InvoicesService,
   ) {}
 
   findByBuyer(buyerId: string) {
@@ -124,10 +128,25 @@ export class OrdersService {
 
     await this.prisma.order.update({ where: { id: orderId }, data: { paymentStatus: 'PAID' } });
 
+    // Invoice generation must never block/fail payment confirmation itself.
+    await this.invoices.generateForOrder(orderId).catch((err) => {
+      this.logger.error(`[invoices] failed to generate for order ${orderId}: ${(err as Error).message}`);
+    });
+
     if (order.status === 'PLACED') {
       return this.updateStatus(orderId, 'ACCEPTED', razorpayPaymentId);
     }
     return this.prisma.order.update({ where: { id: orderId }, data: { razorpayPaymentId } });
+  }
+
+  // Buyer or admin only.
+  async getInvoicePdf(orderId: string, requesterId: string, requesterRole: UserRole) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (requesterRole !== 'ADMIN' && order.buyerId !== requesterId) {
+      throw new ForbiddenException('You do not have access to this order.');
+    }
+    return this.invoices.getPdfForOrder(orderId);
   }
 
   async markPaymentFailed(orderId: string) {

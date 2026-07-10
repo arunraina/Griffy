@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { fetchOrder, fetchOrderHistory, type Order, type OrderStatusEvent } from '@/lib/orders';
+import { fetchOrder, fetchOrderHistory, downloadInvoice, type Order, type OrderStatusEvent } from '@/lib/orders';
 
 const STEPPER_STATUSES = ['PLACED', 'ACCEPTED', 'PACKED', 'SHIPPED', 'DELIVERED'] as const;
 
@@ -50,6 +50,21 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [history, setHistory] = useState<OrderStatusEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [invoiceError, setInvoiceError] = useState('');
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+
+  async function handleDownloadInvoice() {
+    if (!order) return;
+    setDownloadingInvoice(true);
+    setInvoiceError('');
+    try {
+      await downloadInvoice(order.id);
+    } catch (e) {
+      setInvoiceError(e instanceof Error ? e.message : 'Failed to download invoice');
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  }
 
   useEffect(() => {
     fetchOrder(params.id)
@@ -82,10 +97,20 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-lg font-bold text-[#2C1810]">Order #{order.id.slice(0, 8)}</h1>
+            {['PAID', 'REFUND_INITIATED', 'REFUNDED'].includes(order.paymentStatus) && (
+              <button
+                onClick={handleDownloadInvoice}
+                disabled={downloadingInvoice}
+                className="text-xs font-semibold text-[#C0593A] hover:underline disabled:opacity-40"
+              >
+                {downloadingInvoice ? 'Preparing…' : 'Download Invoice'}
+              </button>
+            )}
           </div>
           <p className="text-xs text-[#A08070] mb-6">
             Placed {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
+          {invoiceError && <p className="text-xs text-red-600 -mt-5 mb-6">{invoiceError}</p>}
 
           <StatusStepper status={order.status} history={history} />
 

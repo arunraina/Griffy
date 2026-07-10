@@ -8,5 +8,9 @@ dist/
 coverage/
 prisma/migrations/
 
+# Local-disk fallback for server-side uploads (invoices etc.) when S3 isn't
+# configured — never contains anything that should be committed.
+apps/api/uploads/
+
 # OS
 .DS_Store

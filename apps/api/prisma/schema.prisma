@@ -405,6 +405,7 @@ model Order {
 
   statusEvents OrderStatusEvent[]
   refunds      Refund[]
+  invoice      Invoice?
 
   @@map("orders")
 }
@@ -456,6 +457,20 @@ model Refund {
   processedAt      DateTime?    @map("processed_at")
 
   @@map("refunds")
+}
+
+// One invoice per order, auto-generated the moment an order's paymentStatus
+// hits PAID (see OrdersService.markPaid -> InvoicesService.generateForOrder).
+// invoiceNumber is assigned once from invoice_number_seq and never changes.
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique @map("invoice_number")
+  orderId       String   @unique @map("order_id")
+  order         Order    @relation(fields: [orderId], references: [id])
+  pdfUrl        String?  @map("pdf_url")
+  issuedAt      DateTime @default(now()) @map("issued_at")
+
+  @@map("invoices")
 }
 
 model OrderStatusEvent {

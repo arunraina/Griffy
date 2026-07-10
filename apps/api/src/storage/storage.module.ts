@@ -7,5 +7,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   controllers: [StorageController],
   providers: [StorageService],
+  exports: [StorageService],
 })
 export class StorageModule {}
