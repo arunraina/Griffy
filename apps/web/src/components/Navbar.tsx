@@ -8,6 +8,7 @@ import { isEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import { useNotifications } from '@/context/NotificationContext';
 import NotificationBell from './NotificationBell';
+import SearchBar from './SearchBar';
 
 interface UserInfo { name: string }
 
@@ -111,9 +112,7 @@ export default function Navbar() {
 
         {/* Right — desktop */}
         <div className="hidden md:flex items-center gap-3 ml-8">
-          <Link href="/search" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Search">
-            <span className="text-lg">🔍</span>
-          </Link>
+          <SearchBar />
           {user && (
             <>
               <Link href="/saved" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Saved">

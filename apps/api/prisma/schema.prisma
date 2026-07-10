@@ -179,6 +179,7 @@ model ContractorProfile {
   completionRate  Float          @default(0) @map("completion_rate")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
+  searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -205,6 +206,7 @@ model LabourProfile {
   totalJobs       Int            @default(0) @map("total_jobs")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
+  searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -232,6 +234,7 @@ model ServiceExpertProfile {
   totalJobs       Int            @default(0) @map("total_jobs")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
+  searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -374,6 +377,7 @@ model Material {
   moderationNote String?              @map("moderation_note")
   createdAt   DateTime                @default(now()) @map("created_at")
   updatedAt   DateTime                @updatedAt @map("updated_at")
+  searchVector Unsupported("tsvector")? @map("search_vector")
 
   orderItems OrderItem[]
   reviews    Review[]
@@ -547,6 +551,7 @@ model Land {
   moderationNote String?       @map("moderation_note")
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
+  searchVector Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -582,6 +587,7 @@ model Property {
   moderationNote String?             @map("moderation_note")
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
+  searchVector Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 

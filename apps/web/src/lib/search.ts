@@ -9,89 +9,49 @@ export interface SearchResult {
   emoji: string;
 }
 
-function matches(query: string, ...fields: (string | undefined | null)[]): boolean {
-  const q = query.toLowerCase();
-  return fields.some((f) => (f ?? '').toLowerCase().includes(q));
+export type SearchType = 'contractors' | 'labour' | 'experts' | 'materials' | 'properties' | 'lands';
+
+export interface GroupedSearchResults {
+  contractors: SearchResult[];
+  labour: SearchResult[];
+  experts: SearchResult[];
+  materials: SearchResult[];
+  properties: SearchResult[];
+  lands: SearchResult[];
 }
 
-export async function searchMaterials(query: string): Promise<SearchResult[]> {
+const EMPTY_GROUPS: GroupedSearchResults = {
+  contractors: [], labour: [], experts: [], materials: [], properties: [], lands: [],
+};
+
+// Grouped, top-5-per-type results — used for the instant dropdown.
+export async function searchAll(q: string): Promise<GroupedSearchResults> {
+  if (!q.trim()) return EMPTY_GROUPS;
   try {
-    const res = await fetch(`${API}/materials?search=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data ?? []).slice(0, 8).map((m: any) => ({
-      id: m.id,
-      title: m.name,
-      subtitle: m.supplier?.businessName ?? m.supplier?.user?.name ?? 'Supplier',
-      price: `₹${Number(m.price ?? 0).toLocaleString('en-IN')} ${m.unit ?? ''}`,
-      href: `/materials/${m.id}`,
-      emoji: '🧱',
-    }));
+    const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return EMPTY_GROUPS;
+    return res.json();
   } catch {
-    return [];
+    return EMPTY_GROUPS;
   }
 }
 
-export async function searchContractors(query: string): Promise<SearchResult[]> {
-  try {
-    const res = await fetch(`${API}/contractor-profiles`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data ?? [])
-      .filter((c: any) => matches(query, c.user?.name, c.contractorType, ...(c.tradeSkills ?? [])))
-      .slice(0, 8)
-      .map((c: any) => ({
-        id: c.id,
-        title: c.user?.name ?? 'Contractor',
-        subtitle: [c.contractorType, ...(c.tradeSkills ?? [])].filter(Boolean).join(' · '),
-        href: `/contractors/${c.id}`,
-        emoji: '🏗️',
-      }));
-  } catch {
-    return [];
-  }
+export interface SearchPage {
+  items: SearchResult[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
-export async function searchLabour(query: string): Promise<SearchResult[]> {
+// Paginated single-type results — used for the full /search results page.
+export async function searchByType(q: string, type: SearchType, page = 1, pageSize = 20): Promise<SearchPage> {
+  if (!q.trim()) return { items: [], total: 0, page, pageSize };
   try {
-    const res = await fetch(`${API}/labour-profiles`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data ?? [])
-      .filter((l: any) => matches(query, l.user?.name, l.skillType))
-      .slice(0, 8)
-      .map((l: any) => ({
-        id: l.id,
-        title: l.user?.name ?? 'Labour',
-        subtitle: l.skillType ?? '',
-        href: `/labour/${l.id}`,
-        emoji: '👷',
-      }));
+    const params = new URLSearchParams({ q, type, page: String(page), pageSize: String(pageSize) });
+    const res = await fetch(`${API}/search?${params.toString()}`);
+    if (!res.ok) return { items: [], total: 0, page, pageSize };
+    return res.json();
   } catch {
-    return [];
-  }
-}
-
-export async function searchServiceExperts(query: string): Promise<SearchResult[]> {
-  try {
-    const res = await fetch(`${API}/service-expert-profiles`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data ?? [])
-      .filter((s: any) => matches(query, s.user?.name, s.expertiseType))
-      .slice(0, 8)
-      .map((s: any) => ({
-        id: s.id,
-        title: s.user?.name ?? 'Service Expert',
-        subtitle: s.expertiseType ?? '',
-        href: `/service-experts/${s.id}`,
-        emoji: '⚡',
-      }));
-  } catch {
-    return [];
+    return { items: [], total: 0, page, pageSize };
   }
 }

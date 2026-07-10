@@ -26,6 +26,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ProjectsModule } from './projects/projects.module';
 import { CareerApplicationsModule } from './career-applications/career-applications.module';
 import { EarlyAccessModule } from './early-access/early-access.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { EarlyAccessModule } from './early-access/early-access.module';
     ProjectsModule,
     CareerApplicationsModule,
     EarlyAccessModule,
+    SearchModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
