@@ -3,6 +3,7 @@ import LabourClient from './LabourClient';
 interface LabourProfile {
   id: string;
   name: string;
+  avatarUrl: string | null;
   skillType: string;
   experience: string;
   location: string;
@@ -21,6 +22,7 @@ function mapLabour(p: any): LabourProfile {
   return {
     id: p.id,
     name: p.user?.name ?? 'Unknown',
+    avatarUrl: p.user?.avatarUrl ?? null,
     skillType: p.skillType ?? 'General Labour',
     experience: p.experience ?? '',
     location: p.serviceCities?.[0] ?? '',

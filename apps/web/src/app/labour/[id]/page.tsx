@@ -43,6 +43,7 @@ export default async function LabourDetailPage({ params }: { params: { id: strin
     id:              raw.id,
     userId:          raw.userId as string,
     name:            raw.user?.name ?? 'Unknown',
+    avatarUrl:       raw.user?.avatarUrl ?? null,
     skillType:       raw.skillType ?? 'General Labour',
     experience:      raw.experience ?? '',
     serviceCities:   raw.serviceCities ?? [],

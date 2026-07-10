@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -27,10 +29,22 @@ import { ProjectsModule } from './projects/projects.module';
 import { CareerApplicationsModule } from './career-applications/career-applications.module';
 import { EarlyAccessModule } from './early-access/early-access.module';
 import { SearchModule } from './search/search.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Serves the local-disk fallback for avatar/portfolio uploads (used when
+    // AWS_* isn't configured) publicly at /media — dev-only in practice,
+    // since production is expected to have S3 configured. Deliberately not
+    // /uploads — that's also the UploadsController's own API path, and
+    // main.ts's prefix-exclude rule can't tell those two apart if they share
+    // a segment.
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/media',
+    }),
     // ThrottlerGuard applies every named throttler below to every route; `short`/`long`
     // are effectively unlimited by default and only tightened via @Throttle() on the
     // specific OTP routes that need a dual per-minute + per-hour limit.
@@ -64,6 +78,8 @@ import { SearchModule } from './search/search.module';
     CareerApplicationsModule,
     EarlyAccessModule,
     SearchModule,
+    UploadsModule,
+    PortfolioModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

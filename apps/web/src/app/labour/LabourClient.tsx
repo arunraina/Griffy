@@ -12,6 +12,7 @@ type RatingFilter = 'any' | '4' | '4.5';
 interface LabourProfile {
   id: string;
   name: string;
+  avatarUrl: string | null;
   skillType: string;
   experience: string;
   location: string;
@@ -212,9 +213,14 @@ function LabourCard({ profile: p, rank }: { profile: LabourProfile; rank: number
     <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all border border-gray-100">
       <div className="flex items-start gap-3">
         <div className="relative flex-shrink-0">
-          <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24]">
-            {initials}
-          </div>
+          {p.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.avatarUrl} alt={p.name} className="w-11 h-11 rounded-xl object-cover border border-[#E8C4B0]" />
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24]">
+              {initials}
+            </div>
+          )}
           {p.verified && (
             <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold"
               title="Verified by Griffy">✓</span>

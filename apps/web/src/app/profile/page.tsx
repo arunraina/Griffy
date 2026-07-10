@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
+import { uploadImage } from '@/lib/storage';
 
 const ROLE_LABEL: Record<string, string> = {
   HOMEOWNER: '🏠 Homeowner',
@@ -32,6 +33,9 @@ export default function ProfilePage() {
   const [referral, setReferral] = useState<ReferralStats | null>(null);
   const [analytics, setAnalytics] = useState<MyAnalytics | null>(null);
   const [copied, setCopied] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchMe()
@@ -68,6 +72,23 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    setAvatarError('');
+    try {
+      const url = await uploadImage('avatars', file);
+      const updated = await updateMe({ avatarUrl: url });
+      setMe(updated);
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Failed to upload photo');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }
+
   if (loading) {
     return <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center text-[#A08070] text-sm">Loading…</div>;
   }
@@ -92,15 +113,38 @@ export default function ProfilePage() {
           <span className="absolute bottom-4 left-20 text-4xl opacity-10">🔨</span>
         </div>
         <div className="absolute -bottom-12 left-6 md:left-10">
-          <div className="w-24 h-24 rounded-3xl bg-white border-4 border-white shadow-lg flex items-center justify-center">
-            <div className="w-full h-full rounded-[18px] bg-gradient-to-br from-[#C0593A] to-[#9E3F24] flex items-center justify-center">
-              <span className="text-2xl font-extrabold text-white">{initials(me.name)}</span>
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="relative w-24 h-24 rounded-3xl bg-white border-4 border-white shadow-lg flex items-center justify-center group disabled:opacity-70"
+          >
+            <div className="w-full h-full rounded-[18px] overflow-hidden bg-gradient-to-br from-[#C0593A] to-[#9E3F24] flex items-center justify-center">
+              {me.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={me.avatarUrl} alt={me.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-extrabold text-white">{initials(me.name)}</span>
+              )}
             </div>
-          </div>
+            <div className="absolute inset-0 rounded-3xl bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+              <span className="text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                {uploadingAvatar ? 'Uploading…' : '📷 Change'}
+              </span>
+            </div>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
       </div>
-
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10">
+        {avatarError && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{avatarError}</p>
+        )}
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-[#2C1810]">{me.name}</h1>

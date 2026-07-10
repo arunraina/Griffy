@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
+import Avatar from '@/components/Avatar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ type RatingFilter = 'any' | '4' | '4.5';
 interface Contractor {
   id: string;
   name: string;
+  avatarUrl: string | null;
   type: ContractorType;
   skills: TradeSkill[];
   location: string;
@@ -306,9 +308,14 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
       {/* Top row */}
       <div className="flex items-start gap-3">
         <div className="relative flex-shrink-0">
-          <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24]">
-            {initials}
-          </div>
+          {c.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.avatarUrl} alt={c.name} className="w-11 h-11 rounded-xl object-cover border border-[#E8C4B0]" />
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24]">
+              {initials}
+            </div>
+          )}
           {c.verified && (
             <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold"
               title="Verified by Griffy">✓</span>

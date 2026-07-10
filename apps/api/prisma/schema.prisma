@@ -477,6 +477,26 @@ model Invoice {
   @@map("invoices")
 }
 
+// Past-work showcase for contractor/labour/service-expert profiles — richer
+// than the flat portfolioImages String[] already on those 3 tables (unused,
+// left alone): grouped by project with a title/description/completion date.
+// profileType/profileId is a polymorphic string pair, not a real FK (same
+// pattern as Refund/PaymentEvent) since one column can't reference three
+// different tables.
+model PortfolioItem {
+  id          String    @id @default(uuid())
+  profileType String    @map("profile_type")
+  profileId   String    @map("profile_id")
+  title       String
+  description String?
+  imageUrls   String[]  @map("image_urls")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([profileType, profileId])
+  @@map("portfolio_items")
+}
+
 model OrderStatusEvent {
   id        String      @id @default(uuid())
   orderId   String      @map("order_id")

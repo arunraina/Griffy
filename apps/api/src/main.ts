@@ -5,7 +5,13 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  app.setGlobalPrefix('api/v1');
+  // /media is static file serving (ServeStaticModule), not an API route —
+  // excluded so its URLs stay clean and match what StorageService constructs.
+  // (Named /media rather than /uploads deliberately: /uploads is also the
+  // UploadsController's own API path — reusing the same segment for both
+  // would make this exclude rule accidentally strip the prefix from the
+  // real /api/v1/uploads/image endpoint too.)
+  app.setGlobalPrefix('api/v1', { exclude: ['media/(.*)'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',

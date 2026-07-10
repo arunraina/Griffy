@@ -40,7 +40,7 @@ export async function fetchMe(): Promise<Me> {
   return res.json();
 }
 
-export async function updateMe(data: { name?: string; phone?: string }): Promise<Me> {
+export async function updateMe(data: { name?: string; phone?: string; avatarUrl?: string }): Promise<Me> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/users/me`, {
     method: 'PATCH',

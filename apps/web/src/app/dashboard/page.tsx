@@ -13,6 +13,7 @@ import { fetchMyOrders, type Order } from '@/lib/orders';
 import KycSection from './_components/KycSection';
 import OrdersTab from './_components/OrdersTab';
 import ListingsTab from './_components/ListingsTab';
+import PortfolioTab from './_components/PortfolioTab';
 
 type Role = Me['role'];
 
@@ -33,6 +34,7 @@ function tabsForRole(role: Role): TabDef[] {
       return [
         { id: 'overview', label: 'Overview', icon: '📊' },
         { id: 'bookings', label: 'Bookings', icon: '📅' },
+        { id: 'portfolio', label: 'My Work', icon: '🖼️' },
         { id: 'kyc', label: 'KYC & Bank', icon: '🪪' },
       ];
     case 'MATERIAL_SUPPLIER':
@@ -129,6 +131,7 @@ export default function DashboardPage() {
           <ListingsTab kind={me.role === 'LAND_OWNER' ? 'land' : me.role === 'PROPERTY_SELLER' ? 'property' : 'unavailable'} />
         )}
         {tab === 'leads' && <LeadsComingSoon />}
+        {tab === 'portfolio' && <PortfolioTab role={me.role} />}
         {tab === 'kyc' && <KycSection />}
       </main>
     </div>

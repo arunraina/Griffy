@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
+import Avatar from '@/components/Avatar';
+import PortfolioGallery from '@/components/PortfolioGallery';
 
 interface Review {
   id: string;
@@ -16,6 +18,7 @@ interface ServiceExpertProfile {
   id: string;
   userId: string;
   name: string;
+  avatarUrl: string | null;
   expertiseType: string;
   qualifications: string[];
   experience: string;
@@ -39,7 +42,6 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
 
-  const initials  = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const bio       = p.bio ?? '';
   const bioShort  = bio.slice(0, 180);
   const bioNeedsTruncate = bio.length > 180;
@@ -78,9 +80,7 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
               <div className="px-6 pb-6">
                 <div className="flex items-end justify-between -mt-10 mb-4">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-blue-600 text-white text-2xl font-bold flex items-center justify-center border-4 border-white shadow-md">
-                      {initials}
-                    </div>
+                    <Avatar name={p.name} avatarUrl={p.avatarUrl} size="lg" className="border-4 border-white shadow-md" />
                     {p.availability && (
                       <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
                     )}
@@ -175,6 +175,11 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
               </Section>
             )}
 
+            {/* Portfolio */}
+            <Section title="Portfolio">
+              <PortfolioGallery profileType="service-expert" profileId={p.id} />
+            </Section>
+
             {/* Reviews */}
             <Section title={`Reviews (${p.totalReviews})`} id="reviews">
               {reviews.length === 0 ? (
@@ -239,7 +244,7 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
           <div className="hidden lg:block w-80 flex-shrink-0">
             <div className="sticky top-24 bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center">{initials}</div>
+                <Avatar name={p.name} avatarUrl={p.avatarUrl} size="md" />
                 <div>
                   <p className="text-sm font-bold text-[#2C1810]">{p.name}</p>
                   <p className="text-xs text-[#A08070]">{p.expertiseType}</p>

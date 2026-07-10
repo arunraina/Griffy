@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
+import Avatar from '@/components/Avatar';
+import PortfolioGallery from '@/components/PortfolioGallery';
 
 interface Review {
   id: string;
@@ -16,6 +18,7 @@ interface ContractorProfile {
   id: string;
   userId: string;
   name: string;
+  avatarUrl: string | null;
   contractorType: string;
   tradeSkills: string[];
   serviceCities: string[];
@@ -35,21 +38,11 @@ interface Props {
   reviews: Review[];
 }
 
-const PORTFOLIO_COLORS = [
-  'from-slate-300 to-slate-400',
-  'from-stone-300 to-stone-400',
-  'from-zinc-300 to-zinc-400',
-  'from-neutral-300 to-neutral-400',
-  'from-gray-300 to-gray-400',
-  'from-slate-200 to-slate-300',
-];
-
 export default function ContractorDetailClient({ profile: p, reviews }: Props) {
   const [bioExpanded,    setBioExpanded]    = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
 
-  const initials   = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const bio        = p.bio ?? '';
   const bioShort   = bio.slice(0, 180);
   const bioNeedsTruncate = bio.length > 180;
@@ -89,9 +82,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
               <div className="px-6 pb-6">
                 <div className="flex items-end justify-between -mt-10 mb-4">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-[#C0593A] text-white text-2xl font-bold flex items-center justify-center border-4 border-white shadow-md">
-                      {initials}
-                    </div>
+                    <Avatar name={p.name} avatarUrl={p.avatarUrl} size="lg" className="border-4 border-white shadow-md" />
                     {p.availability && (
                       <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
                     )}
@@ -179,14 +170,9 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
               </Section>
             )}
 
-            {/* Portfolio placeholder */}
+            {/* Portfolio */}
             <Section title="Portfolio">
-              <div className="grid grid-cols-3 gap-3">
-                {PORTFOLIO_COLORS.map((colors, i) => (
-                  <div key={i} className={`relative rounded-xl overflow-hidden bg-gradient-to-br ${colors} aspect-video`} />
-                ))}
-              </div>
-              <p className="text-xs text-[#A08070] mt-3 text-center">Portfolio images coming soon</p>
+              <PortfolioGallery profileType="contractor" profileId={p.id} />
             </Section>
 
             {/* Reviews */}
@@ -253,7 +239,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
           <div className="hidden lg:block w-80 flex-shrink-0">
             <div className="sticky top-24 bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-[#C0593A] text-white text-sm font-bold flex items-center justify-center">{initials}</div>
+                <Avatar name={p.name} avatarUrl={p.avatarUrl} size="md" />
                 <div>
                   <p className="text-sm font-bold text-[#2C1810]">{p.name}</p>
                   <p className="text-xs text-[#A08070]">{p.contractorType}</p>

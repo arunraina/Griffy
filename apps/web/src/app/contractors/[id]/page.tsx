@@ -43,6 +43,7 @@ export default async function ContractorDetailPage({ params }: { params: { id: s
     id:              raw.id,
     userId:          raw.userId as string,
     name:            raw.user?.name ?? 'Unknown',
+    avatarUrl:       raw.user?.avatarUrl ?? null,
     contractorType:  raw.contractorType ?? 'Contractor',
     tradeSkills:     raw.tradeSkills ?? [],
     serviceCities:   raw.serviceCities ?? [],

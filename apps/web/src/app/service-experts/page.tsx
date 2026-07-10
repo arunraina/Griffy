@@ -3,6 +3,7 @@ import ServiceExpertsClient from './ServiceExpertsClient';
 interface ServiceExpertProfile {
   id: string;
   name: string;
+  avatarUrl: string | null;
   expertiseType: string;
   qualifications: string[];
   experience: string;
@@ -21,6 +22,7 @@ function mapExpert(p: any): ServiceExpertProfile {
   return {
     id: p.id,
     name: p.user?.name ?? 'Unknown',
+    avatarUrl: p.user?.avatarUrl ?? null,
     expertiseType: p.expertiseType ?? 'Service Expert',
     qualifications: p.qualifications ?? [],
     experience: p.experience ?? '',

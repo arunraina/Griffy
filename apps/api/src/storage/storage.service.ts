@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
-export type StorageFolder = 'avatars' | 'materials' | 'documents';
+export type StorageFolder = 'avatars' | 'materials' | 'documents' | 'portfolio';
 
 @Injectable()
 export class StorageService {
@@ -63,6 +63,26 @@ export class StorageService {
     const filePath = join(dir, filename);
     await writeFile(filePath, buffer);
     return { location: `file://${filePath}` };
+  }
+
+  // Server-side upload for images that must be PUBLICLY viewable (avatars,
+  // portfolio photos) — unlike uploadBuffer()/downloadBuffer() above (used
+  // for invoice PDFs, which are access-controlled and only ever served
+  // through an authenticated endpoint), this returns a real fetchable URL
+  // directly. The local-disk fallback is served by ServeStaticModule at
+  // /uploads (see app.module.ts).
+  async uploadPublicImage(folder: StorageFolder, filename: string, buffer: Buffer, contentType: string): Promise<string> {
+    if (this.isS3Configured()) {
+      const key = `${folder}/${filename}`;
+      await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: buffer, ContentType: contentType }));
+      return `https://${this.bucket}.s3.amazonaws.com/${key}`;
+    }
+
+    const dir = join(process.cwd(), 'uploads', folder);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, filename), buffer);
+    const apiBaseUrl = this.config.get<string>('API_BASE_URL') ?? 'http://localhost:3001';
+    return `${apiBaseUrl}/media/${folder}/${filename}`;
   }
 
   async downloadBuffer(location: string): Promise<Buffer> {

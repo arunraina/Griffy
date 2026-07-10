@@ -43,6 +43,7 @@ export default async function ServiceExpertDetailPage({ params }: { params: { id
     id:              raw.id,
     userId:          raw.userId as string,
     name:            raw.user?.name ?? 'Unknown',
+    avatarUrl:       raw.user?.avatarUrl ?? null,
     expertiseType:   raw.expertiseType ?? 'Service Expert',
     qualifications:  raw.qualifications ?? [],
     experience:      raw.experience ?? '',
