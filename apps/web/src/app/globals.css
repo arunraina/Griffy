@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Referenced by several horizontally-scrolling chip/tab rows (properties,
    land, materials filters) but was never actually defined — the scrollbar
