@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchCareerApplications, type AdminCareerApplication } from '@/lib/admin';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 export default function AdminCareersPage() {
   const [rows, setRows] = useState<AdminCareerApplication[]>([]);
@@ -27,7 +28,7 @@ export default function AdminCareersPage() {
       )}
 
       {loading ? (
-        <p className="text-[#A08070] text-sm">Loading…</p>
+        <SkeletonListRows count={6} />
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
           <p className="text-4xl mb-3">💼</p>

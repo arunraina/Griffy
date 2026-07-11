@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getProject, getProjectBids, submitBid, updateBidStatus, type Project, type Bid } from '@/lib/projects';
 import { fetchMe, type Me } from '@/lib/users';
+import { SkeletonDetailPage } from '@/components/Skeleton';
 
 const TYPE_LABEL: Record<string, string> = {
   turnkey: 'Turnkey / Full Construction',
@@ -72,7 +73,7 @@ export default function ProjectDetailPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center text-[#A08070] text-sm">Loading…</div>;
+    return <SkeletonDetailPage />;
   }
 
   if (!project) {

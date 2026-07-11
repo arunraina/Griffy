@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAdminKyc, verifyKyc, rejectKyc, type AdminKycDetail } from '@/lib/admin';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 type Tab = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'all';
 
@@ -60,7 +61,7 @@ export default function AdminKycPage() {
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>}
 
       {loading ? (
-        <p className="text-[#A08070] text-sm">Loading…</p>
+        <SkeletonListRows count={6} />
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
           <p className="text-4xl mb-3">🪪</p>

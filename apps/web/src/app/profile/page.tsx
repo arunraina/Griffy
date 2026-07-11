@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
 import { uploadImage } from '@/lib/storage';
+import { Skeleton } from '@/components/Skeleton';
 
 const ROLE_LABEL: Record<string, string> = {
   HOMEOWNER: '🏠 Homeowner',
@@ -90,7 +91,22 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center text-[#A08070] text-sm">Loading…</div>;
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] px-4 py-10">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-20 h-20 rounded-full flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-1/3 rounded-md" />
+              <Skeleton className="h-3.5 w-1/4 rounded-md" />
+            </div>
+          </div>
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-10 w-2/3 rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   if (needsAuth || !me) {

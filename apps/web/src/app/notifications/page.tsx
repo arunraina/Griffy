@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/notifications';
 import { useNotifications } from '@/context/NotificationContext';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 const TYPE_EMOJI: Record<string, string> = {
   'booking.created': '📅',
@@ -86,7 +87,7 @@ export default function NotificationsPage() {
         </div>
 
         {loading ? (
-          <p className="text-[#A08070] text-sm">Loading…</p>
+          <SkeletonListRows count={6} />
         ) : items.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-10 text-center">
             <p className="text-4xl mb-3">🔔</p>

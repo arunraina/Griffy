@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAdminOrders, createRefund, type AdminOrder } from '@/lib/admin';
 import { downloadInvoice } from '@/lib/orders';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 const PAYMENT_STATUSES = ['', 'UNPAID', 'PAID', 'FAILED', 'REFUND_INITIATED', 'REFUNDED'];
 
@@ -53,7 +54,7 @@ export default function AdminOrdersPage() {
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>}
 
       {loading ? (
-        <p className="text-[#A08070] text-sm">Loading…</p>
+        <SkeletonListRows count={6} />
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
           <p className="text-4xl mb-3">📦</p>

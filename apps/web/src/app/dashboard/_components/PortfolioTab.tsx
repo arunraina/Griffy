@@ -6,6 +6,7 @@ import {
   type PortfolioItem, type PortfolioProfileType,
 } from '@/lib/portfolio';
 import { uploadImage } from '@/lib/storage';
+import { SkeletonCardGrid } from '@/components/Skeleton';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -52,7 +53,7 @@ export default function PortfolioTab({ role }: { role: string }) {
 
   if (!profileType) return null;
 
-  if (items === null) return <p className="text-sm text-[#A08070]">Loading…</p>;
+  if (items === null) return <SkeletonCardGrid variant="media" count={3} />;
 
   if (!profileId) {
     return (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { fetchAdminProjects, moderateProject, type AdminProject } from '@/lib/admin';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 type Tab = 'all' | 'OPEN' | 'AWARDED' | 'CLOSED';
 
@@ -68,7 +69,7 @@ export default function AdminProjectsPage() {
       )}
 
       {loading ? (
-        <p className="text-[#A08070] text-sm">Loading…</p>
+        <SkeletonListRows count={6} />
       ) : projects.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
           <p className="text-4xl mb-3">🏗️</p>

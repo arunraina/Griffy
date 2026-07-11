@@ -5,6 +5,7 @@ import {
   fetchAdminContent, moderateContent,
   CONTENT_TYPE_LABELS, type ContentType,
 } from '@/lib/admin';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 const CONTENT_TYPES = Object.keys(CONTENT_TYPE_LABELS) as ContentType[];
 
@@ -107,7 +108,7 @@ export default function AdminModerationPage() {
       )}
 
       {loading ? (
-        <p className="text-[#A08070] text-sm">Loading…</p>
+        <SkeletonListRows count={6} />
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
           <p className="text-4xl mb-3">✨</p>

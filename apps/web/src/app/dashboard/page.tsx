@@ -14,6 +14,7 @@ import KycSection from './_components/KycSection';
 import OrdersTab from './_components/OrdersTab';
 import ListingsTab from './_components/ListingsTab';
 import PortfolioTab from './_components/PortfolioTab';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 type Role = Me['role'];
 
@@ -218,7 +219,7 @@ function MyBookingsTab() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   useEffect(() => { fetchMyBookings().then(setBookings).catch(() => setBookings([])); }, []);
 
-  if (bookings === null) return <p className="text-sm text-[#A08070]">Loading…</p>;
+  if (bookings === null) return <SkeletonListRows count={4} />;
   if (bookings.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
@@ -270,7 +271,7 @@ function IncomingBookingsTab() {
     try { await cancelBooking(id); load(); } finally { setUpdating(null); }
   }
 
-  if (bookings === null) return <p className="text-sm text-[#A08070]">Loading…</p>;
+  if (bookings === null) return <SkeletonListRows count={4} />;
   if (bookings.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
@@ -328,7 +329,7 @@ function MyOrdersTab() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   useEffect(() => { fetchMyOrders().then(setOrders).catch(() => setOrders([])); }, []);
 
-  if (orders === null) return <p className="text-sm text-[#A08070]">Loading…</p>;
+  if (orders === null) return <SkeletonListRows count={4} />;
   if (orders.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">

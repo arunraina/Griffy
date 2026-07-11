@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchMyLands, type Land } from '@/lib/lands';
 import { fetchMyProperties, type PropertyListing } from '@/lib/properties';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 type Listing = (Land | PropertyListing) & { kind: 'land' | 'property' };
 
@@ -29,7 +30,7 @@ export default function ListingsTab({ kind }: { kind: 'land' | 'property' | 'una
   }
 
   if (listings === null) {
-    return <div className="bg-white rounded-2xl border border-[#EBE0D8] p-8 text-center text-sm text-[#A08070]">Loading…</div>;
+    return <SkeletonListRows count={3} />;
   }
 
   if (listings.length === 0) {

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { searchByType, type SearchResult, type SearchType } from '@/lib/search';
+import { SkeletonListRows } from '@/components/Skeleton';
 
 type Tab = 'all' | SearchType;
 
@@ -137,7 +138,7 @@ function SearchContent() {
             </div>
 
             {loading ? (
-              <p className="text-[#A08070] text-sm">Searching…</p>
+              <SkeletonListRows count={6} />
             ) : total === 0 ? (
               <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
                 <p className="text-4xl mb-3">🔍</p>

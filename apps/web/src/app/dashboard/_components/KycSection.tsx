@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchMyKyc, submitMyKyc, type KycDetail, type KycSubmitInput } from '@/lib/kyc';
 import { uploadFile } from '@/lib/storage';
+import { Skeleton } from '@/components/Skeleton';
 
 const STATUS_BADGE: Record<KycDetail['status'], { label: string; cls: string }> = {
   NOT_SUBMITTED: { label: 'Not submitted', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
@@ -66,7 +67,14 @@ export default function KycSection() {
   }
 
   if (loading) {
-    return <div className="bg-white rounded-2xl border border-[#EBE0D8] p-8 text-center text-sm text-[#A08070]">Loading…</div>;
+    return (
+      <div className="bg-white rounded-2xl border border-[#EBE0D8] p-6 space-y-4">
+        <Skeleton className="h-5 w-40 rounded-md" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-2/3 rounded-xl" />
+      </div>
+    );
   }
 
   const badge = kyc ? STATUS_BADGE[kyc.status] : STATUS_BADGE.NOT_SUBMITTED;
