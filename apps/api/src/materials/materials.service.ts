@@ -37,7 +37,18 @@ export class MaterialsService {
     const material = await this.prisma.material.findUnique({
       where: { id },
       include: {
-        supplier: { select: { id: true, businessName: true, user: { select: { name: true } } } },
+        supplier: {
+          select: {
+            id: true,
+            businessName: true,
+            deliveryCities: true,
+            approvalStatus: true,
+            avgRating: true,
+            totalReviews: true,
+            totalOrders: true,
+            user: { select: { name: true, phone: true } },
+          },
+        },
       },
     });
     if (!material || material.isHidden) throw new NotFoundException('Material not found');

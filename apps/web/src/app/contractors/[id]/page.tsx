@@ -55,6 +55,7 @@ export default async function ContractorDetailPage({ params }: { params: { id: s
     govtIdVerified:  raw.licenseNumber != null,
     avgRating:       Number(raw.avgRating ?? 0),
     totalReviews:    raw.totalReviews ?? 0,
+    completedJobs:   raw.totalJobs ?? 0,
     createdAt:       raw.createdAt ?? new Date().toISOString(),
   };
 

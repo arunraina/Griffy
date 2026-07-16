@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import WriteReviewModal from '@/components/WriteReviewModal';
+import BadgeRow from '@/components/BadgeRow';
 
 interface Review {
   id: string;
@@ -38,6 +39,9 @@ interface Material {
     city: string;
     phone: string | null;
     verified: boolean;
+    avgRating: number;
+    totalReviews: number;
+    totalOrders: number;
   } | null;
 }
 
@@ -205,6 +209,14 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
                     </div>
                     {m.supplier.city && <p className="text-sm text-[#6B5248]">📍 {m.supplier.city}</p>}
                     {m.supplier.phone && <p className="text-sm text-[#6B5248]">📞 {m.supplier.phone}</p>}
+                    <div className="mt-2">
+                      <BadgeRow
+                        verified={m.supplier.verified}
+                        completedJobs={m.supplier.totalOrders}
+                        rating={m.supplier.avgRating}
+                        reviewCount={m.supplier.totalReviews}
+                      />
+                    </div>
                   </div>
                   <button onClick={() => setModalOpen(true)}
                     className="text-sm bg-white border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] font-semibold px-4 py-2 rounded-lg transition-colors flex-shrink-0">

@@ -54,6 +54,7 @@ export default async function ServiceExpertDetailPage({ params }: { params: { id
     govtIdVerified:  raw.govtIdVerified ?? false,
     avgRating:       Number(raw.avgRating ?? 0),
     totalReviews:    raw.totalReviews ?? 0,
+    completedJobs:   raw.totalJobs ?? 0,
     createdAt:       raw.createdAt ?? new Date().toISOString(),
   };
 

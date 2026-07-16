@@ -8,6 +8,8 @@ import WriteReviewModal from '@/components/WriteReviewModal';
 import RequestTurnkeyProjectModal from '@/components/RequestTurnkeyProjectModal';
 import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
+import TierBadge from '@/components/TierBadge';
+import BadgeRow from '@/components/BadgeRow';
 import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import { startConversation } from '@/lib/chat';
@@ -38,6 +40,7 @@ interface ContractorProfile {
   govtIdVerified: boolean;
   avgRating: number;
   totalReviews: number;
+  completedJobs: number;
   createdAt: string;
 }
 
@@ -154,6 +157,10 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
                   )}
                   {p.serviceCities[0] && <span>📍 {p.serviceCities[0]}</span>}
                   <span>📅 Since {joinedYear}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <TierBadge completedJobs={p.completedJobs} rating={p.avgRating} size="md" />
+                  <BadgeRow verified={p.govtIdVerified} completedJobs={p.completedJobs} rating={p.avgRating} reviewCount={p.totalReviews} />
                 </div>
               </div>
             </div>

@@ -4,6 +4,8 @@ import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
+import TierBadge from '@/components/TierBadge';
+import BadgeRow from '@/components/BadgeRow';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 
@@ -23,6 +25,7 @@ interface ServiceExpertProfile {
   available: boolean;
   rating: number;
   reviewCount: number;
+  completedJobs: number;
   verified: boolean;
 }
 
@@ -249,6 +252,7 @@ function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank:
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-blue-100 text-blue-700 border-blue-200">
               {p.expertiseType}
             </span>
+            <TierBadge completedJobs={p.completedJobs} rating={p.rating} />
             {isBestMatch && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#C0593A]/10 text-[#C0593A] border border-[#C0593A]/20 px-2 py-0.5 rounded-full">
                 🎯 Best Match
@@ -259,6 +263,9 @@ function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank:
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.available ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-xs text-gray-500">{p.available ? 'Available' : 'Unavailable'}</span>
             {p.verified && <span className="text-xs text-blue-600 font-medium">✅ Verified</span>}
+          </div>
+          <div className="mt-1.5">
+            <BadgeRow verified={p.verified} completedJobs={p.completedJobs} rating={p.rating} reviewCount={p.reviewCount} />
           </div>
         </div>
       </div>

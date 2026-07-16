@@ -56,11 +56,14 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
     totalReviews:     raw.reviewCount ?? raw.totalReviews ?? 0,
     supplier: raw.supplier
       ? {
-          id:       raw.supplier.id,
-          name:     raw.supplier.user?.name ?? 'Supplier',
-          city:     raw.supplier.serviceCities?.[0] ?? '',
-          phone:    raw.supplier.user?.phone ?? null,
-          verified: raw.supplier.approvalStatus === 'APPROVED',
+          id:            raw.supplier.id,
+          name:          raw.supplier.user?.name ?? raw.supplier.businessName ?? 'Supplier',
+          city:          raw.supplier.deliveryCities?.[0] ?? '',
+          phone:         raw.supplier.user?.phone ?? null,
+          verified:      raw.supplier.approvalStatus === 'APPROVED',
+          avgRating:     Number(raw.supplier.avgRating ?? 0),
+          totalReviews:  raw.supplier.totalReviews ?? 0,
+          totalOrders:   raw.supplier.totalOrders ?? 0,
         }
       : null,
   };

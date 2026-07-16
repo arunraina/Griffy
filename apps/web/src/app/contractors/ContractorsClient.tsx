@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
+import BadgeRow from '@/components/BadgeRow';
 import Avatar from '@/components/Avatar';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
@@ -363,6 +364,9 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.available ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-xs text-gray-500">{c.available ? 'Available' : 'Unavailable'}</span>
             {c.verified && <span className="text-xs text-blue-600 font-medium">✅ Verified</span>}
+          </div>
+          <div className="mt-1.5">
+            <BadgeRow verified={c.verified} completedJobs={c.completedJobs} rating={c.rating} reviewCount={c.reviewCount} />
           </div>
         </div>
       </div>

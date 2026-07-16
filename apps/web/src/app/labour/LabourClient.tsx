@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
+import BadgeRow from '@/components/BadgeRow';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 
@@ -260,6 +261,9 @@ function LabourCard({ profile: p, rank }: { profile: LabourProfile; rank: number
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.available ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-xs text-gray-500">{p.available ? 'Available' : 'Unavailable'}</span>
             {p.verified && <span className="text-xs text-blue-600 font-medium">✅ Verified</span>}
+          </div>
+          <div className="mt-1.5">
+            <BadgeRow verified={p.verified} completedJobs={p.completedJobs} rating={p.rating} reviewCount={p.reviewCount} />
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getTier, jobsToNextTier, TIERS } from '@/lib/gamification';
 import TierBadge from '@/components/TierBadge';
+import BadgeRow from '@/components/BadgeRow';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 const MEDAL = ['🥇', '🥈', '🥉'];
@@ -119,6 +120,9 @@ function LeaderboardRow({ row, rank }: { row: Row; rank: number }) {
             {progress.jobsLeft} more {row.unitLabel}{progress.jobsLeft !== 1 ? 's' : ''} to {progress.next.emoji} {progress.next.label}
           </p>
         )}
+        <div className="mt-1.5">
+          <BadgeRow verified={row.verified} completedJobs={row.completedJobs} rating={row.rating} reviewCount={row.reviewCount} />
+        </div>
       </div>
       <div className="flex flex-col items-end shrink-0 gap-0.5">
         {row.rating > 0 && (
