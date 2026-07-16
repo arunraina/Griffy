@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReviewTargetType } from '@prisma/client';
+import { ReviewTargetType, UserRole } from '@prisma/client';
 
 const TARGET_FK: Record<ReviewTargetType, string> = {
   CONTRACTOR: 'contractorProfileId',
@@ -14,6 +14,17 @@ const TARGET_FK: Record<ReviewTargetType, string> = {
   PROPERTY: 'propertyId',
 };
 
+// Only these target types have a real completed-transaction record to check
+// against (Booking or Order). BUILDER/PROPERTY_AGENT/LAND/PROPERTY have no
+// transaction system built yet, so reviews there stay open and unverified.
+const PROVIDER_ROLE_TARGETS: ReviewTargetType[] = ['CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT'];
+
+export interface ReviewEligibility {
+  eligible: boolean;
+  wouldBeVerified: boolean;
+  reason?: string;
+}
+
 @Injectable()
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -26,6 +37,45 @@ export class ReviewsService {
     });
   }
 
+  async checkEligibility(reviewerId: string, targetType: ReviewTargetType, targetId: string): Promise<ReviewEligibility> {
+    const existing = await this.prisma.review.findFirst({
+      where: { reviewerId, targetType, [TARGET_FK[targetType]]: targetId },
+      select: { id: true },
+    });
+    if (existing) {
+      return { eligible: false, wouldBeVerified: false, reason: 'You\'ve already reviewed this.' };
+    }
+
+    if (PROVIDER_ROLE_TARGETS.includes(targetType)) {
+      const hasCompletedBooking = await this.hasCompletedBooking(reviewerId, targetType, targetId);
+      if (!hasCompletedBooking) {
+        return {
+          eligible: false,
+          wouldBeVerified: false,
+          reason: 'You can only review someone after completing a booking with them.',
+        };
+      }
+      return { eligible: true, wouldBeVerified: true };
+    }
+
+    if (targetType === 'MATERIAL' || targetType === 'MATERIAL_SUPPLIER') {
+      const hasPaidOrder = await this.hasPaidOrder(reviewerId, targetType, targetId);
+      if (!hasPaidOrder) {
+        return {
+          eligible: false,
+          wouldBeVerified: false,
+          reason: targetType === 'MATERIAL'
+            ? 'You can only review a material after purchasing it.'
+            : 'You can only review a supplier after purchasing from them.',
+        };
+      }
+      return { eligible: true, wouldBeVerified: true };
+    }
+
+    // BUILDER, PROPERTY_AGENT, LAND, PROPERTY — no transaction system, open to all.
+    return { eligible: true, wouldBeVerified: false };
+  }
+
   async create(
     reviewerId: string,
     data: { targetType: ReviewTargetType; targetId: string; rating: number; comment?: string },
@@ -34,18 +84,75 @@ export class ReviewsService {
       throw new BadRequestException('Rating must be between 1 and 5');
     }
 
+    const eligibility = await this.checkEligibility(reviewerId, data.targetType, data.targetId);
+    if (!eligibility.eligible) {
+      if (eligibility.reason === 'You\'ve already reviewed this.') {
+        throw new ConflictException(eligibility.reason);
+      }
+      throw new ForbiddenException(eligibility.reason);
+    }
+
     const review = await this.prisma.review.create({
       data: {
         reviewerId,
         targetType: data.targetType,
         rating: data.rating,
         comment: data.comment,
+        isVerified: eligibility.wouldBeVerified,
         [TARGET_FK[data.targetType]]: data.targetId,
       },
     });
 
     await this.updateAggregates(data.targetType, data.targetId);
     return review;
+  }
+
+  private async hasCompletedBooking(reviewerId: string, targetType: ReviewTargetType, profileId: string): Promise<boolean> {
+    const userId = await this.resolveProviderUserId(targetType, profileId);
+    if (!userId) return false;
+
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        customerId: reviewerId,
+        providerId: userId,
+        providerRole: targetType as unknown as UserRole,
+        status: 'COMPLETED',
+      },
+      select: { id: true },
+    });
+    return !!booking;
+  }
+
+  private async resolveProviderUserId(targetType: ReviewTargetType, profileId: string): Promise<string | null> {
+    switch (targetType) {
+      case 'CONTRACTOR': {
+        const p = await this.prisma.contractorProfile.findUnique({ where: { id: profileId }, select: { userId: true } });
+        return p?.userId ?? null;
+      }
+      case 'LABOUR': {
+        const p = await this.prisma.labourProfile.findUnique({ where: { id: profileId }, select: { userId: true } });
+        return p?.userId ?? null;
+      }
+      case 'SERVICE_EXPERT': {
+        const p = await this.prisma.serviceExpertProfile.findUnique({ where: { id: profileId }, select: { userId: true } });
+        return p?.userId ?? null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  private async hasPaidOrder(reviewerId: string, targetType: ReviewTargetType, targetId: string): Promise<boolean> {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        order: { buyerId: reviewerId, paymentStatus: 'PAID' },
+        ...(targetType === 'MATERIAL'
+          ? { materialId: targetId }
+          : { material: { supplierId: targetId } }),
+      },
+      select: { id: true },
+    });
+    return !!orderItem;
   }
 
   private async updateAggregates(targetType: ReviewTargetType, targetId: string) {

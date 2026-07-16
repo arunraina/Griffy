@@ -1,16 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
+import WriteReviewModal from '@/components/WriteReviewModal';
 import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
 import { trackEvent } from '@/lib/analytics';
+import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 
 interface Review {
   id: string;
   rating: number;
   comment: string | null;
+  isVerified: boolean;
   createdAt: string;
   reviewer: { name: string; avatarUrl: string | null };
 }
@@ -40,9 +44,16 @@ interface Props {
 }
 
 export default function ContractorDetailClient({ profile: p, reviews }: Props) {
+  const router = useRouter();
   const [bioExpanded,    setBioExpanded]    = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
+
+  useEffect(() => {
+    checkReviewEligibility('CONTRACTOR', p.id).then(setEligibility).catch(() => setEligibility(null));
+  }, [p.id]);
 
   const bio        = p.bio ?? '';
   const bioShort   = bio.slice(0, 180);
@@ -183,6 +194,16 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
 
             {/* Reviews */}
             <Section title={`Reviews (${p.totalReviews})`} id="reviews">
+              {eligibility && (
+                eligibility.eligible ? (
+                  <button onClick={() => setReviewModalOpen(true)}
+                    className="mb-5 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2 rounded-xl transition-colors">
+                    ✍️ Write a Review
+                  </button>
+                ) : eligibility.reason && (
+                  <p className="text-xs text-[#A08070] bg-[#FAEEE9] border border-[#E8C4B0] rounded-lg px-3 py-2 mb-5">{eligibility.reason}</p>
+                )
+              )}
               {reviews.length === 0 ? (
                 <p className="text-sm text-[#A08070]">No reviews yet.</p>
               ) : (
@@ -217,7 +238,12 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
                               {rInitials}
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer.name}</p>
+                                {r.isVerified && (
+                                  <span className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">✓ Verified</span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-yellow-500 text-xs">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                                 <span className="text-xs text-[#A08070]">{rDate}</span>
@@ -330,6 +356,15 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
         providerId={p.userId}
         providerRole="CONTRACTOR"
         ctaLabel="Send Request"
+      />
+      <WriteReviewModal
+        open={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        onSubmitted={() => router.refresh()}
+        targetType="CONTRACTOR"
+        targetId={p.id}
+        targetName={p.name}
+        willBeVerified={eligibility?.wouldBeVerified ?? false}
       />
     </div>
   );

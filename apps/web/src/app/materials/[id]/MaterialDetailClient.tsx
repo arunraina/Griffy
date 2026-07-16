@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { trackEvent } from '@/lib/analytics';
+import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
+import WriteReviewModal from '@/components/WriteReviewModal';
 
 interface Review {
   id: string;
   rating: number;
   comment: string | null;
+  isVerified: boolean;
   createdAt: string;
   reviewer: { name: string; avatarUrl: string | null };
 }
@@ -43,16 +47,20 @@ interface Props {
 }
 
 export default function MaterialDetailClient({ material: m, reviews }: Props) {
+  const router = useRouter();
   const { addItem } = useCart();
   const [qty,            setQty]            = useState(1);
   const [activeImage,    setActiveImage]    = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [descExpanded,   setDescExpanded]   = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', city: '', pincode: '', quantity: '', message: '' });
 
   useEffect(() => {
     trackEvent('view_item', { item_id: m.id, item_category: 'material', item_name: m.name });
+    checkReviewEligibility('MATERIAL', m.id).then(setEligibility).catch(() => setEligibility(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
 
@@ -208,6 +216,16 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
 
             {/* Reviews */}
             <Section title={`Reviews (${m.totalReviews})`} id="reviews">
+              {eligibility && (
+                eligibility.eligible ? (
+                  <button onClick={() => setReviewModalOpen(true)}
+                    className="mb-5 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2 rounded-xl transition-colors">
+                    ✍️ Write a Review
+                  </button>
+                ) : eligibility.reason && (
+                  <p className="text-xs text-[#A08070] bg-[#FAEEE9] border border-[#E8C4B0] rounded-lg px-3 py-2 mb-5">{eligibility.reason}</p>
+                )
+              )}
               {reviews.length === 0 ? (
                 <p className="text-sm text-[#A08070]">No reviews yet.</p>
               ) : (
@@ -242,7 +260,12 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
                               {rInitials}
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer.name}</p>
+                                {r.isVerified && (
+                                  <span className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">✓ Verified Purchase</span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-yellow-500 text-xs">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                                 <span className="text-xs text-[#A08070]">{rDate}</span>
@@ -422,6 +445,15 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
           </div>
         </div>
       )}
+      <WriteReviewModal
+        open={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        onSubmitted={() => router.refresh()}
+        targetType="MATERIAL"
+        targetId={m.id}
+        targetName={m.name}
+        willBeVerified={eligibility?.wouldBeVerified ?? false}
+      />
     </div>
   );
 }

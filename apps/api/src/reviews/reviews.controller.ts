@@ -17,6 +17,16 @@ export class ReviewsController {
     return this.reviews.findByTarget(targetType, targetId);
   }
 
+  @Get('eligibility')
+  @UseGuards(AuthGuard)
+  checkEligibility(
+    @CurrentUser() user: User,
+    @Query('targetType') targetType: ReviewTargetType,
+    @Query('targetId') targetId: string,
+  ) {
+    return this.reviews.checkEligibility(user.id, targetType, targetId);
+  }
+
   @Post()
   @UseGuards(AuthGuard)
   create(@CurrentUser() user: User, @Body() body: CreateReviewDto) {
