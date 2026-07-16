@@ -42,6 +42,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
     isAvailable:  raw.isAvailable ?? true,
     listingType:  raw.listingType ?? 'buy',
     createdAt:    raw.createdAt ?? new Date().toISOString(),
+    sellerId:     raw.seller?.user?.id ?? null,
     sellerName:   raw.seller?.user?.name ?? 'Property Seller',
     sellerPhone:  raw.seller?.user?.phone ?? null,
   };

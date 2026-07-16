@@ -46,7 +46,7 @@ export class PropertiesService {
   async findOne(id: string) {
     const property = await this.prisma.property.findUnique({
       where: { id },
-      include: { seller: { select: { user: { select: { name: true, phone: true } } } } },
+      include: { seller: { select: { user: { select: { id: true, name: true, phone: true } } } } },
     });
     if (!property || property.isHidden) throw new NotFoundException('Property listing not found');
     return property;

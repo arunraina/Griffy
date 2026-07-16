@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { isEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { useChat } from '@/context/ChatContext';
 import NotificationBell from './NotificationBell';
 import SearchBar from './SearchBar';
 
@@ -39,6 +40,7 @@ export default function Navbar() {
   const MARKETPLACE_LINKS = getMarketplaceLinks();
   const { count: cartCount } = useCart();
   const { unreadCount } = useNotifications();
+  const { unreadCount: chatUnreadCount } = useChat();
 
   const [user,          setUser]          = useState<UserInfo | null>(null);
   const [menuOpen,      setMenuOpen]      = useState(false);
@@ -117,6 +119,14 @@ export default function Navbar() {
             <>
               <Link href="/saved" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Saved">
                 <span className="text-lg">♡</span>
+              </Link>
+              <Link href="/messages" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Messages">
+                <span className="text-lg">💬</span>
+                {chatUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+                  </span>
+                )}
               </Link>
               <NotificationBell />
               <Link href="/cart" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Cart">
@@ -227,6 +237,10 @@ export default function Navbar() {
                 <Link href="/notifications" onClick={() => setMenuOpen(false)}
                   className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
                   🔔 Notifications{unreadCount > 0 ? ` (${unreadCount})` : ''}
+                </Link>
+                <Link href="/messages" onClick={() => setMenuOpen(false)}
+                  className="text-gray-600 text-sm font-medium hover:text-[#C0593A] transition-colors py-1">
+                  💬 Messages{chatUnreadCount > 0 ? ` (${chatUnreadCount})` : ''}
                 </Link>
               </>
             )}

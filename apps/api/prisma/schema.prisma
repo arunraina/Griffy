@@ -147,6 +147,9 @@ model User {
   turnkeyProjectsAsProvider  TurnkeyProject[] @relation("TurnkeyProjectProvider")
   kycDetail                  KycDetail?
   refundsInitiated           Refund[]
+  conversationsAsUserA       Conversation[]   @relation("ConversationUserA")
+  conversationsAsUserB       Conversation[]   @relation("ConversationUserB")
+  messagesSent               Message[]        @relation("MessageSender")
 
   @@map("users")
 }
@@ -888,4 +891,39 @@ model KycDetail {
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
   @@map("kyc_details")
+}
+
+// ---------------------------------------------------------------------------
+// Chat — 1:1 direct messaging. userAId is always the lexicographically
+// smaller of the two participant IDs (enforced in ChatService), so the
+// unique constraint catches both orderings of the same pair.
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id            String    @id @default(uuid())
+  userAId       String    @map("user_a_id")
+  userA         User      @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String    @map("user_b_id")
+  userB         User      @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime  @default(now()) @map("last_message_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  messages      Message[]
+
+  @@unique([userAId, userBId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       @map("sender_id")
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  body           String
+  readAt         DateTime?    @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }

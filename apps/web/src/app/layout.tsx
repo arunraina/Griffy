@@ -10,6 +10,7 @@ import AnalyticsPageview from '@/components/AnalyticsPageview';
 import { CartProvider } from '@/context/CartContext';
 import { SavedProvider } from '@/context/SavedContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { ChatProvider } from '@/context/ChatContext';
 import { GA_MEASUREMENT_ID } from '@/lib/analytics';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -58,10 +59,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartProvider>
           <SavedProvider>
             <NotificationProvider>
-              <Navbar />
-              {children}
-              <Footer />
-              <ChatWidget />
+              <ChatProvider>
+                <Navbar />
+                {children}
+                <Footer />
+                <ChatWidget />
+              </ChatProvider>
             </NotificationProvider>
           </SavedProvider>
         </CartProvider>

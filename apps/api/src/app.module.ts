@@ -31,6 +31,7 @@ import { EarlyAccessModule } from './early-access/early-access.module';
 import { SearchModule } from './search/search.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { PortfolioModule } from './portfolio/portfolio.module';
     SearchModule,
     UploadsModule,
     PortfolioModule,
+    ChatModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

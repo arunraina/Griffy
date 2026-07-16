@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
+import { startConversation } from '@/lib/chat';
 
 interface PropertyListing {
   id: string;
@@ -20,6 +22,7 @@ interface PropertyListing {
   isAvailable: boolean;
   listingType: string;
   createdAt: string;
+  sellerId: string | null;
   sellerName: string;
   sellerPhone: string | null;
 }
@@ -52,11 +55,26 @@ function formatPrice(p: number, listingType: string): string {
 }
 
 export default function PropertyDetailClient({ listing: l }: Props) {
+  const router = useRouter();
   const [modalOpen,  setModalOpen]  = useState(false);
   const [name,       setName]       = useState('');
   const [phone,      setPhone]      = useState('');
   const [message,    setMessage]    = useState('');
   const [submitted,  setSubmitted]  = useState(false);
+  const [messaging,  setMessaging]  = useState(false);
+
+  async function handleSendMessage() {
+    if (!l.sellerId) return;
+    setMessaging(true);
+    try {
+      const conversation = await startConversation(l.sellerId);
+      router.push(`/messages/${conversation.id}`);
+    } catch {
+      router.push('/login');
+    } finally {
+      setMessaging(false);
+    }
+  }
 
   const typeLabel    = PROPERTY_TYPE_LABEL[l.propertyType] ?? l.propertyType;
   const typeIcon     = PROPERTY_ICON[l.propertyType] ?? '🏠';
@@ -227,9 +245,12 @@ export default function PropertyDetailClient({ listing: l }: Props) {
                 >
                   {ctaLabel}
                 </button>
-                <button className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] font-semibold py-3 rounded-xl transition-colors text-sm">
-                  Send Message
-                </button>
+                {l.sellerId && (
+                  <button onClick={handleSendMessage} disabled={messaging}
+                    className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 font-semibold py-3 rounded-xl transition-colors text-sm">
+                    {messaging ? 'Opening…' : 'Send Message'}
+                  </button>
+                )}
 
                 <div className="border-t border-[#F0E8E2] pt-4 space-y-2.5">
                   <div className="flex items-center gap-2 text-sm text-[#6B5248]">

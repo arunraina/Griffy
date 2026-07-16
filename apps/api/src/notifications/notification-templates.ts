@@ -24,7 +24,8 @@ export type NotificationEvent =
   | 'profile.rejected'
   | 'project.bid_received'
   | 'project.bid_accepted'
-  | 'project.bid_rejected';
+  | 'project.bid_rejected'
+  | 'chat.message_received';
 
 export interface RenderedNotification {
   title: string;
@@ -142,6 +143,13 @@ const templates: Record<NotificationEvent, (payload: Payload, appBaseUrl: string
     whatsappText: `Your bid on "${p.projectTitle}" was not selected this time. View: ${base}/projects/${p.projectId}`,
     emailSubject: 'Update on your Griffy bid',
     linkUrl: `${base}/projects/${p.projectId}`,
+  }),
+  'chat.message_received': (p, base) => ({
+    title: 'New message',
+    body: `${p.senderName} sent you a message.`,
+    whatsappText: `${p.senderName} sent you a message on Griffy. View: ${base}/messages/${p.conversationId}`,
+    emailSubject: `New message from ${p.senderName} on Griffy`,
+    linkUrl: `${base}/messages/${p.conversationId}`,
   }),
 };
 

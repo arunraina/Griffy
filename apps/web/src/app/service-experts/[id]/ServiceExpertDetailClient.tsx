@@ -9,6 +9,7 @@ import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
 import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
+import { startConversation } from '@/lib/chat';
 
 interface Review {
   id: string;
@@ -49,10 +50,23 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
   const [modalOpen,      setModalOpen]      = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
+  const [messaging,      setMessaging]      = useState(false);
 
   useEffect(() => {
     checkReviewEligibility('SERVICE_EXPERT', p.id).then(setEligibility).catch(() => setEligibility(null));
   }, [p.id]);
+
+  async function handleSendMessage() {
+    setMessaging(true);
+    try {
+      const conversation = await startConversation(p.userId);
+      router.push(`/messages/${conversation.id}`);
+    } catch {
+      router.push('/login');
+    } finally {
+      setMessaging(false);
+    }
+  }
 
   const bio       = p.bio ?? '';
   const bioShort  = bio.slice(0, 180);
@@ -308,8 +322,9 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
                 className="w-full bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold py-3.5 rounded-xl transition-colors text-sm">
                 Book Consultation
               </button>
-              <button className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] font-semibold py-3 rounded-xl transition-colors text-sm">
-                Send Message
+              <button onClick={handleSendMessage} disabled={messaging}
+                className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 font-semibold py-3 rounded-xl transition-colors text-sm">
+                {messaging ? 'Opening…' : 'Send Message'}
               </button>
 
               <div className="border-t border-[#F0E8E2] pt-4 space-y-2.5">
