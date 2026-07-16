@@ -348,26 +348,6 @@ export default function OnboardingPage() {
             <span className="text-[#2C1810] text-base font-bold tracking-tight">Griffy</span>
           </div>
 
-          {/* DEV: role switcher — remove before prod */}
-          <div className="flex gap-2 mb-6 p-1 bg-[#F0E8E2] rounded-xl flex-wrap">
-            {([
-              ['CUSTOMER', '🏠 Home'],
-              ['SERVICE_PROVIDER', '🔨 Contractor'],
-              ['MATERIAL_SELLER', '📦 Seller'],
-              ['LAND_OWNER', '🌍 Land'],
-              ['PROPERTY_SELLER', '🏠 Prop Seller'],
-              ['BUILDER', '🏢 Builder'],
-              ['PROPERTY_AGENT', '🤝 Agent'],
-            ] as [Role, string][]).map(([r, label]) => (
-              <button key={r} type="button" onClick={() => setRole(r)}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors min-w-[80px] ${
-                  role === r ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
-                }`}>
-                {label}
-              </button>
-            ))}
-          </div>
-
           <h1 className="text-2xl font-bold text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>
             Set up your profile
           </h1>
