@@ -113,6 +113,12 @@ export class AdminController {
     return this.admin.getDashboardSummary();
   }
 
+  @Get('metrics')
+  async getMetrics(@CurrentUser() user: User) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.getGrowthMetrics();
+  }
+
   @Get('content/:type')
   async listContent(@CurrentUser() user: User, @Param('type') type: string) {
     await this.admin.assertAdmin(user.id);

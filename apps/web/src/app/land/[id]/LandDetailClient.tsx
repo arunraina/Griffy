@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { trackEvent } from '@/lib/analytics';
 
 interface LandListing {
   id: string;
@@ -60,7 +61,13 @@ export default function LandDetailClient({ listing: l }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
+    trackEvent('generate_lead', { item_id: l.id, item_category: 'land' });
   }
+
+  useEffect(() => {
+    trackEvent('view_item', { item_id: l.id, item_category: 'land', item_name: l.title });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [l.id]);
 
   return (
     <div className="min-h-screen bg-[#FDF8F5]">

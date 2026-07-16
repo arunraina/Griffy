@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { fetchAdminSummary, type AdminSummary } from '@/lib/admin';
 
 const QUICK_LINKS = [
+  { href: '/admin/metrics', icon: '📈', label: 'Growth Metrics', desc: 'Signups, GMV, bookings, and active supply — last 30 days and all-time.' },
   { href: '/admin/approvals', icon: '✅', label: 'Profile Approvals', desc: 'Review pending contractors, suppliers, and other professional profiles.' },
   { href: '/admin/kyc', icon: '🪪', label: 'KYC Review', desc: 'Manual identity and bank verification ahead of escrow payouts.' },
   { href: '/admin/moderation', icon: '🚩', label: 'Content Moderation', desc: 'Hide or demote spam/low-quality reviews, projects, and listings.' },

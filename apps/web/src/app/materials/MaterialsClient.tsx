@@ -8,6 +8,7 @@ import { getRegionData, type RegionKey } from '@/lib/regionUtils';
 import { isSubEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import SaveButton from '@/components/SaveButton';
+import { trackEvent } from '@/lib/analytics';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -565,6 +566,7 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
       return;
     }
     addItem({ id: p.id, name: p.name, imageIcon: p.imageIcon, price: p.price, unit: p.unit, sellerName: p.sellerName });
+    trackEvent('add_to_cart', { item_id: p.id, item_category: 'material', item_name: p.name, value: p.price });
   }
   function removeFromCart(id: string) {
     setQty(id, qtyOf(id) - 1);

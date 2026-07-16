@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useCart } from '@/context/CartContext';
+import { trackEvent } from '@/lib/analytics';
 
 interface Review {
   id: string;
@@ -41,12 +43,23 @@ interface Props {
 }
 
 export default function MaterialDetailClient({ material: m, reviews }: Props) {
+  const { addItem } = useCart();
   const [qty,            setQty]            = useState(1);
   const [activeImage,    setActiveImage]    = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [descExpanded,   setDescExpanded]   = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', city: '', pincode: '', quantity: '', message: '' });
+
+  useEffect(() => {
+    trackEvent('view_item', { item_id: m.id, item_category: 'material', item_name: m.name });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.id]);
+
+  function handleAddToCart() {
+    addItem({ id: m.id, name: m.name, imageIcon: '🧱', price: m.price, unit: m.unit, sellerName: m.supplier?.name ?? 'Griffy' }, qty);
+    trackEvent('add_to_cart', { item_id: m.id, item_category: 'material', item_name: m.name, quantity: qty, value: m.price * qty });
+  }
 
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 3);
   const desc      = m.description ?? '';
@@ -63,6 +76,7 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
   function handleEnquirySubmit(e: React.FormEvent) {
     e.preventDefault();
     setModalOpen(false);
+    trackEvent('generate_lead', { item_id: m.id, item_category: 'material', item_name: m.name });
     alert('Enquiry sent! The supplier will contact you shortly.');
   }
 
@@ -287,7 +301,7 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
                 className={`w-full font-bold py-3.5 rounded-xl transition-colors text-sm ${inStock
                   ? 'bg-[#C0593A] hover:bg-[#9E3F24] text-white'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                onClick={() => inStock && alert(`Added ${qty} × ${m.name} to cart.`)}
+                onClick={() => inStock && handleAddToCart()}
               >
                 {inStock ? '🛒 Add to Cart' : 'Out of Stock'}
               </button>
@@ -337,7 +351,7 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
             className={`font-bold px-5 py-2.5 rounded-xl text-sm transition-colors ${inStock
               ? 'bg-[#C0593A] hover:bg-[#9E3F24] text-white'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-            onClick={() => inStock && alert(`Added ${qty} × ${m.name} to cart.`)}
+            onClick={() => inStock && handleAddToCart()}
           >
             🛒 Add to Cart
           </button>

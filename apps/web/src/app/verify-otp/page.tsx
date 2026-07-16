@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { trackEvent } from '@/lib/analytics';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -55,6 +56,7 @@ function OtpForm() {
     const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
     setLoading(false);
     if (error) { setError(error.message); resetBoxes(); return; }
+    trackEvent('sign_up', { method: 'email' });
     router.push('/onboarding');
   }
 
@@ -93,6 +95,7 @@ function OtpForm() {
         body: JSON.stringify({ phone: fmt(phone), otp: token }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? 'Invalid OTP');
+      trackEvent('sign_up', { method: 'whatsapp' });
       router.push('/onboarding');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Verification failed');

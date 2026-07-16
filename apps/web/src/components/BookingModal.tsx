@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createBooking } from '@/lib/bookings';
+import { trackEvent } from '@/lib/analytics';
 
 interface Props {
   open: boolean;
@@ -41,6 +42,7 @@ export default function BookingModal({ open, onClose, providerName, providerId, 
       ].filter(Boolean).join('');
       await createBooking({ providerId, providerRole, scheduledAt: date, notes: notes || undefined });
       setSuccess(true);
+      trackEvent('generate_lead', { item_id: providerId, item_category: providerRole.toLowerCase(), lead_type: 'booking_request' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {

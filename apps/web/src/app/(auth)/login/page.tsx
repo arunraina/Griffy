@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { trackEvent } from '@/lib/analytics';
 
 type Mode   = 'options' | 'email' | 'wp-phone' | 'wp-otp';
 
@@ -24,6 +25,7 @@ export default function LoginPage() {
   function go(m: Mode) { setMode(m); setError(''); }
 
   async function handleGoogle() {
+    trackEvent('login', { method: 'google' });
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/dashboard` },
@@ -36,6 +38,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
+    trackEvent('login', { method: 'email' });
     router.push('/dashboard');
   }
 
@@ -53,6 +56,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.verifyOtp({ phone: fmt(phone), token, type: 'sms' });
     setLoading(false);
     if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
+    trackEvent('login', { method: 'whatsapp' });
     router.push('/dashboard');
   }
 

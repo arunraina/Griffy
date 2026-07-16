@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createProject } from '@/lib/projects';
 import { fetchMe, NotAuthenticatedError } from '@/lib/users';
+import { trackEvent } from '@/lib/analytics';
 
 const PROJECT_TYPES = [
   { id: 'turnkey', label: 'Turnkey / Full Construction', emoji: '🔑', desc: 'Have land? We handle design to move-in' },
@@ -95,6 +96,7 @@ function PostProjectForm() {
         timeline: form.timeline,
       });
       setSubmitted(true);
+      trackEvent('post_project', { project_type: form.projectType, city: form.city });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to post project. Please try again.');
     } finally {

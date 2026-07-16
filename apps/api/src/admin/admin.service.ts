@@ -247,4 +247,65 @@ export class AdminService {
   setKycStatus(userId: string, status: KycStatus, rejectionReason?: string) {
     return this.kyc.setStatus(userId, status, rejectionReason);
   }
+
+  async getGrowthMetrics() {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      newUsers, newOrders, paidOrders, newBookings, confirmedBookings,
+      usersByRole, activeListings, totalProjects, totalBids,
+    ] = await Promise.all([
+      this.prisma.user.findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } }),
+      this.prisma.order.findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } }),
+      this.prisma.order.findMany({ where: { paymentStatus: 'PAID' }, select: { totalAmount: true, createdAt: true } }),
+      this.prisma.booking.findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } }),
+      this.prisma.booking.findMany({ where: { status: { in: ['CONFIRMED', 'COMPLETED'] } }, select: { amount: true, createdAt: true } }),
+      this.prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+      Promise.all([
+        this.prisma.contractorProfile.count({ where: { approvalStatus: 'APPROVED' } }),
+        this.prisma.labourProfile.count({ where: { approvalStatus: 'APPROVED' } }),
+        this.prisma.serviceExpertProfile.count({ where: { approvalStatus: 'APPROVED' } }),
+        this.prisma.materialSupplierProfile.count({ where: { approvalStatus: 'APPROVED' } }),
+        this.prisma.material.count({ where: { isHidden: false } }),
+        this.prisma.land.count({ where: { isAvailable: true, isHidden: false } }),
+        this.prisma.property.count({ where: { isAvailable: true, isHidden: false } }),
+      ]),
+      this.prisma.project.count(),
+      this.prisma.bid.count(),
+    ]);
+
+    const [contractors, labour, serviceExperts, materialSuppliers, materials, lands, properties] = activeListings;
+
+    const gmvLast30d = paidOrders
+      .filter((o) => o.createdAt >= since)
+      .reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const gmvAllTime = paidOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const bookingsValueAllTime = confirmedBookings.reduce((sum, b) => sum + Number(b.amount), 0);
+
+    return {
+      newUsersByDay: bucketByDay(newUsers.map((u) => u.createdAt), since),
+      newOrdersByDay: bucketByDay(newOrders.map((o) => o.createdAt), since),
+      newBookingsByDay: bucketByDay(newBookings.map((b) => b.createdAt), since),
+      gmv: { last30d: gmvLast30d, allTime: gmvAllTime },
+      bookingsValueAllTime,
+      usersByRole: usersByRole.map((r) => ({ role: r.role, count: r._count._all })),
+      activeListings: { contractors, labour, serviceExperts, materialSuppliers, materials, lands, properties },
+      totalProjects,
+      totalBids,
+    };
+  }
+}
+
+function bucketByDay(dates: Date[], since: Date): { date: string; count: number }[] {
+  const counts = new Map<string, number>();
+  const day = new Date(since);
+  day.setHours(0, 0, 0, 0);
+  for (let d = new Date(day); d <= new Date(); d.setDate(d.getDate() + 1)) {
+    counts.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const date of dates) {
+    const key = date.toISOString().slice(0, 10);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([date, count]) => ({ date, count }));
 }

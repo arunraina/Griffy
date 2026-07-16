@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { searchByType, type SearchResult, type SearchType } from '@/lib/search';
 import { SkeletonListRows } from '@/components/Skeleton';
+import { trackEvent } from '@/lib/analytics';
 
 type Tab = 'all' | SearchType;
 
@@ -54,6 +55,8 @@ function SearchContent() {
         const next = {} as Record<SearchType, { items: SearchResult[]; total: number }>;
         GROUP_DEFS.forEach((g, i) => { next[g.key] = { items: pages[i].items, total: pages[i].total }; });
         setResults(next);
+        const totalFound = pages.reduce((sum, p) => sum + p.total, 0);
+        trackEvent('search', { search_term: query, results_count: totalFound });
       })
       .finally(() => setLoading(false));
   }, [query]);

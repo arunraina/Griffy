@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
 import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
+import { trackEvent } from '@/lib/analytics';
 
 interface Review {
   id: string;
@@ -55,6 +56,11 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
     { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   );
   const totalForPct = reviews.length || 1;
+
+  useEffect(() => {
+    trackEvent('view_item', { item_id: p.id, item_category: 'contractor', item_name: p.name });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id]);
 
   return (
     <div className="min-h-screen bg-[#FDF8F5]">

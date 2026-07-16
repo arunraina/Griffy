@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getProject, getProjectBids, submitBid, updateBidStatus, type Project, type Bid } from '@/lib/projects';
 import { fetchMe, type Me } from '@/lib/users';
 import { SkeletonDetailPage } from '@/components/Skeleton';
+import { trackEvent } from '@/lib/analytics';
 
 const TYPE_LABEL: Record<string, string> = {
   turnkey: 'Turnkey / Full Construction',
@@ -52,6 +53,7 @@ export default function ProjectDetailPage() {
     try {
       await submitBid(params.id, { bidAmount: Number(bidAmount), message: bidMessage.trim() });
       setBidSuccess(true);
+      trackEvent('submit_bid', { item_id: params.id, value: Number(bidAmount) });
     } catch (e) {
       setBidError(e instanceof Error ? e.message : 'Failed to submit bid');
     } finally {

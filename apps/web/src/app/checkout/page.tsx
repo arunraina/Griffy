@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext';
 import { createOrder } from '@/lib/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/payments';
 import { loadRazorpayScript, openRazorpayCheckout } from '@/lib/razorpay';
+import { trackEvent } from '@/lib/analytics';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
@@ -66,6 +67,7 @@ export default function CheckoutPage() {
   function handleAddressNext(e: React.FormEvent) {
     e.preventDefault();
     setStep('payment');
+    trackEvent('begin_checkout', { value: grandTotal, items: items.length });
   }
 
   function shippingAddressString() {
@@ -85,6 +87,7 @@ export default function CheckoutPage() {
         clearCart();
         setPlacedOrderId(order.id);
         setPlacing(false);
+        trackEvent('purchase', { transaction_id: order.id, value: grandTotal, payment_method: 'cod', items: items.length });
         return;
       }
 
@@ -113,6 +116,7 @@ export default function CheckoutPage() {
             await verifyPayment(response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
             clearCart();
             setPlacedOrderId(order.id);
+            trackEvent('purchase', { transaction_id: order.id, value: grandTotal, payment_method: 'online', items: items.length });
           } catch {
             setError(`Payment verification failed. Your order (${order.id}) is saved as pending — contact support with payment ID: ${response.razorpay_payment_id}`);
           } finally {

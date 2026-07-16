@@ -63,6 +63,30 @@ export async function fetchAdminSummary(): Promise<AdminSummary> {
   return res.json();
 }
 
+// ── Growth metrics ───────────────────────────────────────────────────────────
+
+export interface AdminMetrics {
+  newUsersByDay: { date: string; count: number }[];
+  newOrdersByDay: { date: string; count: number }[];
+  newBookingsByDay: { date: string; count: number }[];
+  gmv: { last30d: number; allTime: number };
+  bookingsValueAllTime: number;
+  usersByRole: { role: string; count: number }[];
+  activeListings: {
+    contractors: number; labour: number; serviceExperts: number;
+    materialSuppliers: number; materials: number; lands: number; properties: number;
+  };
+  totalProjects: number;
+  totalBids: number;
+}
+
+export async function fetchAdminMetrics(): Promise<AdminMetrics> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/metrics`, { headers });
+  if (!res.ok) throw new Error('Failed to load metrics');
+  return res.json();
+}
+
 // ── Profile approvals (contractor, labour, service-expert, material-supplier,
 // land-owner, property-seller, builder, property-agent) ─────────────────────
 
