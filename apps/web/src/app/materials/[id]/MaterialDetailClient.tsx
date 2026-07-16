@@ -7,7 +7,9 @@ import { useCart } from '@/context/CartContext';
 import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import WriteReviewModal from '@/components/WriteReviewModal';
+import ReportModal from '@/components/ReportModal';
 import BadgeRow from '@/components/BadgeRow';
+import { shareOrCopyLink } from '@/lib/share';
 
 interface Review {
   id: string;
@@ -54,6 +56,16 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
   const router = useRouter();
   const { addItem } = useCart();
   const [qty,            setQty]            = useState(1);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+
+  async function handleShare() {
+    const result = await shareOrCopyLink(`${m.name} on Griffy`);
+    if (result === 'copied') {
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    }
+  }
   const [activeImage,    setActiveImage]    = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [descExpanded,   setDescExpanded]   = useState(false);
@@ -359,10 +371,10 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
-                  🔗 Share
+                <button onClick={handleShare} className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
+                  {shareStatus === 'copied' ? '✓ Link Copied!' : '🔗 Share'}
                 </button>
-                <button className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
+                <button onClick={() => setReportModalOpen(true)} className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
                   ⚑ Report
                 </button>
               </div>
@@ -465,6 +477,13 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
         targetId={m.id}
         targetName={m.name}
         willBeVerified={eligibility?.wouldBeVerified ?? false}
+      />
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="MATERIAL"
+        targetId={m.id}
+        targetName={m.name}
       />
     </div>
   );

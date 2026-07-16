@@ -3,6 +3,7 @@
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { isSubEnabled } from '@/lib/featureFlags';
+import SaveButton from '@/components/SaveButton';
 
 type ListingType = 'Residential Plot' | 'Agricultural Land' | 'Commercial Plot' | 'Farm House' | 'Industrial';
 type SortKey = 'relevance' | 'price_asc' | 'price_desc' | 'area_asc' | 'area_desc' | 'newest';
@@ -490,7 +491,7 @@ function LandCard({ listing: l }: { listing: LandListing }) {
             className="px-3 py-2 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] rounded-xl transition-colors">
             📞 Contact
           </Link>
-          <button className="px-3 py-2 text-sm text-gray-400 hover:text-red-500 border border-gray-100 hover:border-red-200 rounded-xl transition-colors">♡</button>
+          <SaveButton type="land" id={l.id} title={l.title} subtitle={`${l.city}, ${l.state}`} href={`/land/${l.id}`} emoji="🌍" />
         </div>
       </div>
     </div>

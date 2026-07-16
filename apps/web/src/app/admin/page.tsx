@@ -9,6 +9,7 @@ const QUICK_LINKS = [
   { href: '/admin/approvals', icon: '✅', label: 'Profile Approvals', desc: 'Review pending contractors, suppliers, and other professional profiles.' },
   { href: '/admin/kyc', icon: '🪪', label: 'KYC Review', desc: 'Manual identity and bank verification ahead of escrow payouts.' },
   { href: '/admin/moderation', icon: '🚩', label: 'Content Moderation', desc: 'Hide or demote spam/low-quality reviews, projects, and listings.' },
+  { href: '/admin/reports', icon: '⚑', label: 'User Reports', desc: 'Profiles and listings flagged by users via the Report button.' },
   { href: '/admin/users', icon: '👥', label: 'Users', desc: 'Search users and suspend/unsuspend accounts.' },
   { href: '/admin/projects', icon: '🏗️', label: 'Posted Projects', desc: 'Manage the open project bidding marketplace.' },
   { href: '/admin/careers', icon: '💼', label: 'Career Applications', desc: 'Internship applications submitted via the Careers page.' },

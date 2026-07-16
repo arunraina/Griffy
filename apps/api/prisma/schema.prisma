@@ -150,6 +150,7 @@ model User {
   conversationsAsUserA       Conversation[]   @relation("ConversationUserA")
   conversationsAsUserB       Conversation[]   @relation("ConversationUserB")
   messagesSent               Message[]        @relation("MessageSender")
+  reportsSubmitted           Report[]
 
   @@map("users")
 }
@@ -965,4 +966,30 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+// ---------------------------------------------------------------------------
+// Reports — user-flagged profiles/listings, reviewed by admins via the
+// existing moderation surface. targetId isn't a real FK (deliberately, to
+// stay generic across all the target types Review already enumerates)
+// so a resolved report stays queryable even if the target is later deleted.
+// ---------------------------------------------------------------------------
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String           @map("reporter_id")
+  reporter   User             @relation(fields: [reporterId], references: [id])
+  targetType ReviewTargetType @map("target_type")
+  targetId   String           @map("target_id")
+  reason     String
+  status     ReportStatus     @default(OPEN)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@map("reports")
 }

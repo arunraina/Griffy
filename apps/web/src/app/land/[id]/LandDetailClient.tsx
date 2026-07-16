@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
+import { shareOrCopyLink } from '@/lib/share';
+import ReportModal from '@/components/ReportModal';
 
 interface LandListing {
   id: string;
@@ -48,6 +50,16 @@ function formatPrice(p: number): string {
 
 export default function LandDetailClient({ listing: l, openContact }: Props) {
   const [modalOpen, setModalOpen]     = useState(!!openContact);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+
+  async function handleShare() {
+    const result = await shareOrCopyLink(`${l.title} on Griffy`);
+    if (result === 'copied') {
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    }
+  }
   const [name, setName]               = useState('');
   const [phone, setPhone]             = useState('');
   const [message, setMessage]         = useState('');
@@ -207,7 +219,10 @@ export default function LandDetailClient({ listing: l, openContact }: Props) {
                 >
                   Contact Owner
                 </button>
-                <button className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] font-semibold py-3 rounded-xl transition-colors text-sm">
+                <button
+                  onClick={() => { setMessage('I\'d like to schedule a site visit for this listing.'); setModalOpen(true); }}
+                  className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] font-semibold py-3 rounded-xl transition-colors text-sm"
+                >
                   Schedule Site Visit
                 </button>
 
@@ -224,10 +239,10 @@ export default function LandDetailClient({ listing: l, openContact }: Props) {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <button className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
-                    🔗 Share
+                  <button onClick={handleShare} className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
+                    {shareStatus === 'copied' ? '✓ Link Copied!' : '🔗 Share'}
                   </button>
-                  <button className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
+                  <button onClick={() => setReportModalOpen(true)} className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
                     ⚑ Report
                   </button>
                 </div>
@@ -311,6 +326,13 @@ export default function LandDetailClient({ listing: l, openContact }: Props) {
           </div>
         </div>
       )}
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="LAND"
+        targetId={l.id}
+        targetName={l.title}
+      />
     </div>
   );
 }

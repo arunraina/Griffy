@@ -9,6 +9,8 @@ const TYPE_LABEL: Record<SavedType, string> = {
   contractor: 'Contractors',
   labour: 'Labour',
   service_expert: 'Service Experts',
+  land: 'Land',
+  property: 'Properties',
 };
 
 export default function SavedPage() {

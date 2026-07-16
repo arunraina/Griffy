@@ -33,6 +33,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { ChatModule } from './chat/chat.module';
 import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.modul
     PortfolioModule,
     ChatModule,
     TurnkeyProjectsModule,
+    ReportsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

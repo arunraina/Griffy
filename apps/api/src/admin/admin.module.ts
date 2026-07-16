@@ -4,9 +4,10 @@ import { AdminService } from './admin.service';
 import { KycModule } from '../kyc/kyc.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReportsModule } from '../reports/reports.module';
 
 @Module({
-  imports: [KycModule, NotificationsModule, PaymentsModule],
+  imports: [KycModule, NotificationsModule, PaymentsModule, ReportsModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

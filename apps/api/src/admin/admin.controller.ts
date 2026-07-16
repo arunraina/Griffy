@@ -3,9 +3,11 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
-import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus } from '@prisma/client';
+import { ReportsService } from '../reports/reports.service';
+import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
 import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
+import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -13,7 +15,20 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly payments: PaymentsService,
+    private readonly reports: ReportsService,
   ) {}
+
+  @Get('reports')
+  async listReports(@CurrentUser() user: User, @Query('status') status?: ReportStatus) {
+    await this.admin.assertAdmin(user.id);
+    return this.reports.listAll(status);
+  }
+
+  @Patch('reports/:id/status')
+  async updateReportStatus(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateReportStatusDto) {
+    await this.admin.assertAdmin(user.id);
+    return this.reports.setStatus(id, body.status);
+  }
 
   @Get('profiles/:type')
   async listProfiles(

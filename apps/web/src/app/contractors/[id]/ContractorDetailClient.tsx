@@ -6,6 +6,7 @@ import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
 import WriteReviewModal from '@/components/WriteReviewModal';
 import RequestTurnkeyProjectModal from '@/components/RequestTurnkeyProjectModal';
+import ReportModal from '@/components/ReportModal';
 import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
 import TierBadge from '@/components/TierBadge';
@@ -14,6 +15,7 @@ import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
+import { shareOrCopyLink } from '@/lib/share';
 
 interface Review {
   id: string;
@@ -58,7 +60,17 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
   const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
   const [messaging,      setMessaging]      = useState(false);
   const [messagingError, setMessagingError] = useState('');
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+
+  async function handleShare() {
+    const result = await shareOrCopyLink(`${p.name} on Griffy`);
+    if (result === 'copied') {
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    }
+  }
   const [turnkeyModalOpen, setTurnkeyModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     checkReviewEligibility('CONTRACTOR', p.id).then(setEligibility).catch(() => setEligibility(null));
@@ -357,10 +369,10 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
-                  🔗 Share Profile
+                <button onClick={handleShare} className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
+                  {shareStatus === 'copied' ? '✓ Link Copied!' : '🔗 Share Profile'}
                 </button>
-                <button className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
+                <button onClick={() => setReportModalOpen(true)} className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
                   ⚑ Report
                 </button>
               </div>
@@ -407,6 +419,13 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
         onClose={() => setTurnkeyModalOpen(false)}
         providerId={p.userId}
         providerName={p.name}
+      />
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="CONTRACTOR"
+        targetId={p.id}
+        targetName={p.name}
       />
     </div>
   );

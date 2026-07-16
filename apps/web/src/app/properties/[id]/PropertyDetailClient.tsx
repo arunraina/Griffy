@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
+import { shareOrCopyLink } from '@/lib/share';
+import ReportModal from '@/components/ReportModal';
 
 interface PropertyListing {
   id: string;
@@ -64,6 +66,16 @@ export default function PropertyDetailClient({ listing: l }: Props) {
   const [submitted,  setSubmitted]  = useState(false);
   const [messaging,  setMessaging]  = useState(false);
   const [messagingError, setMessagingError] = useState('');
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+
+  async function handleShare() {
+    const result = await shareOrCopyLink(`${l.title} on Griffy`);
+    if (result === 'copied') {
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    }
+  }
 
   async function handleSendMessage() {
     if (!l.sellerId) return;
@@ -275,10 +287,10 @@ export default function PropertyDetailClient({ listing: l }: Props) {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <button className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
-                    🔗 Share
+                  <button onClick={handleShare} className="flex-1 text-xs border border-[#EBE0D8] text-[#6B5248] hover:border-[#C0593A] hover:text-[#C0593A] py-2 rounded-lg transition-colors">
+                    {shareStatus === 'copied' ? '✓ Link Copied!' : '🔗 Share'}
                   </button>
-                  <button className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
+                  <button onClick={() => setReportModalOpen(true)} className="flex-1 text-xs border border-[#EBE0D8] text-gray-400 hover:text-red-500 hover:border-red-200 py-2 rounded-lg transition-colors">
                     ⚑ Report
                   </button>
                 </div>
@@ -361,6 +373,13 @@ export default function PropertyDetailClient({ listing: l }: Props) {
           </div>
         </div>
       )}
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType="PROPERTY"
+        targetId={l.id}
+        targetName={l.title}
+      />
     </div>
   );
 }

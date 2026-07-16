@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type SavedType = 'material' | 'contractor' | 'labour' | 'service_expert';
+export type SavedType = 'material' | 'contractor' | 'labour' | 'service_expert' | 'land' | 'property';
 
 export interface SavedItem {
   type: SavedType;
