@@ -6,9 +6,10 @@ import { AuthModule } from '../auth/auth.module';
 import { OrdersModule } from '../orders/orders.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TurnkeyProjectsModule } from '../turnkey-projects/turnkey-projects.module';
 
 @Module({
-  imports: [AuthModule, OrdersModule, BookingsModule, NotificationsModule],
+  imports: [AuthModule, OrdersModule, BookingsModule, NotificationsModule, TurnkeyProjectsModule],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService],
   exports: [PaymentsService],

@@ -1,13 +1,5 @@
 // All notification copy lives here. Add a new event by adding a key —
 // no schema migration needed, `Notification.type` is a free string.
-//
-// TODO(turnkey): 'project.update_posted' and 'project.accepted' are not
-// wired yet — TurnkeyProject/TurnkeyProjectUpdate exist in the schema but
-// have no service/controller built. Once that module exists, add these
-// two event keys here and call
-//   notifications.notify(project.customerId, 'project.update_posted', { percent, projectId })
-//   notifications.notify(project.customerId, 'project.accepted', { projectId })
-// from wherever updates get posted / a turnkey project gets accepted.
 
 export type NotificationEvent =
   | 'booking.created'
@@ -25,7 +17,15 @@ export type NotificationEvent =
   | 'project.bid_received'
   | 'project.bid_accepted'
   | 'project.bid_rejected'
-  | 'chat.message_received';
+  | 'chat.message_received'
+  | 'turnkey.requested'
+  | 'project.accepted'
+  | 'project.update_posted'
+  | 'milestone.submitted'
+  | 'milestone.approved'
+  | 'milestone.changes_requested'
+  | 'milestone.paid'
+  | 'milestone.payment_failed';
 
 export interface RenderedNotification {
   title: string;
@@ -150,6 +150,62 @@ const templates: Record<NotificationEvent, (payload: Payload, appBaseUrl: string
     whatsappText: `${p.senderName} sent you a message on Griffy. View: ${base}/messages/${p.conversationId}`,
     emailSubject: `New message from ${p.senderName} on Griffy`,
     linkUrl: `${base}/messages/${p.conversationId}`,
+  }),
+  'turnkey.requested': (p, base) => ({
+    title: 'New project request',
+    body: `You've been asked to take on "${p.projectTitle}".`,
+    whatsappText: `New turnkey project request: "${p.projectTitle}". View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'New turnkey project request on Griffy',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'project.accepted': (p, base) => ({
+    title: 'Project accepted',
+    body: `Your project "${p.projectTitle}" was accepted — work will begin soon.`,
+    whatsappText: `Your Griffy project "${p.projectTitle}" was accepted. View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'Your Griffy project was accepted',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'project.update_posted': (p, base) => ({
+    title: 'Project update',
+    body: `Your project is now ${p.percent}% complete.`,
+    whatsappText: `Your Griffy project "${p.projectTitle}" is now ${p.percent}% complete. View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'New update on your Griffy project',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'milestone.submitted': (p, base) => ({
+    title: 'Milestone submitted for review',
+    body: `"${p.milestoneTitle}" has been marked complete and is awaiting your review.`,
+    whatsappText: `Milestone "${p.milestoneTitle}" is ready for your review. View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'A milestone is awaiting your review',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'milestone.approved': (p, base) => ({
+    title: 'Milestone approved',
+    body: `"${p.milestoneTitle}" was approved — payment can now be released.`,
+    whatsappText: `Milestone "${p.milestoneTitle}" was approved on Griffy. View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'Your Griffy milestone was approved',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'milestone.changes_requested': (p, base) => ({
+    title: 'Changes requested',
+    body: `Changes were requested on "${p.milestoneTitle}": ${p.note}`,
+    whatsappText: `Changes requested on "${p.milestoneTitle}": ${p.note} View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'Changes requested on your Griffy milestone',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'milestone.paid': (p, base) => ({
+    title: 'Milestone paid',
+    body: `You've been paid ₹${Number(p.amountRupees).toLocaleString('en-IN')} for "${p.milestoneTitle}".`,
+    whatsappText: `₹${Number(p.amountRupees).toLocaleString('en-IN')} released for "${p.milestoneTitle}" on Griffy. View: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'Milestone payment received on Griffy',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
+  }),
+  'milestone.payment_failed': (p, base) => ({
+    title: 'Payment failed',
+    body: `Payment for "${p.milestoneTitle}" did not go through. Please retry.`,
+    whatsappText: `Payment for milestone "${p.milestoneTitle}" did not go through. Please retry: ${base}/turnkey-projects/${p.projectId}`,
+    emailSubject: 'Your Griffy milestone payment did not go through',
+    linkUrl: `${base}/turnkey-projects/${p.projectId}`,
   }),
 };
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import BookingModal from '@/components/BookingModal';
 import WriteReviewModal from '@/components/WriteReviewModal';
+import RequestTurnkeyProjectModal from '@/components/RequestTurnkeyProjectModal';
 import Avatar from '@/components/Avatar';
 import PortfolioGallery from '@/components/PortfolioGallery';
 import { trackEvent } from '@/lib/analytics';
@@ -54,6 +55,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
   const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
   const [messaging,      setMessaging]      = useState(false);
   const [messagingError, setMessagingError] = useState('');
+  const [turnkeyModalOpen, setTurnkeyModalOpen] = useState(false);
 
   useEffect(() => {
     checkReviewEligibility('CONTRACTOR', p.id).then(setEligibility).catch(() => setEligibility(null));
@@ -329,6 +331,10 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
                 {messaging ? 'Opening…' : 'Send Message'}
               </button>
               {messagingError && <p className="text-xs text-red-600 text-center">{messagingError}</p>}
+              <button onClick={() => setTurnkeyModalOpen(true)}
+                className="w-full text-[#6B5248] hover:text-[#C0593A] font-semibold py-2 text-xs transition-colors">
+                🔑 Request a Full Turnkey Project
+              </button>
 
               <div className="border-t border-[#F0E8E2] pt-4 space-y-2.5">
                 {[
@@ -388,6 +394,12 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
         targetId={p.id}
         targetName={p.name}
         willBeVerified={eligibility?.wouldBeVerified ?? false}
+      />
+      <RequestTurnkeyProjectModal
+        open={turnkeyModalOpen}
+        onClose={() => setTurnkeyModalOpen(false)}
+        providerId={p.userId}
+        providerName={p.name}
       />
     </div>
   );

@@ -1,8 +1,8 @@
 import { IsIn, IsInt, IsPositive, IsString, IsUUID } from 'class-validator';
 
 export class CreatePaymentOrderDto {
-  @IsIn(['order', 'booking'])
-  entityType!: 'order' | 'booking';
+  @IsIn(['order', 'booking', 'milestone'])
+  entityType!: 'order' | 'booking' | 'milestone';
 
   @IsUUID()
   entityId!: string;

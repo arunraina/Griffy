@@ -1,11 +1,12 @@
 import { createClient } from './supabase';
+import { NotAuthenticatedError } from './users';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function authHeaders(): Promise<Record<string, string>> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Not authenticated');
+  if (!session) throw new NotAuthenticatedError();
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${session.access_token}`,
@@ -13,7 +14,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 export async function createPaymentOrder(
-  entityType: 'order' | 'booking',
+  entityType: 'order' | 'booking' | 'milestone',
   entityId: string,
   amountInPaise: number,
 ): Promise<{ razorpayOrderId: string; amount: number; currency: string }> {

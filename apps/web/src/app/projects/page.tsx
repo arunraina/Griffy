@@ -57,6 +57,15 @@ export default function ProjectsPage() {
           )}
         </div>
 
+        <div className="bg-white border border-[#EBE0D8] rounded-xl px-4 py-3 mb-6 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-[#6B5248]">
+            Looking for a full-service, milestone-based project with a specific contractor or builder instead of open bidding?
+          </p>
+          <Link href="/turnkey-projects" className="text-xs font-semibold text-[#C0593A] hover:underline whitespace-nowrap">
+            🔑 Turnkey Projects →
+          </Link>
+        </div>
+
         <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setTypeFilter('')}

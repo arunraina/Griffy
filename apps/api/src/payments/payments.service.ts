@@ -7,8 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TurnkeyProjectsService } from '../turnkey-projects/turnkey-projects.service';
 
-export type PaymentEntityType = 'order' | 'booking';
+export type PaymentEntityType = 'order' | 'booking' | 'milestone';
 
 // Covers both payment.* and refund.* webhook shapes (refund.* handling
 // lands in Phase 4 Part B, once the Refund model exists) so this interface
@@ -44,6 +45,7 @@ export class PaymentsService {
     private readonly orders: OrdersService,
     private readonly bookings: BookingsService,
     private readonly notifications: NotificationsService,
+    private readonly turnkeyProjects: TurnkeyProjectsService,
   ) {}
 
   private get razorpay(): Razorpay {
@@ -57,6 +59,12 @@ export class PaymentsService {
   }
 
   async createOrder(entityType: PaymentEntityType, entityId: string, amountInPaise: number) {
+    if (entityType === 'milestone') {
+      // Throws if not APPROVED, already PAID, or the provider's KYC isn't
+      // VERIFIED — fail before ever touching Razorpay.
+      await this.turnkeyProjects.assertMilestoneReadyForPayment(entityId);
+    }
+
     const razorpayOrder = await this.razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
@@ -67,9 +75,11 @@ export class PaymentsService {
     if (entityType === 'order') {
       await this.prisma.order.update({ where: { id: entityId }, data: { razorpayOrderId: razorpayOrder.id } });
       await this.orders.updateStatus(entityId, 'PLACED');
-    } else {
+    } else if (entityType === 'booking') {
       await this.prisma.booking.update({ where: { id: entityId }, data: { razorpayOrderId: razorpayOrder.id } });
       await this.bookings.updateStatus(entityId, 'PENDING');
+    } else {
+      await this.turnkeyProjects.setMilestoneRazorpayOrder(entityId, razorpayOrder.id);
     }
 
     return { razorpayOrderId: razorpayOrder.id, amount: razorpayOrder.amount, currency: razorpayOrder.currency };
@@ -104,7 +114,13 @@ export class PaymentsService {
       return { success: true };
     }
 
-    this.logger.warn(`[payments] verify: no order/booking found for razorpayOrderId ${razorpayOrderId}`);
+    const milestone = await this.turnkeyProjects.findMilestoneByRazorpayOrderId(razorpayOrderId);
+    if (milestone) {
+      await this.turnkeyProjects.markMilestonePaid(milestone.id, razorpayPaymentId);
+      return { success: true };
+    }
+
+    this.logger.warn(`[payments] verify: no order/booking/milestone found for razorpayOrderId ${razorpayOrderId}`);
     return { success: true };
   }
 
@@ -161,6 +177,7 @@ export class PaymentsService {
       const { entityType, entityId } = paymentEntity.notes ?? {};
       if (entityType === 'order' && entityId) await this.orders.markPaid(entityId, paymentEntity.id);
       else if (entityType === 'booking' && entityId) await this.bookings.markPaid(entityId, paymentEntity.id);
+      else if (entityType === 'milestone' && entityId) await this.turnkeyProjects.markMilestonePaid(entityId, paymentEntity.id);
       return;
     }
 
@@ -168,6 +185,7 @@ export class PaymentsService {
       const { entityType, entityId } = paymentEntity.notes ?? {};
       if (entityType === 'order' && entityId) await this.orders.markPaymentFailed(entityId);
       else if (entityType === 'booking' && entityId) await this.bookings.markPaymentFailed(entityId);
+      else if (entityType === 'milestone' && entityId) await this.turnkeyProjects.markMilestonePaymentFailed(entityId);
       return;
     }
 
