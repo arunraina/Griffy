@@ -31,7 +31,7 @@ export class LabourProfilesService {
         user: { isSuspended: false },
         ...(city ? { serviceCities: { has: city } } : {}),
       },
-      include: { user: { select: { name: true, avatarUrl: true } } },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { avgRating: 'desc' },
     });
   }

@@ -5,6 +5,7 @@ type TradeSkill = 'Civil Contractor' | 'Renovation Contractor' | 'Architect' | '
 
 interface Contractor {
   id: string;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   type: ContractorType;
@@ -34,6 +35,7 @@ function mapContractorType(t: string): ContractorType {
 function mapProfile(p: any): Contractor {
   return {
     id: p.id,
+    userId: p.user?.id ?? p.userId,
     name: p.user?.name ?? 'Unknown',
     avatarUrl: p.user?.avatarUrl ?? null,
     type: mapContractorType(p.contractorType ?? ''),

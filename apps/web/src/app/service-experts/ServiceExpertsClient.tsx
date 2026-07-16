@@ -2,14 +2,17 @@
 
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
+import { startConversation } from '@/lib/chat';
+import { NotAuthenticatedError } from '@/lib/users';
 
 type SortKey = 'relevance' | 'rating' | 'price';
 type RatingFilter = 'any' | '4' | '4.5';
 
 interface ServiceExpertProfile {
   id: string;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   expertiseType: string;
@@ -206,8 +209,22 @@ function ServiceExpertsInner({ profiles }: { profiles: ServiceExpertProfile[] })
 }
 
 function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank: number }) {
+  const router = useRouter();
+  const [messaging, setMessaging] = useState(false);
   const initials = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const isBestMatch = rank < 3;
+
+  async function handleContact() {
+    setMessaging(true);
+    try {
+      const conversation = await startConversation(p.userId);
+      router.push(`/messages/${conversation.id}`);
+    } catch (err) {
+      if (err instanceof NotAuthenticatedError) router.push('/login?redirect=/service-experts');
+    } finally {
+      setMessaging(false);
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all border border-gray-100">
@@ -272,8 +289,9 @@ function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank:
           className="flex-1 text-center text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white py-2 rounded-xl transition-colors">
           View Profile
         </Link>
-        <button className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] py-2 rounded-xl transition-colors">
-          Contact
+        <button onClick={handleContact} disabled={messaging}
+          className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 py-2 rounded-xl transition-colors">
+          {messaging ? '…' : 'Contact'}
         </button>
         <SaveButton type="service_expert" id={p.id} title={p.name} subtitle={p.expertiseType} href={`/service-experts/${p.id}`} emoji="⚡" />
       </div>

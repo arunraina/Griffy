@@ -33,7 +33,7 @@ export class ServiceExpertProfilesService {
         ...(city ? { serviceCities: { has: city } } : {}),
         ...(expertiseType ? { expertiseType } : {}),
       },
-      include: { user: { select: { name: true, avatarUrl: true } } },
+      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { avgRating: 'desc' },
     });
   }

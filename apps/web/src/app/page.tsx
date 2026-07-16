@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SEO_KEYWORDS } from '@/lib/seo';
 import { isEnabled, isSubEnabled } from '@/lib/featureFlags';
 import { HomePriceTicker, CostCalculator } from './_components/HomeClientSections';
+import HomeHeroCTA from './_components/HomeHeroCTA';
 
 export const metadata: Metadata = {
   title: 'Griffy — Build Your Home with Trusted Contractors & Materials',
@@ -23,13 +24,6 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
 
-      {/* TEMP DEV LINKS — remove before launch */}
-      <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2 text-center text-xs font-semibold text-yellow-900 flex flex-wrap items-center justify-center gap-4">
-        <span>🚧 Dev only:</span>
-        <Link href="/dashboard" className="underline hover:text-yellow-700">My Dashboard</Link>
-        <Link href="/admin" className="underline hover:text-yellow-700">Admin Panel</Link>
-      </div>
-
       {/* ── SECTION 1: HERO ── */}
       <section className="bg-white border-b border-[#EBE0D8] px-6 py-20 text-center">
         <div className="max-w-[700px] mx-auto">
@@ -46,16 +40,7 @@ export default function HomePage() {
           </p>
 
           {/* Primary CTA */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-            <Link href="/signup"
-              className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-base px-10 py-4 rounded-xl transition-colors shadow-sm">
-              Get Started Free
-            </Link>
-            <Link href="/early-access"
-              className="inline-block bg-white hover:bg-[#FAEEE9] text-[#C0593A] font-bold text-base px-6 py-4 rounded-xl transition-colors border-2 border-[#C0593A]">
-              🚀 Get Early Access to the App
-            </Link>
-          </div>
+          <HomeHeroCTA />
 
           {/* Quick links */}
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-gray-500 mb-8">

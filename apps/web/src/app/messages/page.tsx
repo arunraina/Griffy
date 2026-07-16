@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchConversations, type Conversation } from '@/lib/chat';
+import { NotAuthenticatedError } from '@/lib/users';
 import { SkeletonListRows } from '@/components/Skeleton';
 
 function timeAgo(iso: string): string {
@@ -20,11 +21,15 @@ function timeAgo(iso: string): string {
 export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     fetchConversations()
       .then(setConversations)
-      .catch(() => setNeedsAuth(true));
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
+        else setLoadError(true);
+      });
     const interval = setInterval(() => {
       fetchConversations().then(setConversations).catch(() => undefined);
     }, 20_000);
@@ -36,7 +41,18 @@ export default function MessagesPage() {
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[#2C1810] font-semibold mb-4">Log in to view your messages.</p>
-          <Link href="/login" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+          <Link href="/login?redirect=/messages" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load your messages.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
         </div>
       </div>
     );

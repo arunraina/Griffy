@@ -2,6 +2,7 @@ import ServiceExpertsClient from './ServiceExpertsClient';
 
 interface ServiceExpertProfile {
   id: string;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   expertiseType: string;
@@ -21,6 +22,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v
 function mapExpert(p: any): ServiceExpertProfile {
   return {
     id: p.id,
+    userId: p.user?.id ?? p.userId,
     name: p.user?.name ?? 'Unknown',
     avatarUrl: p.user?.avatarUrl ?? null,
     expertiseType: p.expertiseType ?? 'Service Expert',

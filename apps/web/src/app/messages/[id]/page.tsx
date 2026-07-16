@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { fetchConversation, fetchMessages, sendChatMessage, markConversationRead, type Message } from '@/lib/chat';
-import { fetchMe } from '@/lib/users';
+import { fetchMe, NotAuthenticatedError } from '@/lib/users';
 
 export default function ConversationPage() {
   const params = useParams<{ id: string }>();
@@ -16,6 +16,7 @@ export default function ConversationPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -24,7 +25,10 @@ export default function ConversationPage() {
   }, [params.id]);
 
   useEffect(() => {
-    fetchMe().then((me) => setMyId(me.id)).catch(() => setNeedsAuth(true));
+    fetchMe().then((me) => setMyId(me.id)).catch((e) => {
+      if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
+      else setLoadError(true);
+    });
     fetchConversation(params.id).then((c) => {
       if (c?.otherUser) { setOtherName(c.otherUser.name); setOtherAvatar(c.otherUser.avatarUrl); }
     });
@@ -59,7 +63,18 @@ export default function ConversationPage() {
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[#2C1810] font-semibold mb-4">Log in to view this conversation.</p>
-          <Link href="/login" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+          <Link href={`/login?redirect=/messages/${params.id}`} className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load this conversation.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
         </div>
       </div>
     );

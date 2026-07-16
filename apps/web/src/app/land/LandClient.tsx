@@ -486,9 +486,10 @@ function LandCard({ listing: l }: { listing: LandListing }) {
             className="flex-1 text-center text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white py-2 rounded-xl transition-colors">
             View Details
           </Link>
-          <button className="px-3 py-2 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] rounded-xl transition-colors">
+          <Link href={`/land/${l.id}?contact=1`}
+            className="px-3 py-2 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] rounded-xl transition-colors">
             📞 Contact
-          </button>
+          </Link>
           <button className="px-3 py-2 text-sm text-gray-400 hover:text-red-500 border border-gray-100 hover:border-red-200 rounded-xl transition-colors">♡</button>
         </div>
       </div>

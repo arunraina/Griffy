@@ -2,10 +2,12 @@
 
 import { useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
 import Avatar from '@/components/Avatar';
+import { startConversation } from '@/lib/chat';
+import { NotAuthenticatedError } from '@/lib/users';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,6 +22,7 @@ type RatingFilter = 'any' | '4' | '4.5';
 
 interface Contractor {
   id: string;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   type: ContractorType;
@@ -295,11 +298,25 @@ const TYPE_BADGE: Record<ContractorType, string> = {
 };
 
 function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank: number }) {
+  const router = useRouter();
+  const [messaging, setMessaging] = useState(false);
   const initials   = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const rateLabel  = c.rateType === 'daily'
     ? `₹${c.rate.toLocaleString('en-IN')}/day`
     : `₹${(c.rate / 1000).toFixed(0)}k/project`;
   const isBestMatch = rank < 3;
+
+  async function handleContact() {
+    setMessaging(true);
+    try {
+      const conversation = await startConversation(c.userId);
+      router.push(`/messages/${conversation.id}`);
+    } catch (err) {
+      if (err instanceof NotAuthenticatedError) router.push('/login?redirect=/contractors');
+    } finally {
+      setMessaging(false);
+    }
+  }
 
   return (
     <div className={`bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all
@@ -380,8 +397,9 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
           className="flex-1 text-center text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white py-2 rounded-xl transition-colors">
           View Profile
         </Link>
-        <button className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] py-2 rounded-xl transition-colors">
-          Contact
+        <button onClick={handleContact} disabled={messaging}
+          className="flex-1 text-sm font-semibold border border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 py-2 rounded-xl transition-colors">
+          {messaging ? '…' : 'Contact'}
         </button>
         <SaveButton type="contractor" id={c.id} title={c.name} subtitle={c.type} href={`/contractors/${c.id}`} emoji="🏗️" />
       </div>

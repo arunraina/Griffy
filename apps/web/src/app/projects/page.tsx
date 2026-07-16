@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { listProjects, type Project } from '@/lib/projects';
+import { fetchMe } from '@/lib/users';
+
+const PROFESSIONAL_ROLES = new Set([
+  'CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT', 'MATERIAL_SUPPLIER',
+  'LAND_OWNER', 'PROPERTY_SELLER', 'BUILDER', 'PROPERTY_AGENT',
+]);
 
 const TYPE_LABEL: Record<string, string> = {
   turnkey: 'Turnkey / Full Construction',
@@ -19,23 +25,36 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
+  const [isProfessional, setIsProfessional] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     listProjects(typeFilter || undefined).then((p) => { setProjects(p); setLoading(false); });
   }, [typeFilter]);
 
+  useEffect(() => {
+    fetchMe().then((me) => setIsProfessional(PROFESSIONAL_ROLES.has(me.role))).catch(() => setIsProfessional(false));
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>Open Projects</h1>
-            <p className="text-[#6B5248] text-sm">Homeowners looking for contractors — bid on projects that fit your trade.</p>
+            <h1 className="text-2xl font-bold text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>
+              {isProfessional ? 'Bid on Projects' : 'Open Projects'}
+            </h1>
+            <p className="text-[#6B5248] text-sm">
+              {isProfessional
+                ? 'Homeowner-posted projects — find ones that match your trade and submit your price.'
+                : 'Post your project and let contractors, builders, and experts bid on it.'}
+            </p>
           </div>
-          <Link href="/post-project" className="bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
-            + Post a Project
-          </Link>
+          {!isProfessional && (
+            <Link href="/post-project" className="bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold px-5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
+              + Post a Project
+            </Link>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">
@@ -62,7 +81,9 @@ export default function ProjectsPage() {
           <div className="bg-white rounded-2xl border border-[#EBE0D8] p-10 text-center">
             <p className="text-4xl mb-3">🏗️</p>
             <p className="font-semibold text-[#2C1810] mb-1">No open projects right now</p>
-            <p className="text-sm text-[#6B5248]">Check back soon, or post your own project to get bids.</p>
+            <p className="text-sm text-[#6B5248]">
+              {isProfessional ? 'Check back soon for new projects to bid on.' : 'Check back soon, or post your own project to get bids.'}
+            </p>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">

@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { Suspense, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 
 type Mode   = 'options' | 'email' | 'wp-phone' | 'wp-otp';
 
-export default function LoginPage() {
+function LoginForm() {
   const [mode, setMode]         = useState<Mode>('options');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +20,10 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false);
 
   const router   = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   function go(m: Mode) { setMode(m); setError(''); }
 
@@ -28,7 +31,7 @@ export default function LoginPage() {
     trackEvent('login', { method: 'google' });
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}${redirectTo}` },
     });
   }
 
@@ -39,7 +42,7 @@ export default function LoginPage() {
     setLoading(false);
     if (error) { setError(error.message); return; }
     trackEvent('login', { method: 'email' });
-    router.push('/dashboard');
+    router.push(redirectTo);
   }
 
   async function handleSendOtp(e: React.FormEvent) {
@@ -57,7 +60,7 @@ export default function LoginPage() {
     setLoading(false);
     if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
     trackEvent('login', { method: 'whatsapp' });
-    router.push('/dashboard');
+    router.push(redirectTo);
   }
 
   function handleWpDigit(i: number, val: string) {
@@ -175,6 +178,14 @@ export default function LoginPage() {
         <Link href="/signup" className="text-[#C0593A] font-semibold hover:underline">Sign up free</Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
 

@@ -11,7 +11,7 @@ async function fetchLand(id: string): Promise<any | null> {
   } catch { return null; }
 }
 
-export default async function LandDetailPage({ params }: { params: { id: string } }) {
+export default async function LandDetailPage({ params, searchParams }: { params: { id: string }; searchParams: { contact?: string } }) {
   const raw = await fetchLand(params.id);
 
   if (!raw) {
@@ -42,5 +42,5 @@ export default async function LandDetailPage({ params }: { params: { id: string 
     ownerPhone:  raw.owner?.user?.phone ?? null,
   };
 
-  return <LandDetailClient listing={listing} />;
+  return <LandDetailClient listing={listing} openContact={searchParams.contact === '1'} />;
 }

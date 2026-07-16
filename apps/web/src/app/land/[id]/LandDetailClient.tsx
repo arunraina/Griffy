@@ -20,7 +20,7 @@ interface LandListing {
   ownerPhone: string | null;
 }
 
-interface Props { listing: LandListing }
+interface Props { listing: LandListing; openContact?: boolean }
 
 const LAND_TYPE_LABEL: Record<string, string> = {
   AGRICULTURAL: 'Agricultural Land',
@@ -46,8 +46,8 @@ function formatPrice(p: number): string {
   return `₹${p.toLocaleString('en-IN')}`;
 }
 
-export default function LandDetailClient({ listing: l }: Props) {
-  const [modalOpen, setModalOpen]     = useState(false);
+export default function LandDetailClient({ listing: l, openContact }: Props) {
+  const [modalOpen, setModalOpen]     = useState(!!openContact);
   const [name, setName]               = useState('');
   const [phone, setPhone]             = useState('');
   const [message, setMessage]         = useState('');

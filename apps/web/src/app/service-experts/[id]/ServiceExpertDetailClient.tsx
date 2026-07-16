@@ -10,6 +10,7 @@ import PortfolioGallery from '@/components/PortfolioGallery';
 import { trackEvent } from '@/lib/analytics';
 import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import { startConversation } from '@/lib/chat';
+import { NotAuthenticatedError } from '@/lib/users';
 
 interface Review {
   id: string;
@@ -51,6 +52,7 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
   const [messaging,      setMessaging]      = useState(false);
+  const [messagingError, setMessagingError] = useState('');
 
   useEffect(() => {
     checkReviewEligibility('SERVICE_EXPERT', p.id).then(setEligibility).catch(() => setEligibility(null));
@@ -58,11 +60,16 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
 
   async function handleSendMessage() {
     setMessaging(true);
+    setMessagingError('');
     try {
       const conversation = await startConversation(p.userId);
       router.push(`/messages/${conversation.id}`);
-    } catch {
-      router.push('/login');
+    } catch (err) {
+      if (err instanceof NotAuthenticatedError) {
+        router.push(`/login?redirect=/service-experts/${p.id}`);
+      } else {
+        setMessagingError('Something went wrong — please try again.');
+      }
     } finally {
       setMessaging(false);
     }
@@ -326,6 +333,7 @@ export default function ServiceExpertDetailClient({ profile: p, reviews }: Props
                 className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 font-semibold py-3 rounded-xl transition-colors text-sm">
                 {messaging ? 'Opening…' : 'Send Message'}
               </button>
+              {messagingError && <p className="text-xs text-red-600 text-center">{messagingError}</p>}
 
               <div className="border-t border-[#F0E8E2] pt-4 space-y-2.5">
                 {[

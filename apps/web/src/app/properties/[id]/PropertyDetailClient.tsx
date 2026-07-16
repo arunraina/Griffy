@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { startConversation } from '@/lib/chat';
+import { NotAuthenticatedError } from '@/lib/users';
 
 interface PropertyListing {
   id: string;
@@ -62,15 +63,21 @@ export default function PropertyDetailClient({ listing: l }: Props) {
   const [message,    setMessage]    = useState('');
   const [submitted,  setSubmitted]  = useState(false);
   const [messaging,  setMessaging]  = useState(false);
+  const [messagingError, setMessagingError] = useState('');
 
   async function handleSendMessage() {
     if (!l.sellerId) return;
     setMessaging(true);
+    setMessagingError('');
     try {
       const conversation = await startConversation(l.sellerId);
       router.push(`/messages/${conversation.id}`);
-    } catch {
-      router.push('/login');
+    } catch (err) {
+      if (err instanceof NotAuthenticatedError) {
+        router.push(`/login?redirect=/properties/${l.id}`);
+      } else {
+        setMessagingError('Something went wrong — please try again.');
+      }
     } finally {
       setMessaging(false);
     }
@@ -246,10 +253,13 @@ export default function PropertyDetailClient({ listing: l }: Props) {
                   {ctaLabel}
                 </button>
                 {l.sellerId && (
-                  <button onClick={handleSendMessage} disabled={messaging}
-                    className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 font-semibold py-3 rounded-xl transition-colors text-sm">
-                    {messaging ? 'Opening…' : 'Send Message'}
-                  </button>
+                  <>
+                    <button onClick={handleSendMessage} disabled={messaging}
+                      className="w-full border-2 border-[#C0593A] text-[#C0593A] hover:bg-[#FAEEE9] disabled:opacity-50 font-semibold py-3 rounded-xl transition-colors text-sm">
+                      {messaging ? 'Opening…' : 'Send Message'}
+                    </button>
+                    {messagingError && <p className="text-xs text-red-600 text-center">{messagingError}</p>}
+                  </>
                 )}
 
                 <div className="border-t border-[#F0E8E2] pt-4 space-y-2.5">

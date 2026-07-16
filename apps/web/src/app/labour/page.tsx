@@ -2,6 +2,7 @@ import LabourClient from './LabourClient';
 
 interface LabourProfile {
   id: string;
+  userId: string;
   name: string;
   avatarUrl: string | null;
   skillType: string;
@@ -21,6 +22,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v
 function mapLabour(p: any): LabourProfile {
   return {
     id: p.id,
+    userId: p.user?.id ?? p.userId,
     name: p.user?.name ?? 'Unknown',
     avatarUrl: p.user?.avatarUrl ?? null,
     skillType: p.skillType ?? 'General Labour',
