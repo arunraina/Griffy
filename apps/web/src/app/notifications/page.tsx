@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from '@/lib/notifications';
 import { useNotifications } from '@/context/NotificationContext';
+import { NotAuthenticatedError } from '@/lib/users';
 import { SkeletonListRows } from '@/components/Skeleton';
 
 const TYPE_EMOJI: Record<string, string> = {
@@ -40,12 +41,16 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const { refresh } = useNotifications();
 
   useEffect(() => {
     fetchNotifications({ pageSize: 50 })
       .then((page) => setItems(page.items))
-      .catch(() => setNeedsAuth(true))
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
+        else setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -61,12 +66,23 @@ export default function NotificationsPage() {
     refresh();
   }
 
+  if (!loading && loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load your notifications.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!loading && needsAuth) {
     return (
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[#2C1810] font-semibold mb-4">Log in to view your notifications.</p>
-          <Link href="/login" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+          <Link href="/login?redirect=/notifications" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
         </div>
       </div>
     );

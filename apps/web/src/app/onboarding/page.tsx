@@ -198,8 +198,8 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      // TODO: restore login redirect before prod — bypassed for testing
-      const r = (user?.user_metadata?.role ?? 'CUSTOMER') as Role;
+      if (!user) { router.replace('/login?redirect=/onboarding'); return; }
+      const r = (user.user_metadata?.role ?? 'CUSTOMER') as Role;
       if (r === 'ADMIN') { router.replace('/dashboard'); return; }
       setRole(r);
       setPageLoading(false);

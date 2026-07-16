@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchMyOrders, type Order } from '@/lib/orders';
+import { NotAuthenticatedError } from '@/lib/users';
 
 const STATUS_STYLE: Record<Order['status'], string> = {
   PLACED: 'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -18,20 +19,35 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     fetchMyOrders()
       .then((o) => setOrders(o))
-      .catch(() => setNeedsAuth(true))
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
+        else setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  if (!loading && loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load your orders.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!loading && needsAuth) {
     return (
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[#2C1810] font-semibold mb-4">Log in to view your orders.</p>
-          <Link href="/login" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+          <Link href="/login?redirect=/orders" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
         </div>
       </div>
     );

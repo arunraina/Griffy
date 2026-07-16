@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
+import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, NotAuthenticatedError, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
 import { uploadImage } from '@/lib/storage';
 import { Skeleton } from '@/components/Skeleton';
 
@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +47,10 @@ export default function ProfilePage() {
         fetchReferralStats().then(setReferral).catch(() => undefined);
         fetchMyAnalytics().then(setAnalytics).catch(() => undefined);
       })
-      .catch(() => setNeedsAuth(true))
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
+        else setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -109,12 +113,23 @@ export default function ProfilePage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load your profile.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (needsAuth || !me) {
     return (
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-[#2C1810] font-semibold mb-4">Log in to view your profile.</p>
-          <Link href="/login" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
+          <Link href="/login?redirect=/profile" className="text-[#C0593A] hover:underline font-semibold">Log In →</Link>
         </div>
       </div>
     );

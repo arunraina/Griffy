@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { fetchMe, type Me } from '@/lib/users';
+import { fetchMe, NotAuthenticatedError, type Me } from '@/lib/users';
 import {
   fetchMyBookings, fetchIncomingBookings,
   confirmBooking, cancelBooking,
@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState('overview');
 
   useEffect(() => {
@@ -81,9 +82,23 @@ export default function DashboardPage() {
         }
         setMe(data);
       })
-      .catch(() => router.replace('/login?redirect=/dashboard'))
+      .catch((e) => {
+        if (e instanceof NotAuthenticatedError) router.replace('/login?redirect=/dashboard');
+        else setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, [router]);
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-[#2C1810] font-semibold mb-2">Could not load your dashboard.</p>
+          <p className="text-sm text-[#6B5248]">Check your connection and try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !me) {
     return (
