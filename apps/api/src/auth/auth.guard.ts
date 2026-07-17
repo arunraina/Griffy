@@ -58,27 +58,46 @@ export class AuthGuard implements CanActivate {
 
     const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
 
-    const dbUser = await this.prisma.user.upsert({
-      where: { id: user.id },
-      create: {
-        id: user.id,
-        email: user.email!,
-        name:
-          (user.user_metadata?.name as string | undefined) ??
-          (user.user_metadata?.full_name as string | undefined) ??
-          user.email!.split('@')[0],
-        phone: (user.phone as string | undefined) || null,
-        role: this.resolveRole(user.user_metadata),
-        referredById,
-      },
-      update: {},
-    });
+    const dbUser = await this.upsertUser(user, referredById);
 
     if (dbUser.isSuspended) throw new ForbiddenException('This account has been suspended');
 
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).supabaseUser = user;
     (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).dbUser = dbUser;
     return true;
+  }
+
+  // A brand-new user's very first authenticated request often isn't alone —
+  // the browser fires several requests in parallel right after login (e.g.
+  // dashboard mount kicks off fetchMe(), a bookings/orders fetch, and the
+  // notification bell's unread-count check nearly simultaneously). Every one
+  // of them hits this same upsert for a row that doesn't exist yet, and
+  // Postgres only lets one concurrent INSERT win — the other upsert calls
+  // can come back as "required to return data, but found no record(s))"
+  // instead of cleanly resolving to the winner's row. Retry as a plain
+  // lookup in that case; by then the row certainly exists.
+  private async upsertUser(user: SupabaseUser, referredById: string | undefined): Promise<User> {
+    try {
+      return await this.prisma.user.upsert({
+        where: { id: user.id },
+        create: {
+          id: user.id,
+          email: user.email!,
+          name:
+            (user.user_metadata?.name as string | undefined) ??
+            (user.user_metadata?.full_name as string | undefined) ??
+            user.email!.split('@')[0],
+          phone: (user.phone as string | undefined) || null,
+          role: this.resolveRole(user.user_metadata),
+          referredById,
+        },
+        update: {},
+      });
+    } catch {
+      const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
+      if (existing) return existing;
+      throw new UnauthorizedException('Could not resolve user account');
+    }
   }
 
   private extractBearerToken(request: Request): string | null {
