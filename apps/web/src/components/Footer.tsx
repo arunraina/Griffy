@@ -10,6 +10,8 @@ const COLUMNS = [
       { label: 'Services',    href: '/service-experts' },
       { label: 'Labour',      href: '/contractors?type=labour' },
       { label: 'Leaderboard', href: '/leaderboard' },
+      { label: 'Browse by City', href: '/cities' },
+      { label: 'How It Works', href: '/how-it-works' },
       { label: 'Early Access (App)', href: '/early-access' },
     ],
   },
@@ -96,6 +98,7 @@ export default function Footer() {
             <Link href="/terms"   className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Terms</Link>
             <Link href="/refund-policy" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Refund Policy</Link>
             <Link href="/contact" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Contact</Link>
+            <Link href="/sitemap" className="text-gray-600 text-xs hover:text-gray-400 transition-colors">Sitemap</Link>
           </div>
         </div>
 

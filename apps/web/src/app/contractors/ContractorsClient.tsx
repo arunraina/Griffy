@@ -86,7 +86,7 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
   const [selectedTypes,  setSelectedTypes]  = useState<ContractorType[]>(initialTypes);
   const [selectedSkills, setSelectedSkills] = useState<TradeSkill[]>(initialSkills);
   const [experience,     setExperience]     = useState<ExperienceBand>('any');
-  const [location,       setLocation]       = useState('');
+  const [location,       setLocation]       = useState(params.get('city') ?? '');
   const [availableNow,   setAvailableNow]   = useState(false);
   const [ratingFilter,   setRatingFilter]   = useState<RatingFilter>('any');
   const [search,         setSearch]         = useState('');

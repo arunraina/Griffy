@@ -7,6 +7,8 @@ dist/
 .turbo/
 coverage/
 prisma/migrations/
+test-results/
+playwright-report/
 
 # Local-disk fallback for server-side uploads (invoices etc.) when S3 isn't
 # configured — never contains anything that should be committed.

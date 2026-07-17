@@ -473,6 +473,15 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
   const [priceMin,       setPriceMin]       = useState('');
   const [priceMax,       setPriceMax]       = useState('');
   const [inStockOnly,    setInStockOnly]    = useState(false);
+  const [compareIds,     setCompareIds]     = useState<string[]>([]);
+
+  function toggleCompare(id: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 3) return prev; // cap at 3 to keep the table readable
+      return [...prev, id];
+    });
+  }
   const [certifiedOnly,  setCertifiedOnly]  = useState(false);
   const [ratingFilter,   setRatingFilter]   = useState<RatingFilter>('any');
   const [nearMe,         setNearMe]         = useState(false);
@@ -889,8 +898,21 @@ function MaterialsInner({ sourceProducts }: { sourceProducts: Product[] }) {
                 {products.map(p => (
                   <ProductCard key={p.id} product={p} region={region} priceFactor={priceFactor}
                     warning={getWarning(p)} cartQty={qtyOf(p.id)}
-                    onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)} />
+                    onAdd={() => addToCart(p)} onRemove={() => removeFromCart(p.id)}
+                    compared={compareIds.includes(p.id)} onToggleCompare={() => toggleCompare(p.id)} />
                 ))}
+              </div>
+            )}
+            {compareIds.length >= 2 && (
+              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EBE0D8] shadow-lg px-4 py-3 z-40 flex items-center justify-between gap-3">
+                <p className="text-sm text-[#2C1810]"><strong>{compareIds.length}</strong> materials selected to compare</p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setCompareIds([])} className="text-sm text-[#6B5248] hover:underline">Clear</button>
+                  <a href={`/materials/compare?ids=${compareIds.join(',')}`}
+                    className="bg-[#C0593A] hover:bg-[#9E3F24] text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors">
+                    Compare →
+                  </a>
+                </div>
               </div>
             )}
           </div>
@@ -949,9 +971,10 @@ function RegionalBanner({ regionIcon, regionLabel, alerts, tips, tipsOpen, setTi
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product: p, region, priceFactor, warning, cartQty, onAdd, onRemove }: {
+function ProductCard({ product: p, region, priceFactor, warning, cartQty, onAdd, onRemove, compared, onToggleCompare }: {
   product: Product; region: RegionKey; priceFactor: number; warning: string | null;
   cartQty: number; onAdd: () => void; onRemove: () => void;
+  compared: boolean; onToggleCompare: () => void;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const isRegionalMatch = !!p.regionTag && p.regionTag === region;
@@ -1047,6 +1070,10 @@ function ProductCard({ product: p, region, priceFactor, warning, cartQty, onAdd,
           </Link>
           <SaveButton type="material" id={p.id} title={p.name} subtitle={p.brand} href={`/materials/${p.id}`} emoji="🧱" />
         </div>
+        <label className="flex items-center gap-1.5 text-xs text-[#6B5248] cursor-pointer mt-0.5">
+          <input type="checkbox" checked={compared} onChange={onToggleCompare} className="accent-[#C0593A]" />
+          Compare
+        </label>
       </div>
     </div>
   );

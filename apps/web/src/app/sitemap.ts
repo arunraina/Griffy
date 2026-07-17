@@ -5,7 +5,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://griffy.in';
 // Static, public marketing/product routes only — dynamic [id] listing pages
 // (contractors/[id], materials/[id], etc.) would need a DB query to
 // enumerate and are left for a later pass.
-const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
+export interface SitemapRoute { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }
+
+export const ROUTES: SitemapRoute[] = [
   { path: '/', priority: 1.0, changeFrequency: 'daily' },
   { path: '/estimate', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/estimate/cost', priority: 0.9, changeFrequency: 'monthly' },
@@ -30,9 +32,13 @@ const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.S
   { path: '/careers', priority: 0.4, changeFrequency: 'weekly' },
   { path: '/contact', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/help', priority: 0.4, changeFrequency: 'monthly' },
+  { path: '/how-it-works', priority: 0.4, changeFrequency: 'yearly' },
   { path: '/early-access', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/blog', priority: 0.3, changeFrequency: 'weekly' },
+  { path: '/press', priority: 0.3, changeFrequency: 'monthly' },
   { path: '/privacy', priority: 0.2, changeFrequency: 'yearly' },
   { path: '/terms', priority: 0.2, changeFrequency: 'yearly' },
+  { path: '/refund-policy', priority: 0.2, changeFrequency: 'yearly' },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
