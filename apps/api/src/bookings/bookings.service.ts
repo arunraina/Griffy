@@ -1,7 +1,21 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingStatus, UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+
+// Transitions only the provider may trigger (they're the one doing the work).
+const PROVIDER_ONLY_TRANSITIONS: Partial<Record<BookingStatus, BookingStatus[]>> = {
+  PENDING: ['CONFIRMED'],
+  CONFIRMED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['COMPLETED'],
+};
+
+// Transitions either party may trigger.
+const EITHER_PARTY_TRANSITIONS: Partial<Record<BookingStatus, BookingStatus[]>> = {
+  PENDING: ['CANCELLED'],
+  CONFIRMED: ['CANCELLED'],
+  IN_PROGRESS: ['CANCELLED'],
+};
 
 @Injectable()
 export class BookingsService {
@@ -57,9 +71,26 @@ export class BookingsService {
   async updateStatus(id: string, status: BookingStatus, userId?: string, razorpayPaymentId?: string) {
     const booking = await this.prisma.booking.findUnique({ where: { id } });
     if (!booking) throw new NotFoundException('Booking not found');
-    if (userId && booking.providerId !== userId && booking.customerId !== userId) {
-      throw new ForbiddenException();
+
+    // userId is only omitted for trusted internal callers (payment
+    // webhook/verify) — those bypass the party/transition checks below,
+    // which exist to stop a real end user from confirming/completing their
+    // own booking or skipping states via the API.
+    if (userId) {
+      if (booking.providerId !== userId && booking.customerId !== userId) {
+        throw new ForbiddenException();
+      }
+
+      const isProviderOnly = (PROVIDER_ONLY_TRANSITIONS[booking.status] ?? []).includes(status);
+      const isEitherParty = (EITHER_PARTY_TRANSITIONS[booking.status] ?? []).includes(status);
+      if (!isProviderOnly && !isEitherParty) {
+        throw new BadRequestException(`Cannot move a booking from ${booking.status} to ${status}`);
+      }
+      if (isProviderOnly && userId !== booking.providerId) {
+        throw new ForbiddenException('Only the provider can do that');
+      }
     }
+
     const updated = await this.prisma.booking.update({
       where: { id },
       data: { status, ...(razorpayPaymentId && { razorpayPaymentId }) },
