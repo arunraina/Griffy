@@ -68,7 +68,12 @@ export class PaymentsService {
     const razorpayOrder = await this.razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
-      receipt: `${entityType}_${entityId}`,
+      // Razorpay caps receipt at 40 chars — `${entityType}_${entityId}`
+      // (e.g. "milestone_<uuid>") overflows that for a 36-char UUID once the
+      // entity type prefix is longer than 3 chars. The full entityId (and
+      // its type) is already in `notes` below for reconciliation, so the
+      // receipt only needs a short, unique-enough reference.
+      receipt: `${entityType[0]}_${entityId}`,
       notes: { entityType, entityId },
     });
 
