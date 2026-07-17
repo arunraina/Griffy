@@ -7,7 +7,11 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "test:api": "npm run test:e2e -w @griffy/api",
+    "test:e2e": "npm run test:e2e -w @griffy/web",
+    "test:e2e:ui": "npm run test:e2e:ui -w @griffy/web",
+    "test:all": "npm run test:api && npm run test:e2e"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
