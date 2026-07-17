@@ -34,8 +34,10 @@ import { PortfolioModule } from './portfolio/portfolio.module';
 import { ChatModule } from './chat/chat.module';
 import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.module';
 import { ReportsModule } from './reports/reports.module';
+import { AppController } from './app.controller';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     // Serves the local-disk fallback for avatar/portfolio uploads (used when

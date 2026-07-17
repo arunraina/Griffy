@@ -11,7 +11,7 @@ async function bootstrap() {
   // UploadsController's own API path — reusing the same segment for both
   // would make this exclude rule accidentally strip the prefix from the
   // real /api/v1/uploads/image endpoint too.)
-  app.setGlobalPrefix('api/v1', { exclude: ['media/(.*)'] });
+  app.setGlobalPrefix('api/v1', { exclude: ['media/(.*)', 'health'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
