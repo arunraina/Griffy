@@ -34,12 +34,16 @@ test.describe('Admin', () => {
     await login(page, admin);
     await page.goto('/admin/approvals?type=contractor');
 
-    const row = page.getByText(contractor.email).first();
-    await expect(row).toBeVisible({ timeout: 10000 });
+    // The page dual-renders a mobile-card list (md:hidden) and a desktop
+    // table (hidden md:block) for the same rows. Scope to the real <tr> for
+    // this specific contractor — a plain "last Approve button on the page"
+    // would click whichever OTHER pending profile happens to render last
+    // (this dev DB accumulates leftover pending profiles across test runs).
+    const desktopRow = page.locator('tr', { hasText: contractor.email });
+    await expect(desktopRow).toBeVisible({ timeout: 10000 });
 
-    const approveButton = page.locator('button', { hasText: 'Approve' }).first();
-    await approveButton.click();
-    await expect(page.getByText(contractor.email)).not.toBeVisible({ timeout: 10000 });
+    await desktopRow.getByRole('button', { name: 'Approve' }).click();
+    await expect(page.getByText(contractor.email)).toHaveCount(0, { timeout: 10000 });
 
     const profile = await prisma.contractorProfile.findUnique({ where: { userId: contractor.userId } });
     expect(profile?.approvalStatus).toBe('APPROVED');

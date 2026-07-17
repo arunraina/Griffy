@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { fetchMe } from '@/lib/users';
 
 const NAV = [
   { href: '/admin',              icon: '📊', label: 'Dashboard'           },
@@ -23,19 +23,25 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      const role = user?.user_metadata?.role ?? '';
-      if (role !== 'ADMIN') {
-        router.replace('/dashboard');
-        return;
-      }
-      setChecking(false);
-    });
+    // Real admin-ness lives only in the database User.role column (set via
+    // an existing admin's setRole call), never in Supabase Auth's own
+    // user_metadata — that field is client-writable (a user could set it to
+    // 'ADMIN' from the browser console), which is exactly why AuthGuard on
+    // the API side never trusts it for this role either. Gate on the same
+    // source of truth the backend actually uses.
+    fetchMe()
+      .then((me) => {
+        if (me.role !== 'ADMIN') {
+          router.replace('/dashboard');
+          return;
+        }
+        setChecking(false);
+      })
+      .catch(() => router.replace('/dashboard'));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (checking) {
