@@ -1,103 +1,76 @@
 'use client';
 
-import { Suspense, useState, useRef } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
+import { signInWithGoogle, signInWithEmail, sendEmailOtp, sendPhoneOtp } from '@/lib/auth';
 
-const API = process.env.NEXT_PUBLIC_API_URL;
-
-type Mode   = 'options' | 'email' | 'wp-phone' | 'wp-otp';
+type Tab = 'mobile' | 'email';
+type EmailSubTab = 'magic' | 'password';
 
 function LoginForm() {
-  const [mode, setMode]         = useState<Mode>('options');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw]     = useState(false);
-  const [phone, setPhone]       = useState('');
-  const [wpDigits, setWpDigits] = useState(['', '', '', '', '', '']);
-  const wpRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [tab, setTab]             = useState<Tab>('mobile');
+  const [emailTab, setEmailTab]   = useState<EmailSubTab>('magic');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [showPw, setShowPw]       = useState(false);
+  const [phone, setPhone]         = useState('');
+  const [magicSent, setMagicSent] = useState(false);
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
 
   const router   = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   const redirectTo = searchParams.get('redirect') || '/dashboard';
 
-  function go(m: Mode) { setMode(m); setError(''); }
-
   async function handleGoogle() {
     trackEvent('login', { method: 'google' });
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}${redirectTo}` },
-    });
+    try {
+      await signInWithGoogle(redirectTo);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+    }
   }
 
-  async function handleEmail(e: React.FormEvent) {
-    e.preventDefault();
-    setError(''); setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    trackEvent('login', { method: 'email' });
-    router.push(redirectTo);
-  }
-
-  async function handleSendOtp(e: React.FormEvent) {
+  async function handleEmailPassword(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone) }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
-      go('wp-otp');
+      await signInWithEmail(email, password);
+      trackEvent('login', { method: 'email' });
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    setError(''); setLoading(true);
+    try {
+      await sendEmailOtp(email);
+      setMagicSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send magic link');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSendPhoneOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(''); setLoading(true);
+    try {
+      await sendPhoneOtp(fmt(phone), 'recaptcha-container');
+      router.push(`/verify-otp?method=phone&phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent(redirectTo)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function verifyWpOtp(token: string) {
-    setError(''); setLoading(true);
-    try {
-      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone), otp: token }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.message ?? 'Invalid OTP');
-      const { error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
-      if (error) throw error;
-      trackEvent('login', { method: 'whatsapp' });
-      router.push(redirectTo);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-      setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus();
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleWpDigit(i: number, val: string) {
-    const d = val.replace(/\D/g, '').slice(-1);
-    const next = [...wpDigits]; next[i] = d; setWpDigits(next);
-    if (d && i < 5) wpRefs.current[i + 1]?.focus();
-    if (next.every(Boolean)) verifyWpOtp(next.join(''));
-  }
-
-  function handleWpKey(i: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace') {
-      if (wpDigits[i]) { const n = [...wpDigits]; n[i] = ''; setWpDigits(n); }
-      else if (i > 0) wpRefs.current[i - 1]?.focus();
     }
   }
 
@@ -106,93 +79,89 @@ function LoginForm() {
       <h1 className="text-3xl font-bold text-center text-[#2C1810] mb-1" style={{ fontFamily: 'Georgia, serif' }}>
         Welcome back
       </h1>
-      <p className="text-center text-[#6B5248] text-sm mb-8">Log in to your Griffy account</p>
+      <p className="text-center text-[#6B5248] text-sm mb-8">Sign in to continue</p>
 
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#EBE0D8]">
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#EBE0D8] space-y-5">
 
-        {/* ── Main options ── */}
-        {mode === 'options' && (
-          <div className="space-y-3">
-            <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
-            <SocialBtn icon={<span className="text-xl">📱</span>} onClick={() => go('wp-phone')}>
-              Continue with Phone Number
-            </SocialBtn>
-            <Divider />
-            <button type="button" onClick={() => go('email')}
-              className="w-full py-3 rounded-lg border border-[#EBE0D8] text-[#6B5248] text-sm font-medium hover:bg-[#FDF8F5] transition-colors">
-              Continue with Email & Password
-            </button>
-          </div>
-        )}
+        <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
+        <Divider />
 
-        {/* ── Email / password ── */}
-        {mode === 'email' && (
-          <>
-            <Back onClick={() => go('options')} />
-            <form onSubmit={handleEmail} className="space-y-4">
-              <Field label="Email">
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com" required autoComplete="email" className={inp} />
-              </Field>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-[#2C1810]">Password</span>
-                  <Link href="/forgot-password" className="text-xs text-[#C0593A] hover:underline">Forgot?</Link>
-                </div>
-                <PasswordInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} />
+        <div className="flex bg-[#FDF8F5] rounded-xl p-1">
+          <button type="button" onClick={() => { setTab('mobile'); setError(''); }}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${tab === 'mobile' ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'}`}>
+            📱 Mobile
+          </button>
+          <button type="button" onClick={() => { setTab('email'); setError(''); }}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${tab === 'email' ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'}`}>
+            📧 Email
+          </button>
+        </div>
+
+        {tab === 'mobile' && (
+          <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+            <Field label="Mobile Number">
+              <div className="flex gap-2">
+                <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                  placeholder="9876543210" required maxLength={10} className={`${inp} flex-1`} />
               </div>
-              {error && <ErrBox>{error}</ErrBox>}
-              <PrimaryBtn loading={loading} loadingLabel="Logging in…">Log in</PrimaryBtn>
-            </form>
-          </>
-        )}
-
-        {/* ── WhatsApp: phone ── */}
-        {mode === 'wp-phone' && (
-          <>
-            <Back onClick={() => go('options')} />
-            <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
-            <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your phone</p>
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <Field label="Phone number">
-                <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                    placeholder="9876543210" required maxLength={10} className={`${inp} flex-1`} />
-                </div>
-              </Field>
-              {error && <ErrBox>{error}</ErrBox>}
-              <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP</PrimaryBtn>
-            </form>
-          </>
-        )}
-
-        {/* ── WhatsApp: OTP ── */}
-        {mode === 'wp-otp' && (
-          <>
-            <Back onClick={() => go('wp-phone')} label="← Change number" />
-            <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
-            <p className="text-xs text-[#A08070] mb-5">
-              Sent to <strong>+91 {phone}</strong>
-            </p>
-            <div className="flex justify-center gap-3 mb-4">
-              {wpDigits.map((d, i) => (
-                <input key={i} ref={el => { wpRefs.current[i] = el; }}
-                  type="text" inputMode="numeric" maxLength={1} value={d}
-                  onChange={e => handleWpDigit(i, e.target.value)}
-                  onKeyDown={e => handleWpKey(i, e)}
-                  disabled={loading}
-                  className={`w-12 h-12 text-center text-lg font-bold rounded-lg border-2 outline-none transition-colors bg-white text-[#2C1810] disabled:opacity-50 ${d ? 'border-[#C0593A]' : 'border-[#EBE0D8] focus:border-[#C0593A]'}`}
-                />
-              ))}
-            </div>
+            </Field>
             {error && <ErrBox>{error}</ErrBox>}
-            {loading && <PrimaryBtn loading={loading} loadingLabel="Verifying…">{''}</PrimaryBtn>}
-            <button type="button" onClick={e => handleSendOtp(e as unknown as React.FormEvent)}
-              className="w-full text-center text-xs text-[#A08070] hover:text-[#C0593A] transition-colors mt-2">
-              Resend OTP
-            </button>
-          </>
+            <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP</PrimaryBtn>
+            <div id="recaptcha-container" />
+          </form>
+        )}
+
+        {tab === 'email' && (
+          <div className="space-y-4">
+            <div className="flex gap-2 text-xs font-semibold">
+              <button type="button" onClick={() => { setEmailTab('magic'); setError(''); setMagicSent(false); }}
+                className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'magic' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
+                Magic Link
+              </button>
+              <button type="button" onClick={() => { setEmailTab('password'); setError(''); }}
+                className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'password' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
+                Password
+              </button>
+            </div>
+
+            {emailTab === 'magic' && (
+              magicSent ? (
+                <div className="text-center py-4">
+                  <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">📧</div>
+                  <p className="text-sm font-semibold text-[#2C1810] mb-1">Check your email</p>
+                  <p className="text-xs text-[#A08070]">We sent a magic link to {email}</p>
+                </div>
+              ) : (
+                <form onSubmit={handleMagicLink} className="space-y-4">
+                  <Field label="Email">
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      placeholder="you@example.com" required autoComplete="email" className={inp} />
+                  </Field>
+                  {error && <ErrBox>{error}</ErrBox>}
+                  <PrimaryBtn loading={loading} loadingLabel="Sending…">Send Magic Link</PrimaryBtn>
+                </form>
+              )
+            )}
+
+            {emailTab === 'password' && (
+              <form onSubmit={handleEmailPassword} className="space-y-4">
+                <Field label="Email">
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com" required autoComplete="email" className={inp} />
+                </Field>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-[#2C1810]">Password</span>
+                    <Link href="/forgot-password" className="text-xs text-[#C0593A] hover:underline">Forgot?</Link>
+                  </div>
+                  <PasswordInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} />
+                </div>
+                {error && <ErrBox>{error}</ErrBox>}
+                <PrimaryBtn loading={loading} loadingLabel="Logging in…">Log in</PrimaryBtn>
+              </form>
+            )}
+          </div>
         )}
 
       </div>
@@ -217,15 +186,6 @@ export default function LoginPage() {
 
 const fmt = (p: string) => p.startsWith('+') ? p : `+91${p}`;
 const inp  = 'w-full bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg px-4 py-3 text-sm text-[#2C1810] placeholder-[#A08070] outline-none focus:border-[#C0593A] transition-colors';
-
-function Back({ onClick, label = '← Back' }: { onClick: () => void; label?: string }) {
-  return (
-    <button type="button" onClick={onClick}
-      className="flex items-center gap-1 text-xs text-[#A08070] hover:text-[#C0593A] transition-colors mb-5">
-      {label}
-    </button>
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

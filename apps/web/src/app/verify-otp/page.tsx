@@ -5,16 +5,21 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
-
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp } from '@/lib/auth';
 
 type Mode = 'email' | 'wp-phone' | 'wp-otp';
 
 function OtpForm() {
   const searchParams = useSearchParams();
   const email        = searchParams.get('email') ?? '';
-  const initMode     = (searchParams.get('mode') === 'whatsapp' ? 'wp-phone' : 'email') as Mode;
+  const redirectTo   = searchParams.get('redirect') || '/dashboard';
   const initPhone    = searchParams.get('phone') ?? '';
+  // Arriving with method=phone&phone=X means login/signup already triggered
+  // the Firebase send and there's a pending confirmation waiting -- skip
+  // straight to code entry instead of asking for the number again.
+  const initMode     = (searchParams.get('method') === 'phone'
+    ? (initPhone ? 'wp-otp' : 'wp-phone')
+    : 'email') as Mode;
 
   const router   = useRouter();
   const supabase = createClient();
@@ -53,31 +58,33 @@ function OtpForm() {
   // ── Email OTP verify ──────────────────────────────────────────
   async function verifyEmail(token: string) {
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-    setLoading(false);
-    if (error) { setError(error.message); resetBoxes(); return; }
-    trackEvent('sign_up', { method: 'email' });
-    router.push('/onboarding');
+    try {
+      await verifyEmailOtp(email, token);
+      trackEvent('sign_up', { method: 'email' });
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+      resetBoxes();
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function resendEmail() {
     setError('');
+    // Resends the signup-confirmation email specifically (contains the same
+    // 6-digit code) -- distinct from sendEmailOtp's passwordless magic link.
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     if (error) { setError(error.message); return; }
     startTimer(); resetBoxes();
   }
 
-  // ── WhatsApp OTP ──────────────────────────────────────────────
-  async function sendWhatsappOtp(e?: React.FormEvent) {
+  // ── Phone OTP via Firebase ──────────────────────────────────────
+  async function sendPhoneCode(e?: React.FormEvent) {
     e?.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone) }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
+      await sendPhoneOtp(fmt(phone), 'recaptcha-container');
       setMode('wp-otp'); setDigits(['', '', '', '', '', '']);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
@@ -86,17 +93,12 @@ function OtpForm() {
     }
   }
 
-  async function verifyWhatsapp(token: string) {
+  async function verifyPhone(token: string) {
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone), otp: token }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? 'Invalid OTP');
-      trackEvent('sign_up', { method: 'whatsapp' });
-      router.push('/onboarding');
+      await verifyPhoneOtp(token);
+      trackEvent('sign_up', { method: 'phone' });
+      router.push(redirectTo);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Verification failed');
       resetBoxes();
@@ -113,7 +115,7 @@ function OtpForm() {
     if (next.every(Boolean)) {
       const token = next.join('');
       if (mode === 'email') verifyEmail(token);
-      else verifyWhatsapp(token);
+      else verifyPhone(token);
     }
   }
 
@@ -136,11 +138,9 @@ function OtpForm() {
     inputRefs.current[Math.min(pasted.length, 5)]?.focus();
     if (pasted.length === 6) {
       if (mode === 'email') verifyEmail(pasted);
-      else verifyWhatsapp(pasted);
+      else verifyPhone(pasted);
     }
   }
-
-  const isOtpMode = mode === 'email' || mode === 'wp-otp';
 
   return (
     <div className="min-h-screen bg-[#FDF8F5] flex flex-col">
@@ -193,7 +193,7 @@ function OtpForm() {
             </>
           )}
 
-          {/* ── WhatsApp: phone entry ── */}
+          {/* ── Phone: number entry ── */}
           {mode === 'wp-phone' && (
             <>
               <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">📱</div>
@@ -201,7 +201,7 @@ function OtpForm() {
                 Verify via Phone Number
               </h1>
               <p className="text-sm text-[#6B5248] text-center mb-8">Enter your phone number to receive an OTP</p>
-              <form onSubmit={sendWhatsappOtp} className="space-y-4">
+              <form onSubmit={sendPhoneCode} className="space-y-4">
                 <div className="flex gap-2">
                   <span className="flex items-center px-3 bg-white border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
@@ -213,11 +213,12 @@ function OtpForm() {
                   className="w-full flex items-center justify-center gap-2 bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm py-3 rounded-lg transition-colors disabled:opacity-60">
                   {loading ? <><SpinSvg />Sending…</> : 'Send OTP on Phone Number'}
                 </button>
+                <div id="recaptcha-container" />
               </form>
             </>
           )}
 
-          {/* ── WhatsApp: OTP entry ── */}
+          {/* ── Phone: OTP entry ── */}
           {mode === 'wp-otp' && (
             <>
               <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">📱</div>
@@ -231,9 +232,10 @@ function OtpForm() {
               {error && <ErrBox>{error}</ErrBox>}
               {loading && <Spinner />}
               <ResendRow canResend={canResend} countdown={countdown}
-                onResend={() => sendWhatsappOtp()}
+                onResend={() => sendPhoneCode()}
                 changeLabel="← Change number"
                 onChange={() => { setMode('wp-phone'); setError(''); }} />
+              <div id="recaptcha-container" />
             </>
           )}
 

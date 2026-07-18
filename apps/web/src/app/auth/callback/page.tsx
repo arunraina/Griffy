@@ -1,26 +1,38 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
-export default function AuthCallback() {
+function AuthCallbackInner() {
   const router   = useRouter();
+  const params    = useSearchParams();
   const supabase = createClient();
 
   useEffect(() => {
     async function finish() {
+      const name = localStorage.getItem('griffy_signup_name');
       const role = localStorage.getItem('griffy_signup_role');
+      const proLabel = localStorage.getItem('griffy_signup_pro_label');
       const referral_code = localStorage.getItem('griffy_signup_ref');
-      if (role || referral_code) {
-        await supabase.auth.updateUser({ data: { ...(role && { role }), ...(referral_code && { referral_code }) } });
+      if (name || role || proLabel || referral_code) {
+        await supabase.auth.updateUser({
+          data: {
+            ...(name && { name }),
+            ...(role && { role }),
+            ...(proLabel && { pro_label: proLabel }),
+            ...(referral_code && { referral_code }),
+          },
+        });
+        localStorage.removeItem('griffy_signup_name');
         localStorage.removeItem('griffy_signup_role');
+        localStorage.removeItem('griffy_signup_pro_label');
         localStorage.removeItem('griffy_signup_ref');
       }
-      router.replace('/dashboard');
+      router.replace(params.get('next') || '/dashboard');
     }
     finish();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
@@ -29,5 +41,13 @@ export default function AuthCallback() {
         <p className="text-sm text-[#6B5248]">Signing you in…</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={null}>
+      <AuthCallbackInner />
+    </Suspense>
   );
 }

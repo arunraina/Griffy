@@ -11,6 +11,7 @@ import { CartProvider } from '@/context/CartContext';
 import { SavedProvider } from '@/context/SavedContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { ChatProvider } from '@/context/ChatContext';
+import { AuthProvider } from '@/lib/auth-provider';
 import { GA_MEASUREMENT_ID } from '@/lib/analytics';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -56,18 +57,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Suspense fallback={null}>
           <AnalyticsPageview />
         </Suspense>
-        <CartProvider>
-          <SavedProvider>
-            <NotificationProvider>
-              <ChatProvider>
-                <Navbar />
-                {children}
-                <Footer />
-                <ChatWidget />
-              </ChatProvider>
-            </NotificationProvider>
-          </SavedProvider>
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <SavedProvider>
+              <NotificationProvider>
+                <ChatProvider>
+                  <Navbar />
+                  {children}
+                  <Footer />
+                  <ChatWidget />
+                </ChatProvider>
+              </NotificationProvider>
+            </SavedProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

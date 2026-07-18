@@ -1,10 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import ws from 'ws';
-import { PrismaService } from '../prisma/prisma.service';
-import { WhatsappSenderService } from '../notifications/whatsapp-sender.service';
 
 export interface OtpSession {
   access_token: string;
@@ -12,53 +11,46 @@ export interface OtpSession {
 }
 
 @Injectable()
-export class WhatsappOtpService {
+export class FirebasePhoneAuthService {
   private readonly supabase: SupabaseClient;
+  private readonly firebaseApp: admin.app.App;
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly whatsapp: WhatsappSenderService,
-    private readonly config: ConfigService,
-  ) {
+  constructor(private readonly config: ConfigService) {
     this.supabase = createClient(
       config.getOrThrow('SUPABASE_URL'),
       config.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { realtime: { transport: ws as any } },
     );
+
+    const apps = admin.apps;
+    this.firebaseApp = apps.length
+      ? (apps[0] as admin.app.App)
+      : admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId: config.getOrThrow('FIREBASE_PROJECT_ID'),
+            clientEmail: config.getOrThrow('FIREBASE_CLIENT_EMAIL'),
+            // .env keeps \n escaped literally; un-escape before use.
+            privateKey: config.getOrThrow('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+          }),
+        });
   }
 
-  async sendWhatsappOtp(phone: string): Promise<void> {
-    const otp       = this.generateOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    await this.prisma.whatsappOtp.deleteMany({ where: { phone } });
-    await this.prisma.whatsappOtp.create({ data: { phone, otp, expiresAt } });
-
+  // Verifies the Firebase ID token the client got from confirming its phone
+  // OTP with Firebase Auth, then signs the same phone number into Supabase
+  // via the admin API (AuthGuard only accepts Supabase JWTs, not Firebase
+  // ones) using a password derived deterministically from the phone number
+  // rather than one we'd have to store.
+  async signInWithFirebaseToken(idToken: string): Promise<OtpSession> {
+    let decoded: admin.auth.DecodedIdToken;
     try {
-      await this.whatsapp.send(phone, `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`);
-    } catch (err) {
-      throw new BadRequestException((err as Error).message);
+      decoded = await this.firebaseApp.auth().verifyIdToken(idToken);
+    } catch {
+      throw new BadRequestException('Invalid or expired verification');
     }
-  }
 
-  // Verifying the OTP only proves the phone number -- it doesn't by itself
-  // give the caller a Supabase session (AuthGuard requires a real Supabase
-  // JWT). So on success we also sign the phone in via Supabase's admin API,
-  // using a password we derive deterministically from the phone number
-  // rather than storing one, and return the resulting session tokens for
-  // the frontend to set via supabase.auth.setSession().
-  async verifyWhatsappOtp(phone: string, otp: string): Promise<OtpSession> {
-    const record = await this.prisma.whatsappOtp.findFirst({
-      where: { phone, otp, verified: false, expiresAt: { gt: new Date() } },
-    });
-
-    if (!record) throw new BadRequestException('Invalid or expired OTP');
-
-    await this.prisma.whatsappOtp.update({
-      where: { id: record.id },
-      data: { verified: true },
-    });
+    const phone = decoded.phone_number;
+    if (!phone) throw new BadRequestException('Token has no verified phone number');
 
     return this.mintSession(phone);
   }
@@ -92,9 +84,5 @@ export class WhatsappOtpService {
 
   private derivePassword(phone: string): string {
     return crypto.createHmac('sha256', this.config.getOrThrow('JWT_SECRET')).update(phone).digest('hex');
-  }
-
-  private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 }

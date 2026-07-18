@@ -2,7 +2,6 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationChannel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { WhatsappSenderService } from './whatsapp-sender.service';
 import { EmailService } from './email.service';
 import { NotificationEvent, renderNotification } from './notification-templates';
 
@@ -13,7 +12,6 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly whatsapp: WhatsappSenderService,
     private readonly email: EmailService,
   ) {}
 
@@ -58,8 +56,8 @@ export class NotificationsService {
 
   // Central entry point — call this from anywhere an event happens
   // (bookings, orders, admin approvals, ...). Always creates an IN_APP
-  // row synchronously so the bell reflects it immediately; WhatsApp/email
-  // dispatch happens in the background and can never fail the caller.
+  // row synchronously so the bell reflects it immediately; email dispatch
+  // happens in the background and can never fail the caller.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async notify(userId: string, event: NotificationEvent, payload: Record<string, any> = {}): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true, email: true } });
@@ -90,39 +88,20 @@ export class NotificationsService {
     event: NotificationEvent,
     rendered: ReturnType<typeof renderNotification>,
   ): Promise<void> {
-    let whatsappSent = false;
-
-    if (user.phone) {
-      try {
-        await this.whatsapp.send(user.phone, rendered.whatsappText);
-        whatsappSent = true;
-        await this.prisma.notification.create({
-          data: { userId, type: event, title: rendered.title, body: rendered.whatsappText, linkUrl: rendered.linkUrl, channel: NotificationChannel.WHATSAPP, status: 'SENT' },
-        });
-      } catch (err) {
-        this.logger.error(`[notifications:error] WhatsApp send failed (user ${userId}, event "${event}"): ${(err as Error).message}`);
-        await this.prisma.notification.create({
-          data: { userId, type: event, title: rendered.title, body: rendered.whatsappText, linkUrl: rendered.linkUrl, channel: NotificationChannel.WHATSAPP, status: 'FAILED' },
-        });
-      }
-    }
-
-    if (!whatsappSent) {
-      try {
-        await this.email.send(user.email, rendered.emailSubject, {
-          title: rendered.title,
-          body: rendered.body,
-          linkUrl: rendered.linkUrl,
-        });
-        await this.prisma.notification.create({
-          data: { userId, type: event, title: rendered.title, body: rendered.body, linkUrl: rendered.linkUrl, channel: NotificationChannel.EMAIL, status: 'SENT' },
-        });
-      } catch (err) {
-        this.logger.error(`[notifications:error] Email send failed (user ${userId}, event "${event}"): ${(err as Error).message}`);
-        await this.prisma.notification.create({
-          data: { userId, type: event, title: rendered.title, body: rendered.body, linkUrl: rendered.linkUrl, channel: NotificationChannel.EMAIL, status: 'FAILED' },
-        });
-      }
+    try {
+      await this.email.send(user.email, rendered.emailSubject, {
+        title: rendered.title,
+        body: rendered.body,
+        linkUrl: rendered.linkUrl,
+      });
+      await this.prisma.notification.create({
+        data: { userId, type: event, title: rendered.title, body: rendered.body, linkUrl: rendered.linkUrl, channel: NotificationChannel.EMAIL, status: 'SENT' },
+      });
+    } catch (err) {
+      this.logger.error(`[notifications:error] Email send failed (user ${userId}, event "${event}"): ${(err as Error).message}`);
+      await this.prisma.notification.create({
+        data: { userId, type: event, title: rendered.title, body: rendered.body, linkUrl: rendered.linkUrl, channel: NotificationChannel.EMAIL, status: 'FAILED' },
+      });
     }
   }
 }

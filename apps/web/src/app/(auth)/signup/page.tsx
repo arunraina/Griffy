@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
 import { isEnabled } from '@/lib/featureFlags';
+import { signInWithGoogle, signUpWithEmail, sendEmailOtp, sendPhoneOtp } from '@/lib/auth';
 
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
-type Mode = 'options' | 'email' | 'wp-phone' | 'wp-otp' | 'verify-choice';
-
-const API = process.env.NEXT_PUBLIC_API_URL;
+type Mode = 'options' | 'verify-choice';
+type Tab = 'mobile' | 'email';
+type EmailSubTab = 'magic' | 'password';
 
 const ALL_PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; icon: string; flagKey?: string; team?: boolean }[] = [
   { value: 'SERVICE_PROVIDER', label: 'Contractor',          sublabel: 'Builder / Designer', desc: 'Architect, designer, civil or renovation contractor', icon: '🏗️', flagKey: 'contractors' },
@@ -43,7 +43,6 @@ export default function SignupPage() {
 function SignupInner() {
   const params   = useSearchParams();
   const router   = useRouter();
-  const supabase = createClient();
   const PRO_ROLES = ALL_PRO_ROLES.filter(r => r.team || isEnabled(r.flagKey ?? ''));
 
   const [side,      setSide]      = useState<Side>(null);
@@ -51,12 +50,12 @@ function SignupInner() {
   const [role,      setRole]      = useState<Role | null>(null);
   const [proLabel,  setProLabel]  = useState('');
   const [mode,      setMode]      = useState<Mode>('options');
+  const [tab,       setTab]       = useState<Tab>('mobile');
+  const [emailTab,  setEmailTab]  = useState<EmailSubTab>('password');
 
-  // WhatsApp flow
+  // Phone flow
   const [wpName,   setWpName]   = useState('');
   const [phone,    setPhone]    = useState('');
-  const [wpDigits, setWpDigits] = useState(['', '', '', '', '', '']);
-  const wpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Email flow
   const [name,       setName]       = useState('');
@@ -66,6 +65,7 @@ function SignupInner() {
   const [confirm,    setConfirm]    = useState('');
   const [showPw,     setShowPw]     = useState(false);
   const [showCf,     setShowCf]     = useState(false);
+  const [magicSent,  setMagicSent]  = useState(false);
 
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -108,29 +108,31 @@ function SignupInner() {
     setFlowStep('auth');
   }
 
-  // ── Google ─────────────────────────────────────────────────────
-  async function handleGoogle() {
+  function stashSignupMetadata(nameToStash: string) {
+    if (nameToStash) localStorage.setItem('griffy_signup_name', nameToStash);
     if (role) localStorage.setItem('griffy_signup_role', role);
     if (proLabel) localStorage.setItem('griffy_signup_pro_label', proLabel);
     if (refCode) localStorage.setItem('griffy_signup_ref', refCode);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
   }
 
-  // ── WhatsApp: send OTP ─────────────────────────────────────────
-  async function handleSendOtp(e: React.FormEvent) {
+  // ── Google ─────────────────────────────────────────────────────
+  async function handleGoogle() {
+    stashSignupMetadata('');
+    try {
+      await signInWithGoogle('/dashboard');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+    }
+  }
+
+  // ── Phone: send OTP, then hand off to /verify-otp ───────────────
+  async function handleSendPhoneOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone) }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
-      go('wp-otp');
+      stashSignupMetadata(wpName);
+      await sendPhoneOtp(fmt(phone), 'recaptcha-container');
+      router.push(`/verify-otp?method=phone&phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent('/onboarding')}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
@@ -138,74 +140,48 @@ function SignupInner() {
     }
   }
 
-  // ── WhatsApp: verify OTP ───────────────────────────────────────
-  async function verifyWpOtp(token: string) {
+  // ── Email: magic link ────────────────────────────────────────────
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(phone), otp: token }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.message ?? 'Invalid OTP');
-      const { error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
-      if (error) throw error;
-      await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel, referral_code: refCode || undefined } });
-      router.push('/onboarding');
+      stashSignupMetadata(name);
+      await sendEmailOtp(email);
+      setMagicSent(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-      setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus();
+      setError(err instanceof Error ? err.message : 'Failed to send magic link');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleWpDigit(i: number, val: string) {
-    const d = val.replace(/\D/g, '').slice(-1);
-    const next = [...wpDigits]; next[i] = d; setWpDigits(next);
-    if (d && i < 5) wpRefs.current[i + 1]?.focus();
-    if (next.every(Boolean)) verifyWpOtp(next.join(''));
-  }
-
-  function handleWpKey(i: number, e: React.KeyboardEvent) {
-    if (e.key === 'Backspace') {
-      if (wpDigits[i]) { const n = [...wpDigits]; n[i] = ''; setWpDigits(n); }
-      else if (i > 0) wpRefs.current[i - 1]?.focus();
-    }
-  }
-
-  // ── Email signup ───────────────────────────────────────────────
+  // ── Email: password signup ───────────────────────────────────────
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm)  { setError('Passwords do not match.'); return; }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { name, role, pro_label: proLabel, referral_code: refCode || undefined } },
-    });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    // Email confirmation is currently disabled (testing phase), so signUp
-    // already returns an active session -- there's no confirmation OTP to
-    // verify, so skip straight to onboarding instead of the verify screen.
-    if (data.session) { router.push('/onboarding'); return; }
-    go('verify-choice');
+    try {
+      const data = await signUpWithEmail(email, password, { name, role, pro_label: proLabel, referral_code: refCode || undefined });
+      // Email confirmation is currently disabled (testing phase), so signUp
+      // already returns an active session -- there's no confirmation OTP to
+      // verify, so skip straight to onboarding instead of the verify screen.
+      if (data.session) { router.push('/onboarding'); return; }
+      go('verify-choice');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // ── Verify via WhatsApp (after email signup) ───────────────────
-  async function handleVerifyViaWhatsapp() {
+  // ── Verify via phone (after email signup) ───────────────────────
+  async function handleVerifyViaPhone() {
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fmt(emailPhone) }),
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
-      router.push(`/verify-otp?mode=whatsapp&phone=${encodeURIComponent(emailPhone)}&email=${encodeURIComponent(email)}`);
+      await sendPhoneOtp(fmt(emailPhone), 'recaptcha-container-verify-choice');
+      router.push(`/verify-otp?method=phone&phone=${encodeURIComponent(emailPhone)}&redirect=${encodeURIComponent('/onboarding')}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
@@ -325,13 +301,9 @@ function SignupInner() {
         <div className="w-full max-w-md mx-auto">
           {mode === 'options' && (
             <Back onClick={() => {
-              setMode('options'); setError('');
               if (side === 'homeowner') setFlowStep('side');
               else setFlowStep('role');
             }} />
-          )}
-          {mode !== 'options' && mode !== 'verify-choice' && (
-            <Back onClick={() => go('options')} />
           )}
 
           <div className="flex items-center gap-2 mb-1">
@@ -348,73 +320,111 @@ function SignupInner() {
 
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#EBE0D8]">
 
-            {/* Auth options */}
             {mode === 'options' && (
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
-                <SocialBtn icon={<span className="text-xl">📱</span>} onClick={() => go('wp-phone')}>
-                  Continue with Phone Number
-                </SocialBtn>
                 <Divider />
-                <button type="button" onClick={() => go('email')}
-                  className="w-full py-3 rounded-lg border border-[#EBE0D8] text-[#6B5248] text-sm font-medium hover:bg-[#FDF8F5] transition-colors">
-                  Sign up with Email & Password
-                </button>
+
+                <div className="flex bg-[#FDF8F5] rounded-xl p-1">
+                  <button type="button" onClick={() => { setTab('mobile'); setError(''); }}
+                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${tab === 'mobile' ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'}`}>
+                    📱 Mobile
+                  </button>
+                  <button type="button" onClick={() => { setTab('email'); setError(''); }}
+                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${tab === 'email' ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'}`}>
+                    📧 Email
+                  </button>
+                </div>
+
+                {tab === 'mobile' && (
+                  <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+                    <Field label="Your name">
+                      <input type="text" value={wpName} onChange={e => setWpName(e.target.value)}
+                        placeholder="Arun Raina" required autoComplete="name" className={inp} />
+                    </Field>
+                    <Field label="Phone number">
+                      <div className="flex gap-2">
+                        <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
+                        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                          placeholder="9876543210" required maxLength={10} className={`${inp} flex-1`} />
+                      </div>
+                    </Field>
+                    {error && <ErrBox>{error}</ErrBox>}
+                    <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP</PrimaryBtn>
+                    <div id="recaptcha-container" />
+                  </form>
+                )}
+
+                {tab === 'email' && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2 text-xs font-semibold">
+                      <button type="button" onClick={() => { setEmailTab('password'); setError(''); }}
+                        className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'password' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
+                        Password
+                      </button>
+                      <button type="button" onClick={() => { setEmailTab('magic'); setError(''); setMagicSent(false); }}
+                        className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'magic' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
+                        Magic Link
+                      </button>
+                    </div>
+
+                    {emailTab === 'password' && (
+                      <form onSubmit={handleEmail} className="space-y-4">
+                        <Field label="Full name">
+                          <input type="text" value={name} onChange={e => setName(e.target.value)}
+                            placeholder="Arun Raina" required autoComplete="name" className={inp} />
+                        </Field>
+                        <Field label="Email address">
+                          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                            placeholder="you@example.com" required autoComplete="email" className={inp} />
+                        </Field>
+                        <Field label="Password">
+                          <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
+                        </Field>
+                        <Field label="Confirm password">
+                          <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
+                        </Field>
+                        <Field label="Phone number (optional)">
+                          <div className="flex gap-2">
+                            <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
+                            <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
+                              placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
+                          </div>
+                          <p className="text-xs text-[#A08070] mt-1">Add to verify account via Phone Number instead of email</p>
+                        </Field>
+                        {error && <ErrBox>{error}</ErrBox>}
+                        <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
+                      </form>
+                    )}
+
+                    {emailTab === 'magic' && (
+                      magicSent ? (
+                        <div className="text-center py-4">
+                          <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">📧</div>
+                          <p className="text-sm font-semibold text-[#2C1810] mb-1">Check your email</p>
+                          <p className="text-xs text-[#A08070]">We sent a magic link to {email}</p>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleMagicLink} className="space-y-4">
+                          <Field label="Full name">
+                            <input type="text" value={name} onChange={e => setName(e.target.value)}
+                              placeholder="Arun Raina" required autoComplete="name" className={inp} />
+                          </Field>
+                          <Field label="Email address">
+                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                              placeholder="you@example.com" required autoComplete="email" className={inp} />
+                          </Field>
+                          {error && <ErrBox>{error}</ErrBox>}
+                          <PrimaryBtn loading={loading} loadingLabel="Sending…">Send Magic Link</PrimaryBtn>
+                        </form>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* WhatsApp: phone */}
-            {mode === 'wp-phone' && (
-              <>
-                <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
-                <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your phone</p>
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <Field label="Your name">
-                    <input type="text" value={wpName} onChange={e => setWpName(e.target.value)}
-                      placeholder="Arun Raina" required autoComplete="name" className={inp} />
-                  </Field>
-                  <Field label="Phone number">
-                    <div className="flex gap-2">
-                      <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
-                      <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                        placeholder="9876543210" required maxLength={10} className={`${inp} flex-1`} />
-                    </div>
-                  </Field>
-                  {error && <ErrBox>{error}</ErrBox>}
-                  <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP on Phone Number</PrimaryBtn>
-                </form>
-              </>
-            )}
-
-            {/* WhatsApp: OTP */}
-            {mode === 'wp-otp' && (
-              <>
-                <Back onClick={() => go('wp-phone')} label="← Change number" />
-                <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
-                <p className="text-xs text-[#A08070] mb-5">
-                  Sent to <strong>+91 {phone}</strong>
-                </p>
-                <div className="flex justify-center gap-3 mb-4">
-                  {wpDigits.map((d, i) => (
-                    <input key={i} ref={el => { wpRefs.current[i] = el; }}
-                      type="text" inputMode="numeric" maxLength={1} value={d}
-                      onChange={e => handleWpDigit(i, e.target.value)}
-                      onKeyDown={e => handleWpKey(i, e)}
-                      disabled={loading}
-                      className={`w-12 h-12 text-center text-lg font-bold rounded-lg border-2 outline-none transition-colors bg-white text-[#2C1810] disabled:opacity-50 ${d ? 'border-[#C0593A]' : 'border-[#EBE0D8] focus:border-[#C0593A]'}`}
-                    />
-                  ))}
-                </div>
-                {error && <ErrBox>{error}</ErrBox>}
-                {loading && <PrimaryBtn loading={loading} loadingLabel="Verifying…">{''}</PrimaryBtn>}
-                <button type="button" onClick={e => handleSendOtp(e as unknown as React.FormEvent)}
-                  className="w-full text-center text-xs text-[#A08070] hover:text-[#C0593A] transition-colors mt-2">
-                  Resend OTP
-                </button>
-              </>
-            )}
-
-            {/* Verify choice (after email signup) */}
+            {/* Verify choice (after email/password signup, if confirmation is required) */}
             {mode === 'verify-choice' && (
               <>
                 <div className="text-center mb-6">
@@ -425,7 +435,7 @@ function SignupInner() {
                 {error && <ErrBox>{error}</ErrBox>}
                 <div className="space-y-3">
                   <button type="button"
-                    onClick={() => router.push(`/verify-otp?email=${encodeURIComponent(email)}`)}
+                    onClick={() => router.push(`/verify-otp?method=email&email=${encodeURIComponent(email)}`)}
                     className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9] transition-all text-left">
                     <span className="text-2xl">📧</span>
                     <div>
@@ -434,7 +444,7 @@ function SignupInner() {
                     </div>
                   </button>
                   {emailPhone ? (
-                    <button type="button" onClick={handleVerifyViaWhatsapp} disabled={loading}
+                    <button type="button" onClick={handleVerifyViaPhone} disabled={loading}
                       className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9] transition-all text-left disabled:opacity-60">
                       <span className="text-2xl">📱</span>
                       <div>
@@ -444,43 +454,13 @@ function SignupInner() {
                       {loading && <Spin />}
                     </button>
                   ) : (
-                    <button type="button" onClick={() => go('email')}
-                      className="w-full text-xs text-[#A08070] hover:text-[#C0593A] transition-colors py-2">
-                      + Add phone number for faster verification
-                    </button>
+                    <p className="w-full text-xs text-[#A08070] text-center py-2">
+                      Add a phone number next time to verify via SMS instead of email.
+                    </p>
                   )}
+                  <div id="recaptcha-container-verify-choice" />
                 </div>
               </>
-            )}
-
-            {/* Email signup */}
-            {mode === 'email' && (
-              <form onSubmit={handleEmail} className="space-y-4">
-                <Field label="Full name">
-                  <input type="text" value={name} onChange={e => setName(e.target.value)}
-                    placeholder="Arun Raina" required autoComplete="name" className={inp} />
-                </Field>
-                <Field label="Email address">
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="you@example.com" required autoComplete="email" className={inp} />
-                </Field>
-                <Field label="Password">
-                  <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
-                </Field>
-                <Field label="Confirm password">
-                  <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
-                </Field>
-                <Field label="Phone number (optional)">
-                  <div className="flex gap-2">
-                    <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
-                    <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
-                      placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
-                  </div>
-                  <p className="text-xs text-[#A08070] mt-1">Add to verify account via Phone Number instead of email</p>
-                </Field>
-                {error && <ErrBox>{error}</ErrBox>}
-                <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
-              </form>
             )}
 
           </div>
