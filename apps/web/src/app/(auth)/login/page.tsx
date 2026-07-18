@@ -128,7 +128,7 @@ function LoginForm() {
           <>
             <Back onClick={() => go('options')} />
             <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
-            <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code via SMS</p>
+            <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your phone</p>
             <form onSubmit={handleSendOtp} className="space-y-4">
               <Field label="Phone number">
                 <div className="flex gap-2">
@@ -149,7 +149,7 @@ function LoginForm() {
             <Back onClick={() => go('wp-phone')} label="← Change number" />
             <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
             <p className="text-xs text-[#A08070] mb-5">
-              Sent to <strong>+91 {phone}</strong> via SMS
+              Sent to <strong>+91 {phone}</strong>
             </p>
             <div className="flex justify-center gap-3 mb-4">
               {wpDigits.map((d, i) => (
