@@ -26,21 +26,31 @@ export class FirebasePhoneAuthService {
     const apps = admin.apps;
     this.firebaseApp = apps.length
       ? (apps[0] as admin.app.App)
-      : admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId: config.getOrThrow('FIREBASE_PROJECT_ID'),
-            clientEmail: config.getOrThrow('FIREBASE_CLIENT_EMAIL'),
-            privateKey: this.resolvePrivateKey(config),
-          }),
-        });
+      : admin.initializeApp({ credential: this.resolveCredential(config) });
   }
 
   // Cloud dashboards (Railway, Vercel, ...) have repeatedly mangled the raw
-  // multi-line PEM key on copy-paste (truncation, corrupted newlines) even
-  // after un-escaping \n and stripping wrapping quotes. FIREBASE_PRIVATE_KEY_BASE64
-  // sidesteps all of that -- base64 is a single line with no special
-  // characters for any UI layer to corrupt. Preferred when set; falls back
-  // to the raw-PEM env var (what local .env already uses) otherwise.
+  // multi-line PEM key on copy-paste -- truncation, corrupted newlines, and
+  // even a clean base64-of-just-the-key string came out wrong on the other
+  // end. Base64-encoding the *entire* service account JSON and parsing it
+  // directly removes every manual field-splitting step there was room for
+  // transcription to go wrong in. Preferred when set; falls back to
+  // FIREBASE_PRIVATE_KEY_BASE64 (key only), then the raw-PEM env var (what
+  // local .env already uses).
+  private resolveCredential(config: ConfigService): admin.credential.Credential {
+    const wholeJson = config.get<string>('FIREBASE_SERVICE_ACCOUNT_BASE64');
+    if (wholeJson) {
+      const parsed = JSON.parse(Buffer.from(wholeJson.trim(), 'base64').toString('utf8'));
+      return admin.credential.cert(parsed);
+    }
+
+    return admin.credential.cert({
+      projectId: config.getOrThrow('FIREBASE_PROJECT_ID'),
+      clientEmail: config.getOrThrow('FIREBASE_CLIENT_EMAIL'),
+      privateKey: this.resolvePrivateKey(config),
+    });
+  }
+
   private resolvePrivateKey(config: ConfigService): string {
     const b64 = config.get<string>('FIREBASE_PRIVATE_KEY_BASE64');
     if (b64) return Buffer.from(b64.trim(), 'base64').toString('utf8');
