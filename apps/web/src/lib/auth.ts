@@ -63,11 +63,18 @@ export async function verifyEmailOtp(email: string, token: string) {
 // Resend on the verify-otp page.
 let pendingPhoneConfirmation: ConfirmationResult | null = null;
 
+// Google throws "reCAPTCHA has already been rendered in this element" if a
+// second RecaptchaVerifier is created on the same container without clearing
+// the first -- which happens on every resend/retry, since each of those calls
+// sendPhoneOtp again against the same DOM node.
+let activeRecaptchaVerifier: RecaptchaVerifier | null = null;
+
 // recaptchaContainerId must reference an element already mounted in the DOM
 // (an invisible reCAPTCHA still needs a container to bind to).
 export async function sendPhoneOtp(phone: string, recaptchaContainerId: string): Promise<void> {
-  const verifier = new RecaptchaVerifier(firebaseAuth, recaptchaContainerId, { size: 'invisible' });
-  pendingPhoneConfirmation = await signInWithPhoneNumber(firebaseAuth, phone, verifier);
+  activeRecaptchaVerifier?.clear();
+  activeRecaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaContainerId, { size: 'invisible' });
+  pendingPhoneConfirmation = await signInWithPhoneNumber(firebaseAuth, phone, activeRecaptchaVerifier);
 }
 
 // Confirms the code with Firebase, then exchanges the resulting Firebase ID
