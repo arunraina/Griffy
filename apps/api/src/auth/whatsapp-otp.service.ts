@@ -51,6 +51,14 @@ export class WhatsappOtpService {
     }
   }
 
+  // TEMPORARY: signs a phone number straight in with no OTP check at all --
+  // for the main phone sign-up/login entry point while DNS resolution
+  // issues make even the fixed-OTP round trip unreliable for some users.
+  // Must be replaced with real OTP verification before public launch.
+  async signInWithPhone(phone: string): Promise<OtpSession> {
+    return this.mintSession(phone);
+  }
+
   // Verifying the OTP only proves the phone number -- it doesn't by itself
   // give the caller a Supabase session (AuthGuard requires a real Supabase
   // JWT). So on success we also sign the phone in via Supabase's admin API,
