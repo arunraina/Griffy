@@ -91,7 +91,7 @@ function LoginForm() {
           <div className="space-y-3">
             <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
             <SocialBtn icon={<span className="text-xl">📱</span>} onClick={() => go('wp-phone')}>
-              Continue with SMS
+              Continue with Phone Number
             </SocialBtn>
             <Divider />
             <button type="button" onClick={() => go('email')}
