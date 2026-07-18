@@ -4,14 +4,13 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { isEnabled } from '@/lib/featureFlags';
-import { signInWithGoogle, signUpWithEmail, sendEmailOtp, sendPhoneOtp } from '@/lib/auth';
+import { signInWithGoogle, signUpWithEmail, sendPhoneOtp } from '@/lib/auth';
 
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 type Mode = 'options' | 'verify-choice';
 type Tab = 'mobile' | 'email';
-type EmailSubTab = 'magic' | 'password';
 
 const ALL_PRO_ROLES: { value: Role; label: string; sublabel: string; desc: string; icon: string; flagKey?: string; team?: boolean }[] = [
   { value: 'SERVICE_PROVIDER', label: 'Contractor',          sublabel: 'Builder / Designer', desc: 'Architect, designer, civil or renovation contractor', icon: '🏗️', flagKey: 'contractors' },
@@ -51,7 +50,6 @@ function SignupInner() {
   const [proLabel,  setProLabel]  = useState('');
   const [mode,      setMode]      = useState<Mode>('options');
   const [tab,       setTab]       = useState<Tab>('mobile');
-  const [emailTab,  setEmailTab]  = useState<EmailSubTab>('password');
 
   // Phone flow
   const [wpName,   setWpName]   = useState('');
@@ -65,7 +63,6 @@ function SignupInner() {
   const [confirm,    setConfirm]    = useState('');
   const [showPw,     setShowPw]     = useState(false);
   const [showCf,     setShowCf]     = useState(false);
-  const [magicSent,  setMagicSent]  = useState(false);
 
   const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -135,21 +132,6 @@ function SignupInner() {
       router.push(`/verify-otp?method=phone&phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent('/onboarding')}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send OTP');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── Email: magic link ────────────────────────────────────────────
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setError(''); setLoading(true);
-    try {
-      stashSignupMetadata(name);
-      await sendEmailOtp(email);
-      setMagicSent(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send magic link');
     } finally {
       setLoading(false);
     }
@@ -356,70 +338,32 @@ function SignupInner() {
                 )}
 
                 {tab === 'email' && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2 text-xs font-semibold">
-                      <button type="button" onClick={() => { setEmailTab('password'); setError(''); }}
-                        className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'password' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
-                        Password
-                      </button>
-                      <button type="button" onClick={() => { setEmailTab('magic'); setError(''); setMagicSent(false); }}
-                        className={`px-3 py-1.5 rounded-full transition-colors ${emailTab === 'magic' ? 'bg-[#FAEEE9] text-[#C0593A]' : 'text-[#A08070] hover:text-[#6B5248]'}`}>
-                        Magic Link
-                      </button>
-                    </div>
-
-                    {emailTab === 'password' && (
-                      <form onSubmit={handleEmail} className="space-y-4">
-                        <Field label="Full name">
-                          <input type="text" value={name} onChange={e => setName(e.target.value)}
-                            placeholder="Arun Raina" required autoComplete="name" className={inp} />
-                        </Field>
-                        <Field label="Email address">
-                          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                            placeholder="you@example.com" required autoComplete="email" className={inp} />
-                        </Field>
-                        <Field label="Password">
-                          <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
-                        </Field>
-                        <Field label="Confirm password">
-                          <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
-                        </Field>
-                        <Field label="Phone number (optional)">
-                          <div className="flex gap-2">
-                            <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
-                            <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
-                              placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
-                          </div>
-                          <p className="text-xs text-[#A08070] mt-1">Add to verify account via Phone Number instead of email</p>
-                        </Field>
-                        {error && <ErrBox>{error}</ErrBox>}
-                        <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
-                      </form>
-                    )}
-
-                    {emailTab === 'magic' && (
-                      magicSent ? (
-                        <div className="text-center py-4">
-                          <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">📧</div>
-                          <p className="text-sm font-semibold text-[#2C1810] mb-1">Check your email</p>
-                          <p className="text-xs text-[#A08070]">We sent a magic link to {email}</p>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleMagicLink} className="space-y-4">
-                          <Field label="Full name">
-                            <input type="text" value={name} onChange={e => setName(e.target.value)}
-                              placeholder="Arun Raina" required autoComplete="name" className={inp} />
-                          </Field>
-                          <Field label="Email address">
-                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                              placeholder="you@example.com" required autoComplete="email" className={inp} />
-                          </Field>
-                          {error && <ErrBox>{error}</ErrBox>}
-                          <PrimaryBtn loading={loading} loadingLabel="Sending…">Send Magic Link</PrimaryBtn>
-                        </form>
-                      )
-                    )}
-                  </div>
+                  <form onSubmit={handleEmail} className="space-y-4">
+                    <Field label="Full name">
+                      <input type="text" value={name} onChange={e => setName(e.target.value)}
+                        placeholder="Arun Raina" required autoComplete="name" className={inp} />
+                    </Field>
+                    <Field label="Email address">
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                        placeholder="you@example.com" required autoComplete="email" className={inp} />
+                    </Field>
+                    <Field label="Password">
+                      <PwInput value={password} onChange={setPassword} show={showPw} onToggle={() => setShowPw(p => !p)} placeholder="Min. 8 characters" />
+                    </Field>
+                    <Field label="Confirm password">
+                      <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
+                    </Field>
+                    <Field label="Phone number (optional)">
+                      <div className="flex gap-2">
+                        <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
+                        <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
+                          placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
+                      </div>
+                      <p className="text-xs text-[#A08070] mt-1">Add to verify account via Phone Number instead of email</p>
+                    </Field>
+                    {error && <ErrBox>{error}</ErrBox>}
+                    <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>
+                  </form>
                 )}
               </div>
             )}
