@@ -90,8 +90,8 @@ function LoginForm() {
         {mode === 'options' && (
           <div className="space-y-3">
             <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
-            <SocialBtn icon={<span className="text-xl">💬</span>} onClick={() => go('wp-phone')}>
-              Continue with WhatsApp
+            <SocialBtn icon={<span className="text-xl">📱</span>} onClick={() => go('wp-phone')}>
+              Continue with SMS
             </SocialBtn>
             <Divider />
             <button type="button" onClick={() => go('email')}
@@ -127,8 +127,8 @@ function LoginForm() {
         {mode === 'wp-phone' && (
           <>
             <Back onClick={() => go('options')} />
-            <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your WhatsApp number</p>
-            <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your WhatsApp</p>
+            <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
+            <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code via SMS</p>
             <form onSubmit={handleSendOtp} className="space-y-4">
               <Field label="Phone number">
                 <div className="flex gap-2">
@@ -149,7 +149,7 @@ function LoginForm() {
             <Back onClick={() => go('wp-phone')} label="← Change number" />
             <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
             <p className="text-xs text-[#A08070] mb-5">
-              Sent to <strong>+91 {phone}</strong> via WhatsApp
+              Sent to <strong>+91 {phone}</strong> via SMS
             </p>
             <div className="flex justify-center gap-3 mb-4">
               {wpDigits.map((d, i) => (

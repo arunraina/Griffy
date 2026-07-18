@@ -326,8 +326,8 @@ function SignupInner() {
             {mode === 'options' && (
               <div className="space-y-3">
                 <SocialBtn icon={<GoogleIcon />} onClick={handleGoogle}>Continue with Google</SocialBtn>
-                <SocialBtn icon={<span className="text-xl">💬</span>} onClick={() => go('wp-phone')}>
-                  Continue with WhatsApp
+                <SocialBtn icon={<span className="text-xl">📱</span>} onClick={() => go('wp-phone')}>
+                  Continue with SMS
                 </SocialBtn>
                 <Divider />
                 <button type="button" onClick={() => go('email')}
@@ -340,8 +340,8 @@ function SignupInner() {
             {/* WhatsApp: phone */}
             {mode === 'wp-phone' && (
               <>
-                <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your WhatsApp number</p>
-                <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your WhatsApp</p>
+                <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
+                <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code via SMS</p>
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <Field label="Your name">
                     <input type="text" value={wpName} onChange={e => setWpName(e.target.value)}
@@ -355,7 +355,7 @@ function SignupInner() {
                     </div>
                   </Field>
                   {error && <ErrBox>{error}</ErrBox>}
-                  <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP on WhatsApp</PrimaryBtn>
+                  <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP via SMS</PrimaryBtn>
                 </form>
               </>
             )}
@@ -366,7 +366,7 @@ function SignupInner() {
                 <Back onClick={() => go('wp-phone')} label="← Change number" />
                 <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
                 <p className="text-xs text-[#A08070] mb-5">
-                  Sent to <strong>+91 {phone}</strong> via WhatsApp
+                  Sent to <strong>+91 {phone}</strong> via SMS
                 </p>
                 <div className="flex justify-center gap-3 mb-4">
                   {wpDigits.map((d, i) => (
@@ -410,9 +410,9 @@ function SignupInner() {
                   {emailPhone ? (
                     <button type="button" onClick={handleVerifyViaWhatsapp} disabled={loading}
                       className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#EBE0D8] bg-white hover:border-[#C0593A] hover:bg-[#FAEEE9] transition-all text-left disabled:opacity-60">
-                      <span className="text-2xl">💬</span>
+                      <span className="text-2xl">📱</span>
                       <div>
-                        <p className="text-sm font-semibold text-[#2C1810]">Verify via WhatsApp</p>
+                        <p className="text-sm font-semibold text-[#2C1810]">Verify via SMS</p>
                         <p className="text-xs text-[#A08070]">+91 {emailPhone}</p>
                       </div>
                       {loading && <Spin />}
@@ -420,7 +420,7 @@ function SignupInner() {
                   ) : (
                     <button type="button" onClick={() => go('email')}
                       className="w-full text-xs text-[#A08070] hover:text-[#C0593A] transition-colors py-2">
-                      + Add WhatsApp number for faster verification
+                      + Add phone number for faster verification
                     </button>
                   )}
                 </div>
@@ -444,13 +444,13 @@ function SignupInner() {
                 <Field label="Confirm password">
                   <PwInput value={confirm} onChange={setConfirm} show={showCf} onToggle={() => setShowCf(p => !p)} placeholder="Re-enter password" />
                 </Field>
-                <Field label="WhatsApp number (optional)">
+                <Field label="Phone number (optional)">
                   <div className="flex gap-2">
                     <span className="flex items-center px-3 bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
                     <input type="tel" value={emailPhone} onChange={e => setEmailPhone(e.target.value)}
                       placeholder="9876543210" maxLength={10} className={`${inp} flex-1`} />
                   </div>
-                  <p className="text-xs text-[#A08070] mt-1">Add to verify account via WhatsApp instead of email</p>
+                  <p className="text-xs text-[#A08070] mt-1">Add to verify account via SMS instead of email</p>
                 </Field>
                 {error && <ErrBox>{error}</ErrBox>}
                 <PrimaryBtn loading={loading} loadingLabel="Creating account…">Create free account</PrimaryBtn>

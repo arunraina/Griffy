@@ -172,7 +172,7 @@ function OtpForm() {
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
                 mode !== 'email' ? 'bg-white text-[#C0593A] shadow-sm' : 'text-[#6B5248] hover:text-[#2C1810]'
               }`}>
-              💬 WhatsApp OTP
+              📱 SMS OTP
             </button>
           </div>
 
@@ -196,11 +196,11 @@ function OtpForm() {
           {/* ── WhatsApp: phone entry ── */}
           {mode === 'wp-phone' && (
             <>
-              <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">💬</div>
+              <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">📱</div>
               <h1 className="text-2xl font-bold text-[#2C1810] text-center mb-1" style={{ fontFamily: 'Georgia, serif' }}>
-                Verify via WhatsApp
+                Verify via SMS
               </h1>
-              <p className="text-sm text-[#6B5248] text-center mb-8">Enter your WhatsApp number to receive an OTP</p>
+              <p className="text-sm text-[#6B5248] text-center mb-8">Enter your phone number to receive an OTP</p>
               <form onSubmit={sendWhatsappOtp} className="space-y-4">
                 <div className="flex gap-2">
                   <span className="flex items-center px-3 bg-white border border-[#EBE0D8] rounded-lg text-sm text-[#6B5248]">+91</span>
@@ -211,7 +211,7 @@ function OtpForm() {
                 {error && <ErrBox>{error}</ErrBox>}
                 <button type="submit" disabled={loading}
                   className="w-full flex items-center justify-center gap-2 bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm py-3 rounded-lg transition-colors disabled:opacity-60">
-                  {loading ? <><SpinSvg />Sending…</> : 'Send OTP on WhatsApp'}
+                  {loading ? <><SpinSvg />Sending…</> : 'Send OTP via SMS'}
                 </button>
               </form>
             </>
@@ -220,12 +220,12 @@ function OtpForm() {
           {/* ── WhatsApp: OTP entry ── */}
           {mode === 'wp-otp' && (
             <>
-              <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">💬</div>
+              <div className="w-14 h-14 bg-[#FAEEE9] rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl">📱</div>
               <h1 className="text-2xl font-bold text-[#2C1810] text-center mb-1" style={{ fontFamily: 'Georgia, serif' }}>
                 Enter OTP
               </h1>
               <p className="text-sm text-[#6B5248] text-center mb-2">Sent to</p>
-              <p className="text-sm font-semibold text-[#2C1810] text-center mb-8">+91 {phone} via WhatsApp</p>
+              <p className="text-sm font-semibold text-[#2C1810] text-center mb-8">+91 {phone} via SMS</p>
               <OtpBoxes digits={digits} inputRefs={inputRefs} loading={loading}
                 onDigit={handleDigit} onKeyDown={handleKeyDown} onPaste={handlePaste} />
               {error && <ErrBox>{error}</ErrBox>}
