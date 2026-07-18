@@ -17,7 +17,7 @@ export class AuthController {
   @Post('verify-whatsapp-otp')
   @Throttle({ short: { limit: 3, ttl: 60000 }, long: { limit: 10, ttl: 3600000 } })
   async verifyWhatsappOtp(@Body() body: VerifyWhatsappOtpDto) {
-    await this.whatsappOtp.verifyWhatsappOtp(body.phone, body.otp);
-    return { success: true };
+    const session = await this.whatsappOtp.verifyWhatsappOtp(body.phone, body.otp);
+    return { success: true, ...session };
   }
 }

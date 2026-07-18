@@ -123,20 +123,42 @@ function SignupInner() {
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: fmt(phone) });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    go('wp-otp');
+    try {
+      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fmt(phone) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
+      go('wp-otp');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ── WhatsApp: verify OTP ───────────────────────────────────────
   async function verifyWpOtp(token: string) {
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: fmt(phone), token, type: 'sms' });
-    if (!error) await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel, referral_code: refCode || undefined } });
-    setLoading(false);
-    if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
-    router.push('/onboarding');
+    try {
+      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fmt(phone), otp: token }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message ?? 'Invalid OTP');
+      const { error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
+      if (error) throw error;
+      await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel, referral_code: refCode || undefined } });
+      router.push('/onboarding');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+      setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleWpDigit(i: number, val: string) {
@@ -160,12 +182,16 @@ function SignupInner() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm)  { setError('Passwords do not match.'); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { name, role, pro_label: proLabel, referral_code: refCode || undefined } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
+    // Email confirmation is currently disabled (testing phase), so signUp
+    // already returns an active session -- there's no confirmation OTP to
+    // verify, so skip straight to onboarding instead of the verify screen.
+    if (data.session) { router.push('/onboarding'); return; }
     go('verify-choice');
   }
 

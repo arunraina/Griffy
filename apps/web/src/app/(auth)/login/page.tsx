@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 
+const API = process.env.NEXT_PUBLIC_API_URL;
+
 type Mode   = 'options' | 'email' | 'wp-phone' | 'wp-otp';
 
 function LoginForm() {
@@ -48,19 +50,41 @@ function LoginForm() {
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: fmt(phone) });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    go('wp-otp');
+    try {
+      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fmt(phone) }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
+      go('wp-otp');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function verifyWpOtp(token: string) {
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: fmt(phone), token, type: 'sms' });
-    setLoading(false);
-    if (error) { setError(error.message); setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus(); return; }
-    trackEvent('login', { method: 'whatsapp' });
-    router.push(redirectTo);
+    try {
+      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fmt(phone), otp: token }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message ?? 'Invalid OTP');
+      const { error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
+      if (error) throw error;
+      trackEvent('login', { method: 'whatsapp' });
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+      setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleWpDigit(i: number, val: string) {
