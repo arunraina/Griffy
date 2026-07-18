@@ -30,10 +30,23 @@ export class FirebasePhoneAuthService {
           credential: admin.credential.cert({
             projectId: config.getOrThrow('FIREBASE_PROJECT_ID'),
             clientEmail: config.getOrThrow('FIREBASE_CLIENT_EMAIL'),
-            // .env keeps \n escaped literally; un-escape before use.
-            privateKey: config.getOrThrow('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+            privateKey: this.parsePrivateKey(config.getOrThrow('FIREBASE_PRIVATE_KEY')),
           }),
         });
+  }
+
+  // Cloud dashboards (Railway, Vercel, ...) vary in how they store multi-line
+  // values -- some keep the pasted \n escapes literal (needing un-escaping,
+  // same as a local .env file), others convert them to real newlines already.
+  // A stray wrapping quote from copy-pasting a KEY="value" line is also a
+  // common mistake. Handle all of these rather than assume one format.
+  private parsePrivateKey(raw: string): string {
+    let key = raw.trim();
+    if (key.startsWith('"') && key.endsWith('"')) key = key.slice(1, -1);
+    if (!key.includes('-----BEGIN')) {
+      throw new Error('FIREBASE_PRIVATE_KEY does not look like a PEM key -- check it was copied in full');
+    }
+    return key.includes('\\n') ? key.replace(/\\n/g, '\n') : key;
   }
 
   // Verifies the Firebase ID token the client got from confirming its phone
