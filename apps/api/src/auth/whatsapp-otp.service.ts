@@ -1,16 +1,10 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as crypto from 'crypto';
 import ws from 'ws';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappSenderService } from '../notifications/whatsapp-sender.service';
-
-// TEMPORARY: fixed OTP for closed testing with a handful of known users,
-// while real SMS delivery is blocked on India DLT/carrier compliance
-// registration. Remove FIXED_TEST_OTP and restore generateOtp()'s
-// randomness before opening signup to the public.
-const FIXED_TEST_OTP = '202600';
 
 export interface OtpSession {
   access_token: string;
@@ -19,7 +13,6 @@ export interface OtpSession {
 
 @Injectable()
 export class WhatsappOtpService {
-  private readonly logger = new Logger(WhatsappOtpService.name);
   private readonly supabase: SupabaseClient;
 
   constructor(
@@ -45,18 +38,8 @@ export class WhatsappOtpService {
     try {
       await this.whatsapp.send(phone, `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`);
     } catch (err) {
-      // Real SMS delivery is expected to fail until DLT compliance is sorted —
-      // don't block the fixed-OTP test flow on that.
-      this.logger.warn(`SMS send failed for ${phone}, continuing with fixed test OTP: ${(err as Error).message}`);
+      throw new BadRequestException((err as Error).message);
     }
-  }
-
-  // TEMPORARY: signs a phone number straight in with no OTP check at all --
-  // for the main phone sign-up/login entry point while DNS resolution
-  // issues make even the fixed-OTP round trip unreliable for some users.
-  // Must be replaced with real OTP verification before public launch.
-  async signInWithPhone(phone: string): Promise<OtpSession> {
-    return this.mintSession(phone);
   }
 
   // Verifying the OTP only proves the phone number -- it doesn't by itself
@@ -112,6 +95,6 @@ export class WhatsappOtpService {
   }
 
   private generateOtp(): string {
-    return FIXED_TEST_OTP;
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 }

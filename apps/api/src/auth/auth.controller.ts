@@ -14,14 +14,6 @@ export class AuthController {
     return { success: true };
   }
 
-  // TEMPORARY, testing-only: signs in with just a phone number, no OTP check.
-  @Post('phone-signin')
-  @Throttle({ short: { limit: 3, ttl: 60000 }, long: { limit: 10, ttl: 3600000 } })
-  async phoneSignin(@Body() body: SendWhatsappOtpDto) {
-    const session = await this.whatsappOtp.signInWithPhone(body.phone);
-    return { success: true, ...session };
-  }
-
   @Post('verify-whatsapp-otp')
   @Throttle({ short: { limit: 3, ttl: 60000 }, long: { limit: 10, ttl: 3600000 } })
   async verifyWhatsappOtp(@Body() body: VerifyWhatsappOtpDto) {

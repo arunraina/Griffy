@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
@@ -9,7 +9,7 @@ import { isEnabled } from '@/lib/featureFlags';
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
-type Mode = 'options' | 'email' | 'wp-phone' | 'verify-choice';
+type Mode = 'options' | 'email' | 'wp-phone' | 'wp-otp' | 'verify-choice';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -52,9 +52,11 @@ function SignupInner() {
   const [proLabel,  setProLabel]  = useState('');
   const [mode,      setMode]      = useState<Mode>('options');
 
-  // Phone flow
+  // WhatsApp flow
   const [wpName,   setWpName]   = useState('');
   const [phone,    setPhone]    = useState('');
+  const [wpDigits, setWpDigits] = useState(['', '', '', '', '', '']);
+  const wpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Email flow
   const [name,       setName]       = useState('');
@@ -117,27 +119,59 @@ function SignupInner() {
     });
   }
 
-  // TEMPORARY, testing-only: signs in with just a phone number, no OTP check
-  // at all (see whatsapp-otp.service.ts's signInWithPhone).
-  async function handlePhoneSignin(e: React.FormEvent) {
+  // ── WhatsApp: send OTP ─────────────────────────────────────────
+  async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/phone-signin`, {
+      const res = await fetch(`${API}/auth/send-whatsapp-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: fmt(phone) }),
       });
+      if (!res.ok) throw new Error((await res.json()).message ?? 'Failed to send OTP');
+      go('wp-otp');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── WhatsApp: verify OTP ───────────────────────────────────────
+  async function verifyWpOtp(token: string) {
+    setError(''); setLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/verify-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fmt(phone), otp: token }),
+      });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.message ?? 'Failed to sign in');
+      if (!res.ok) throw new Error(body.message ?? 'Invalid OTP');
       const { error } = await supabase.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
       if (error) throw error;
       await supabase.auth.updateUser({ data: { name: wpName, role, pro_label: proLabel, referral_code: refCode || undefined } });
       router.push('/onboarding');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      setError(err instanceof Error ? err.message : 'Verification failed');
+      setWpDigits(['', '', '', '', '', '']); wpRefs.current[0]?.focus();
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleWpDigit(i: number, val: string) {
+    const d = val.replace(/\D/g, '').slice(-1);
+    const next = [...wpDigits]; next[i] = d; setWpDigits(next);
+    if (d && i < 5) wpRefs.current[i + 1]?.focus();
+    if (next.every(Boolean)) verifyWpOtp(next.join(''));
+  }
+
+  function handleWpKey(i: number, e: React.KeyboardEvent) {
+    if (e.key === 'Backspace') {
+      if (wpDigits[i]) { const n = [...wpDigits]; n[i] = ''; setWpDigits(n); }
+      else if (i > 0) wpRefs.current[i - 1]?.focus();
     }
   }
 
@@ -329,12 +363,12 @@ function SignupInner() {
               </div>
             )}
 
-            {/* Phone number */}
+            {/* WhatsApp: phone */}
             {mode === 'wp-phone' && (
               <>
                 <p className="text-base font-semibold text-[#2C1810] mb-1">Enter your phone number</p>
-                <p className="text-xs text-[#A08070] mb-5">Continue with your phone number</p>
-                <form onSubmit={handlePhoneSignin} className="space-y-4">
+                <p className="text-xs text-[#A08070] mb-5">We'll send a one-time code to your phone</p>
+                <form onSubmit={handleSendOtp} className="space-y-4">
                   <Field label="Your name">
                     <input type="text" value={wpName} onChange={e => setWpName(e.target.value)}
                       placeholder="Arun Raina" required autoComplete="name" className={inp} />
@@ -347,8 +381,36 @@ function SignupInner() {
                     </div>
                   </Field>
                   {error && <ErrBox>{error}</ErrBox>}
-                  <PrimaryBtn loading={loading} loadingLabel="Signing in…">Continue</PrimaryBtn>
+                  <PrimaryBtn loading={loading} loadingLabel="Sending OTP…">Send OTP on Phone Number</PrimaryBtn>
                 </form>
+              </>
+            )}
+
+            {/* WhatsApp: OTP */}
+            {mode === 'wp-otp' && (
+              <>
+                <Back onClick={() => go('wp-phone')} label="← Change number" />
+                <p className="text-base font-semibold text-[#2C1810] mb-1">Enter the OTP</p>
+                <p className="text-xs text-[#A08070] mb-5">
+                  Sent to <strong>+91 {phone}</strong>
+                </p>
+                <div className="flex justify-center gap-3 mb-4">
+                  {wpDigits.map((d, i) => (
+                    <input key={i} ref={el => { wpRefs.current[i] = el; }}
+                      type="text" inputMode="numeric" maxLength={1} value={d}
+                      onChange={e => handleWpDigit(i, e.target.value)}
+                      onKeyDown={e => handleWpKey(i, e)}
+                      disabled={loading}
+                      className={`w-12 h-12 text-center text-lg font-bold rounded-lg border-2 outline-none transition-colors bg-white text-[#2C1810] disabled:opacity-50 ${d ? 'border-[#C0593A]' : 'border-[#EBE0D8] focus:border-[#C0593A]'}`}
+                    />
+                  ))}
+                </div>
+                {error && <ErrBox>{error}</ErrBox>}
+                {loading && <PrimaryBtn loading={loading} loadingLabel="Verifying…">{''}</PrimaryBtn>}
+                <button type="button" onClick={e => handleSendOtp(e as unknown as React.FormEvent)}
+                  className="w-full text-center text-xs text-[#A08070] hover:text-[#C0593A] transition-colors mt-2">
+                  Resend OTP
+                </button>
               </>
             )}
 
