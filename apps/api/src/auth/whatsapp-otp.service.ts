@@ -1,9 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappSenderService } from '../notifications/whatsapp-sender.service';
 
+// TEMPORARY: fixed OTP for closed testing with a handful of known users,
+// while real SMS delivery is blocked on India DLT/carrier compliance
+// registration. Remove FIXED_TEST_OTP and restore generateOtp()'s
+// randomness before opening signup to the public.
+const FIXED_TEST_OTP = '202600';
+
 @Injectable()
 export class WhatsappOtpService {
+  private readonly logger = new Logger(WhatsappOtpService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappSenderService,
@@ -19,7 +27,9 @@ export class WhatsappOtpService {
     try {
       await this.whatsapp.send(phone, `Your Griffy verification code is: ${otp}. Valid for 10 minutes.`);
     } catch (err) {
-      throw new BadRequestException((err as Error).message);
+      // Real SMS delivery is expected to fail until DLT compliance is sorted —
+      // don't block the fixed-OTP test flow on that.
+      this.logger.warn(`SMS send failed for ${phone}, continuing with fixed test OTP: ${(err as Error).message}`);
     }
   }
 
@@ -37,6 +47,6 @@ export class WhatsappOtpService {
   }
 
   private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return FIXED_TEST_OTP;
   }
 }
