@@ -30,16 +30,23 @@ export class FirebasePhoneAuthService {
           credential: admin.credential.cert({
             projectId: config.getOrThrow('FIREBASE_PROJECT_ID'),
             clientEmail: config.getOrThrow('FIREBASE_CLIENT_EMAIL'),
-            privateKey: this.parsePrivateKey(config.getOrThrow('FIREBASE_PRIVATE_KEY')),
+            privateKey: this.resolvePrivateKey(config),
           }),
         });
   }
 
-  // Cloud dashboards (Railway, Vercel, ...) vary in how they store multi-line
-  // values -- some keep the pasted \n escapes literal (needing un-escaping,
-  // same as a local .env file), others convert them to real newlines already.
-  // A stray wrapping quote from copy-pasting a KEY="value" line is also a
-  // common mistake. Handle all of these rather than assume one format.
+  // Cloud dashboards (Railway, Vercel, ...) have repeatedly mangled the raw
+  // multi-line PEM key on copy-paste (truncation, corrupted newlines) even
+  // after un-escaping \n and stripping wrapping quotes. FIREBASE_PRIVATE_KEY_BASE64
+  // sidesteps all of that -- base64 is a single line with no special
+  // characters for any UI layer to corrupt. Preferred when set; falls back
+  // to the raw-PEM env var (what local .env already uses) otherwise.
+  private resolvePrivateKey(config: ConfigService): string {
+    const b64 = config.get<string>('FIREBASE_PRIVATE_KEY_BASE64');
+    if (b64) return Buffer.from(b64.trim(), 'base64').toString('utf8');
+    return this.parsePrivateKey(config.getOrThrow('FIREBASE_PRIVATE_KEY'));
+  }
+
   private parsePrivateKey(raw: string): string {
     let key = raw.trim();
     if (key.startsWith('"') && key.endsWith('"')) key = key.slice(1, -1);
