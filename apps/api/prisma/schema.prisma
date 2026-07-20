@@ -108,6 +108,10 @@ enum FurnishingStatus {
 
 model User {
   id               String   @id
+  // Sequential, human-readable signup number (1, 2, 3, ...) — distinct from
+  // `id` (the Supabase auth UUID). Purely for "how many users have signed up"
+  // visibility; never use this as a foreign key or expose it as an auth token.
+  userNumber       Int      @unique @default(autoincrement()) @map("user_number")
   email            String   @unique
   phone            String?  @unique
   name             String

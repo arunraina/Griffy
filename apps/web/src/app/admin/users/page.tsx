@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
               <div key={u.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="font-semibold text-[#2C1810]">{u.name}</p>
+                    <p className="font-semibold text-[#2C1810]">#{u.userNumber} · {u.name}</p>
                     {u.isFirstParty && <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">Griffy</span>}
                   </div>
                   <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${u.isSuspended ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'}`}>
@@ -106,6 +106,7 @@ export default function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
+                  <th className="px-5 py-3 font-semibold">#</th>
                   <th className="px-5 py-3 font-semibold">Name</th>
                   <th className="px-5 py-3 font-semibold">Contact</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
@@ -117,6 +118,7 @@ export default function AdminUsersPage() {
               <tbody>
                 {rows.map((u) => (
                   <tr key={u.id} className="border-b border-[#F0E8E2] last:border-none">
+                    <td className="px-5 py-3 text-xs text-[#A08070] font-semibold">{u.userNumber}</td>
                     <td className="px-5 py-3">
                       <p className="font-semibold text-[#2C1810]">{u.name}</p>
                       {u.isFirstParty && <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">Griffy</span>}

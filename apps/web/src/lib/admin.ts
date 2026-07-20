@@ -195,7 +195,7 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
 // ── Users (search / suspend) ─────────────────────────────────────────────────
 
 export interface AdminUser {
-  id: string; name: string; email: string; phone: string | null;
+  id: string; userNumber: number; name: string; email: string; phone: string | null;
   role: string; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
 }
 
