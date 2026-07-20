@@ -172,9 +172,9 @@ function SignupInner() {
   }
 
   // ── Step indicator config ──────────────────────────────────────
-  const steps = side === 'homeowner'  ? ['Side', 'Details', 'Verify OTP', 'Profile']
-    : side === 'professional'         ? ['Side', 'Role', 'Details', 'Verify OTP', 'Profile']
-    :                                   ['Side', '···', '···', '···'];
+  const steps = side === 'homeowner'  ? ['Type', 'Details', 'Verify OTP', 'Profile']
+    : side === 'professional'         ? ['Type', 'Role', 'Details', 'Verify OTP', 'Profile']
+    :                                   ['Type', '···', '···', '···'];
   const activeStep = flowStep === 'side' ? 0
     : flowStep === 'role' ? 1
     : side === 'homeowner' ? 1
