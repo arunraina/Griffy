@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BRAND_NAME } from '@/lib/brand';
+import { GriffyIcon } from './Logo';
 
 const COLUMNS = [
   {
@@ -47,7 +48,11 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="lg:col-span-2">
-            <span className="text-[#C0593A] font-bold text-2xl tracking-tight">{BRAND_NAME}</span>
+            <div className="flex items-center gap-2.5">
+              <GriffyIcon size={32} />
+              <span className="text-white font-bold text-2xl tracking-tight" style={{ fontFamily: 'Georgia, serif' }}>{BRAND_NAME}</span>
+            </div>
+            <p className="text-gray-600 text-xs mt-2 tracking-wide">Ghar Banana Hua Aasaan</p>
             <p className="text-gray-500 text-sm mt-3 leading-relaxed max-w-xs">
               India's construction marketplace — find contractors, source materials, and hire skilled labour all in one place.
             </p>

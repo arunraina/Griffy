@@ -10,6 +10,7 @@ import { useNotifications } from '@/context/NotificationContext';
 import { useChat } from '@/context/ChatContext';
 import NotificationBell from './NotificationBell';
 import SearchBar from './SearchBar';
+import Logo from './Logo';
 
 interface UserInfo { name: string }
 
@@ -75,8 +76,8 @@ export default function Navbar() {
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="text-[#C0593A] font-bold text-2xl tracking-tight flex-shrink-0 mr-8">
-          Griffy
+        <Link href="/" className="flex-shrink-0 mr-8">
+          <Logo size={32} wordmarkClassName="text-[#2C1810] font-bold tracking-tight" />
         </Link>
 
         {/* Center nav — desktop */}
