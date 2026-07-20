@@ -10,16 +10,17 @@ const PROFESSIONAL_ROLES = new Set([
 ]);
 
 export default function HomeHeroCTA() {
-  const [role, setRole] = useState<string | null | undefined>(undefined);
+  // Most visitors landing on the homepage are logged out, so default to
+  // those CTAs immediately instead of blocking render on an auth check —
+  // only upgrade to the logged-in CTA once fetchMe() actually confirms a
+  // session. Previously this rendered nothing until the round-trip
+  // resolved, which meant every anonymous visitor waited on a network
+  // call just to see the CTAs they'd have seen by default anyway.
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMe().then((me) => setRole(me.role)).catch(() => setRole(null));
   }, []);
-
-  // undefined = still checking; render nothing yet to avoid a CTA flash/flip.
-  if (role === undefined) {
-    return <div className="h-[60px] mb-6" />;
-  }
 
   if (role === null) {
     return (
