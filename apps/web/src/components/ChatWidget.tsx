@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { findBestAnswer, isGreeting } from '@/lib/faq-data';
+import { useAuth } from '@/lib/auth-provider';
 
 interface Message {
   from: 'bot' | 'user';
@@ -18,6 +19,7 @@ const GREETING: Message = {
 const FALLBACK = "I don't have an answer for that yet. Try rephrasing, browse the full Help Center, or reach our team directly.";
 
 export default function ChatWidget() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState('');
@@ -26,6 +28,8 @@ export default function ChatWidget() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, open]);
+
+  if (!user) return null;
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();

@@ -44,6 +44,10 @@ const IDS = {
   rentSeller:      'c0000007-0000-0000-0000-000000000001',
   builderSeller:   'c0000008-0000-0000-0000-000000000001',
   griffyBrand:     'c0000011-0000-0000-0000-000000000001',
+  turnkeyProjects: [
+    'c0000012-0000-0000-0000-000000000001',
+    'c0000012-0000-0000-0000-000000000002',
+  ],
 };
 
 async function main() {
@@ -479,6 +483,64 @@ async function main() {
     if (!exists) await prisma.land.create({ data: { ownerId: griffyLandOwner.id, ...land } });
   }
   console.log('✅ Griffy land owner profile + 2 plot listings seeded');
+
+  // ── Turnkey projects (customer = reviewer[0], provider = contractors[0]/[1]) ──
+  const turnkeyProject1 = await prisma.turnkeyProject.upsert({
+    where: { id: IDS.turnkeyProjects[0] },
+    update: {},
+    create: {
+      id: IDS.turnkeyProjects[0],
+      customerId: IDS.reviewers[0],
+      providerId: IDS.contractors[0],
+      type: 'TURNKEY',
+      title: 'Full Home Construction — 3BHK, Rawalpora',
+      description: '3BHK independent house, ground-up construction on a 1500 sqft plot in Rawalpora, Srinagar. Foundation to finishing, including electrical and plumbing.',
+      budget: 4200000,
+      status: 'IN_PROGRESS',
+      startDate: new Date(NOW.getTime() - 60 * 24 * 60 * 60 * 1000),
+      targetEndDate: new Date(NOW.getTime() + 120 * 24 * 60 * 60 * 1000),
+      percentComplete: 35,
+    },
+  });
+
+  const turnkeyProject2 = await prisma.turnkeyProject.upsert({
+    where: { id: IDS.turnkeyProjects[1] },
+    update: {},
+    create: {
+      id: IDS.turnkeyProjects[1],
+      customerId: IDS.reviewers[1],
+      providerId: IDS.contractors[1],
+      type: 'LAND_PLOTTING',
+      title: 'Villa Plotting & Layout — Tawi Riverfront',
+      description: 'Land plotting and layout approval for a 4-plot residential subdivision near the Tawi riverfront, Jammu.',
+      budget: 950000,
+      status: 'REQUESTED',
+      percentComplete: 0,
+    },
+  });
+
+  const existingMilestones = await prisma.turnkeyMilestone.count({ where: { projectId: turnkeyProject1.id } });
+  if (existingMilestones === 0) {
+    await prisma.turnkeyMilestone.createMany({
+      data: [
+        { projectId: turnkeyProject1.id, title: 'Foundation & Plinth', amount: 1200000, sequence: 1, status: 'APPROVED', paymentStatus: 'PAID' },
+        { projectId: turnkeyProject1.id, title: 'RCC Structure & Roofing', amount: 1500000, sequence: 2, status: 'SUBMITTED' },
+        { projectId: turnkeyProject1.id, title: 'Brickwork & Plastering', amount: 900000, sequence: 3, status: 'PENDING' },
+        { projectId: turnkeyProject1.id, title: 'Finishing & Handover', amount: 600000, sequence: 4, status: 'PENDING' },
+      ],
+    });
+  }
+
+  const existingUpdates = await prisma.turnkeyProjectUpdate.count({ where: { projectId: turnkeyProject1.id } });
+  if (existingUpdates === 0) {
+    await prisma.turnkeyProjectUpdate.createMany({
+      data: [
+        { projectId: turnkeyProject1.id, note: 'Foundation work complete, plinth beam cast and cured.', percentComplete: 20 },
+        { projectId: turnkeyProject1.id, note: 'Ground floor columns and slab shuttering in progress.', percentComplete: 35 },
+      ],
+    });
+  }
+  console.log('✅ 2 turnkey projects + milestones + updates seeded');
 
   console.log('\n🎉 Seed complete!');
 }
