@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ name: '', phone: '' });
+  const [form, setForm] = useState({ name: '', phone: '', city: '', state: '' });
   const [referral, setReferral] = useState<ReferralStats | null>(null);
   const [analytics, setAnalytics] = useState<MyAnalytics | null>(null);
   const [copied, setCopied] = useState(false);
@@ -43,7 +43,7 @@ export default function ProfilePage() {
     fetchMe()
       .then((data) => {
         setMe(data);
-        setForm({ name: data.name, phone: data.phone ?? '' });
+        setForm({ name: data.name, phone: data.phone ?? '', city: data.city ?? '', state: data.state ?? '' });
         fetchReferralStats().then(setReferral).catch(() => undefined);
         fetchMyAnalytics().then(setAnalytics).catch(() => undefined);
       })
@@ -221,6 +221,35 @@ export default function ProfilePage() {
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-1.5">City</label>
+              {editing ? (
+                <input
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  placeholder="e.g. Srinagar"
+                  className="w-full border border-[#EBE0D8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#C0593A]"
+                />
+              ) : (
+                <p className="text-sm text-[#2C1810]">{me.city || <span className="text-[#A08070]">Not added</span>}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-1.5">State</label>
+              {editing ? (
+                <input
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                  placeholder="e.g. Jammu & Kashmir"
+                  className="w-full border border-[#EBE0D8] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#C0593A]"
+                />
+              ) : (
+                <p className="text-sm text-[#2C1810]">{me.state || <span className="text-[#A08070]">Not added</span>}</p>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-[#A08070] uppercase tracking-wide mb-1.5">Email</label>
             <p className="text-sm text-[#2C1810]">{me.email}</p>
@@ -239,7 +268,7 @@ export default function ProfilePage() {
           {editing && (
             <div className="flex gap-3 pt-2">
               <button
-                onClick={() => { setEditing(false); setForm({ name: me.name, phone: me.phone ?? '' }); setError(''); }}
+                onClick={() => { setEditing(false); setForm({ name: me.name, phone: me.phone ?? '', city: me.city ?? '', state: me.state ?? '' }); setError(''); }}
                 className="flex-1 border-2 border-[#EBE0D8] text-[#6B5248] font-semibold py-2.5 rounded-xl"
               >
                 Cancel

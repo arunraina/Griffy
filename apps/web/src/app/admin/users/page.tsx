@@ -109,6 +109,7 @@ export default function AdminUsersPage() {
                   <th className="px-5 py-3 font-semibold">#</th>
                   <th className="px-5 py-3 font-semibold">Name</th>
                   <th className="px-5 py-3 font-semibold">Contact</th>
+                  <th className="px-5 py-3 font-semibold">City</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
                   <th className="px-5 py-3 font-semibold">Joined</th>
@@ -127,6 +128,7 @@ export default function AdminUsersPage() {
                       <p>{u.email}</p>
                       {u.phone && <p className="text-xs text-[#A08070]">{u.phone}</p>}
                     </td>
+                    <td className="px-5 py-3 text-[#6B5248] text-xs">{u.city ? `${u.city}${u.state ? `, ${u.state}` : ''}` : <span className="text-[#A08070]">—</span>}</td>
                     <td className="px-5 py-3 text-[#6B5248] text-xs">{u.role}</td>
                     <td className="px-5 py-3">
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${u.isSuspended ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'}`}>

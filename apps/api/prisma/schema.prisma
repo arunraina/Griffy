@@ -117,6 +117,11 @@ model User {
   name             String
   role             UserRole
   avatarUrl        String?  @map("avatar_url")
+  // Self-reported, set via profile edit — not backfillable for existing
+  // users, so nullable. Basic geo reporting (e.g. "users by city") without
+  // joining through supply-side profiles, which only cover professionals.
+  city             String?
+  state            String?
   referredById     String?  @map("referred_by_id")
   referredBy       User?    @relation("Referrals", fields: [referredById], references: [id])
   referrals        User[]   @relation("Referrals")

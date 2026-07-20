@@ -196,6 +196,7 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
 
 export interface AdminUser {
   id: string; userNumber: number; name: string; email: string; phone: string | null;
+  city: string | null; state: string | null;
   role: string; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
 }
 

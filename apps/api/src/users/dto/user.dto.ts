@@ -12,6 +12,16 @@ export class UpdateMeDto {
   @MaxLength(20)
   phone?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string;
+
   // require_tld: false — local dev serves images from http://localhost:3001
   // (no TLD) when S3 isn't configured; production S3/CDN URLs still pass.
   @IsOptional()

@@ -12,7 +12,7 @@ export class UsersService {
 
   update(
     id: string,
-    data: Partial<Pick<User, 'name' | 'phone' | 'avatarUrl'>>,
+    data: Partial<Pick<User, 'name' | 'phone' | 'avatarUrl' | 'city' | 'state'>>,
   ): Promise<User> {
     return this.prisma.user.update({ where: { id }, data });
   }
