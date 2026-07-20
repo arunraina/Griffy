@@ -6,6 +6,7 @@ import { calculatePlasterEstimate, type PlasterThickness, type PlasterRatio } fr
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 const THICKNESSES: PlasterThickness[] = [12, 15, 20];
 const RATIOS: PlasterRatio[] = [4, 6];
@@ -72,8 +73,17 @@ function PlasterInner() {
             <ResultLine emoji="🏗️" label="Cement" value={`${result.cementBags} bags`} />
             <ResultLine emoji="🏖️" label="Sand" value={`${result.sandCft} cft`} />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },
+                { label: 'Sand', category: 'structure', subcategory: 'sand', quantity: result.sandCft },
+              ]}
+            />
+            <AddToEstimateButton
+              source="plaster"
+              sourceLabel="Plaster"
+              description={`${areaSqft} sqft, ${thicknessMm}mm, 1:${ratio} mix`}
               lines={[
                 { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },
                 { label: 'Sand', category: 'structure', subcategory: 'sand', quantity: result.sandCft },

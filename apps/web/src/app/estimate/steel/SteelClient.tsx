@@ -6,6 +6,7 @@ import { calculateSteelEstimate, type SlabUsage } from '@griffy/shared';
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 function SteelInner() {
   const router = useRouter();
@@ -55,8 +56,16 @@ function SteelInner() {
           <div>
             <ResultLine emoji="🔩" label="TMT Steel" value={`${result.steelKg.toLocaleString('en-IN')} kg`} />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'TMT Steel', category: 'steel', subcategory: 'tmt', quantity: result.steelKg },
+              ]}
+            />
+            <AddToEstimateButton
+              source="steel"
+              sourceLabel="TMT Steel"
+              description={`${slabAreaSqft} sqft slab, ${usage}`}
               lines={[
                 { label: 'TMT Steel', category: 'steel', subcategory: 'tmt', quantity: result.steelKg },
               ]}

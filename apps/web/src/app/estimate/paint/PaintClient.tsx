@@ -6,6 +6,7 @@ import { calculatePaintEstimate } from '@griffy/shared';
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 function PaintInner() {
   const router = useRouter();
@@ -57,8 +58,16 @@ function PaintInner() {
             <ResultLine emoji="🧴" label="Primer" value={`${result.primerLitres} L`} note="1 coat" />
             <ResultLine emoji="🎨" label="Paint" value={`${result.paintLitres} L`} note={`${coats} coat${coats !== 1 ? 's' : ''}`} />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'Paint', category: 'paints', subcategory: 'interior_paint', quantity: Math.max(1, Math.ceil(result.paintLitres / 20)) },
+              ]}
+            />
+            <AddToEstimateButton
+              source="paint"
+              sourceLabel="Paint"
+              description={`${wallAreaSqft} sqft, ${coats} coat${coats !== 1 ? 's' : ''}`}
               lines={[
                 { label: 'Paint', category: 'paints', subcategory: 'interior_paint', quantity: Math.max(1, Math.ceil(result.paintLitres / 20)) },
               ]}

@@ -6,6 +6,7 @@ import { calculateFlooringEstimate } from '@griffy/shared';
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 const TILE_SIZES = [12, 16, 24, 32];
 
@@ -68,8 +69,16 @@ function FlooringInner() {
             <ResultLine emoji="🧴" label="Tile adhesive" value={`${result.adhesiveBags} bags`} />
             <ResultLine emoji="⬜" label="Grout" value={`${result.groutKg} kg`} />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'Tiles', category: 'tiles', subcategory: 'vitrified', quantity: result.tileCountWithWastage },
+              ]}
+            />
+            <AddToEstimateButton
+              source="flooring"
+              sourceLabel="Tile Flooring"
+              description={`${lengthFt}ft × ${widthFt}ft room, ${tileSizeIn}in tiles`}
               lines={[
                 { label: 'Tiles', category: 'tiles', subcategory: 'vitrified', quantity: result.tileCountWithWastage },
               ]}

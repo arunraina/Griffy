@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useEstimateBuilder } from '@/context/EstimateBuilderContext';
+import { formatIndianCurrency as fmt } from '@griffy/shared';
 
 interface Tool {
   href: string;
@@ -20,6 +22,8 @@ const TOOLS: Tool[] = [
 ];
 
 export default function EstimateHubClient() {
+  const { count, total } = useEstimateBuilder();
+
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
       <div className="bg-white border-b border-[#EBE0D8]">
@@ -31,8 +35,17 @@ export default function EstimateHubClient() {
             Plan Your Construction — Free Estimators
           </h1>
           <p className="text-[#6B5248] text-base leading-relaxed max-w-xl mx-auto">
-            Ballpark quantities and costs before you talk to a single contractor — pick a tool below.
+            Ballpark quantities and costs before you talk to a single contractor — pick a tool below. Estimating a
+            whole home? Use &ldquo;Add to My Estimate&rdquo; on each calculator to build up one combined total.
           </p>
+          {count > 0 && (
+            <Link
+              href="/estimate/summary"
+              className="inline-flex items-center gap-2 mt-5 bg-[#2C1810] hover:bg-[#3D2418] text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors"
+            >
+              📋 My Estimate — {count} item{count !== 1 ? 's' : ''} · {fmt(total)} →
+            </Link>
+          )}
         </div>
       </div>
 

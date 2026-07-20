@@ -6,6 +6,7 @@ import { calculateBricksEstimate, type WallThickness } from '@griffy/shared';
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 function BricksInner() {
   const router = useRouter();
@@ -68,8 +69,18 @@ function BricksInner() {
             <ResultLine emoji="🏗️" label="Cement" value={`${result.cementBags} bags`} note="For 1:6 mortar" />
             <ResultLine emoji="🏖️" label="Sand" value={`${result.sandCft} cft`} note="For 1:6 mortar" />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'Bricks', category: 'structure', subcategory: 'bricks', quantity: result.brickCountWithWastage },
+                { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },
+                { label: 'Sand', category: 'structure', subcategory: 'sand', quantity: result.sandCft },
+              ]}
+            />
+            <AddToEstimateButton
+              source="bricks"
+              sourceLabel="Brick Wall"
+              description={`${lengthFt}ft × ${heightFt}ft × ${thickness}in wall`}
               lines={[
                 { label: 'Bricks', category: 'structure', subcategory: 'bricks', quantity: result.brickCountWithWastage },
                 { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },

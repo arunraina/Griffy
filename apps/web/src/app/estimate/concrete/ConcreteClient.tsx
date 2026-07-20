@@ -6,6 +6,7 @@ import { calculateConcreteEstimate, type ConcreteGrade } from '@griffy/shared';
 import EstimatorShell from '../_components/EstimatorShell';
 import ResultLine from '../_components/ResultLine';
 import BuyMaterialsButton from '../_components/BuyMaterialsButton';
+import AddToEstimateButton from '../_components/AddToEstimateButton';
 
 const GRADES: ConcreteGrade[] = ['M15', 'M20', 'M25'];
 
@@ -73,8 +74,18 @@ function ConcreteInner() {
             <ResultLine emoji="🏖️" label="Sand" value={`${result.sandCft} cft`} />
             <ResultLine emoji="🪨" label="Aggregate" value={`${result.aggregateCft} cft`} />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <BuyMaterialsButton
+              lines={[
+                { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },
+                { label: 'Sand', category: 'structure', subcategory: 'sand', quantity: result.sandCft },
+                { label: 'Aggregate', category: 'structure', subcategory: 'aggregate', quantity: result.aggregateCft },
+              ]}
+            />
+            <AddToEstimateButton
+              source="concrete"
+              sourceLabel="Concrete Slab"
+              description={`${lengthFt}ft × ${widthFt}ft × ${thicknessIn}in slab (${grade})`}
               lines={[
                 { label: 'Cement', category: 'structure', subcategory: 'cement', quantity: result.cementBags },
                 { label: 'Sand', category: 'structure', subcategory: 'sand', quantity: result.sandCft },
