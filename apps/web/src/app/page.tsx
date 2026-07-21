@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { SEO_KEYWORDS } from '@/lib/seo';
 import { isEnabled, isSubEnabled } from '@/lib/featureFlags';
 import { HomePriceTicker, CostCalculator } from './_components/HomeClientSections';
-import HomeHeroCTA from './_components/HomeHeroCTA';
+import HomeHero from './_components/HomeHero';
 
 export const metadata: Metadata = {
   title: 'Griffy — Build Your Home with Trusted Contractors & Materials',
@@ -27,20 +27,7 @@ export default function HomePage() {
       {/* ── SECTION 1: HERO ── */}
       <section className="bg-white border-b border-[#EBE0D8] px-6 py-20 text-center">
         <div className="max-w-[700px] mx-auto">
-          <div className="inline-flex items-center gap-2 bg-[#FAEEE9] text-[#9E3F24] text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-            🏠 For homeowners across India
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#2C1810] leading-tight mb-5"
-            style={{ fontFamily: 'Georgia, serif' }}>
-            Build your dream home with{' '}
-            <em className="not-italic text-[#C0593A]">trusted professionals</em>
-          </h1>
-          <p className="text-[#6B5248] text-base leading-relaxed mb-8 max-w-xl mx-auto">
-            India's one-stop platform for construction — find contractors, hire labour, book service experts, source materials and discover land
-          </p>
-
-          {/* Primary CTA */}
-          <HomeHeroCTA />
+          <HomeHero />
 
           {/* Quick links */}
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-gray-500 mb-8">
