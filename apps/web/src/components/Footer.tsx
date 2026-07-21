@@ -13,7 +13,6 @@ const COLUMNS = [
       { label: 'Leaderboard', href: '/leaderboard' },
       { label: 'Browse by City', href: '/cities' },
       { label: 'How It Works', href: '/how-it-works' },
-      { label: 'Early Access (App)', href: '/early-access' },
     ],
   },
   {

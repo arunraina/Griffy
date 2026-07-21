@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
@@ -49,6 +49,16 @@ export default function Navbar() {
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [signupOpen,    setSignupOpen]    = useState(false);
   const [marketOpen,    setMarketOpen]    = useState(false);
+  const [accountOpen,   setAccountOpen]   = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     // adminRole isn't in the Supabase session/user_metadata (same reason
@@ -81,6 +91,7 @@ export default function Navbar() {
 
   async function handleLogout() {
     setMenuOpen(false);
+    setAccountOpen(false);
     await supabase.auth.signOut();
     router.push('/login');
   }
@@ -130,54 +141,68 @@ export default function Navbar() {
         {/* Right — desktop */}
         <div className="hidden md:flex items-center gap-3 ml-8">
           <SearchBar />
-          {user && (
-            <>
-              <Link href="/saved" className="text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Saved">
-                <span className="text-lg">♡</span>
-              </Link>
-              <Link href="/messages" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Messages">
-                <span className="text-lg">💬</span>
-                {chatUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
-                  </span>
-                )}
-              </Link>
-              <NotificationBell />
-              <Link href="/cart" className="relative text-gray-600 hover:text-[#C0593A] transition-colors w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[#FAEEE9]" aria-label="Cart">
-                <span className="text-lg">🛒</span>
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {cartCount > 9 ? '9+' : cartCount}
-                  </span>
-                )}
-              </Link>
-            </>
-          )}
+          {user && <NotificationBell />}
           {user ? (
-            <>
-              <Link href="/profile" className="text-sm text-gray-500 max-w-[120px] truncate hover:text-[#C0593A]" title="View profile">
-                {user.name}
-              </Link>
-              <Link href="/orders"
-                className="text-sm font-semibold text-[#C0593A] hover:underline">
-                Orders
-              </Link>
-              <Link href="/dashboard/home"
-                className="text-sm font-semibold text-[#C0593A] hover:underline">
-                Dashboard
-              </Link>
-              {isAdmin && (
-                <Link href="/admin"
-                  className="text-sm font-semibold text-[#9E3F24] bg-[#FAEEE9] px-3 py-1.5 rounded-lg hover:bg-[#F0DDD5]">
-                  Admin
-                </Link>
-              )}
-              <button onClick={handleLogout}
-                className="text-sm border border-[#C0593A] text-[#C0593A] px-4 py-1.5 rounded-lg hover:bg-[#FAEEE9] transition-colors">
-                Logout
+            <div className="relative" ref={accountRef}>
+              <button
+                onClick={() => setAccountOpen((o) => !o)}
+                className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#C0593A] transition-colors pl-2 pr-1 py-1.5 rounded-lg hover:bg-[#FAEEE9]"
+              >
+                <span className="max-w-[120px] truncate font-medium">{user.name}</span>
+                {(cartCount > 0 || chatUnreadCount > 0) && (
+                  <span className="bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {cartCount + chatUnreadCount > 9 ? '9+' : cartCount + chatUnreadCount}
+                  </span>
+                )}
+                <svg className={`w-3 h-3 transition-transform ${accountOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
-            </>
+              {accountOpen && (
+                <div className="absolute right-0 top-full pt-2 w-56 z-50">
+                  <div className="bg-white border border-[#EBE0D8] rounded-xl shadow-lg overflow-hidden py-1.5">
+                    <Link href="/profile" onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">👤</span> Profile
+                    </Link>
+                    <Link href="/orders" onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">📦</span> Orders
+                    </Link>
+                    <Link href="/dashboard/home" onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">📊</span> Dashboard
+                    </Link>
+                    {isAdmin && (
+                      <Link href="/admin" onClick={() => setAccountOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#9E3F24] hover:bg-[#FAEEE9] transition-colors">
+                        <span className="text-base">🛠️</span> Admin
+                      </Link>
+                    )}
+                    <div className="h-px bg-[#F0E8E2] my-1" />
+                    <Link href="/saved" onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="text-base">♡</span> Saved
+                    </Link>
+                    <Link href="/cart" onClick={() => setAccountOpen(false)}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="flex items-center gap-3"><span className="text-base">🛒</span> Cart</span>
+                      {cartCount > 0 && <span className="text-xs font-bold text-[#C0593A]">{cartCount}</span>}
+                    </Link>
+                    <Link href="/messages" onClick={() => setAccountOpen(false)}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="flex items-center gap-3"><span className="text-base">💬</span> Messages</span>
+                      {chatUnreadCount > 0 && <span className="text-xs font-bold text-[#C0593A]">{chatUnreadCount}</span>}
+                    </Link>
+                    <div className="h-px bg-[#F0E8E2] my-1" />
+                    <button onClick={handleLogout}
+                      className="w-full text-left px-4 py-2.5 text-sm text-[#C0593A] hover:bg-[#FAEEE9] transition-colors">
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Link href="/login"

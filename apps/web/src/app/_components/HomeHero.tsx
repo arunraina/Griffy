@@ -72,10 +72,6 @@ export default function HomeHero() {
             className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-base px-10 py-4 rounded-xl transition-colors shadow-sm">
             Get Started Free
           </Link>
-          <Link href="/early-access"
-            className="inline-block bg-white hover:bg-[#FAEEE9] text-[#C0593A] font-bold text-base px-6 py-4 rounded-xl transition-colors border-2 border-[#C0593A]">
-            🚀 Get Early Access to the App
-          </Link>
         </div>
       </>
     );
