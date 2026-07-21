@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { fetchMe, NotAuthenticatedError, type Me } from '@/lib/users';
 import {
   fetchMyBookings, fetchIncomingBookings,
@@ -67,11 +67,23 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  return (
+    <Suspense>
+      <DashboardPageInner />
+    </Suspense>
+  );
+}
+
+function DashboardPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [tab, setTab] = useState('overview');
+  // Lets cards elsewhere (e.g. /dashboard/home) deep-link straight into a
+  // specific tab, e.g. /dashboard?tab=bookings — falls back to the default
+  // Overview tab when absent or unrecognized.
+  const [tab, setTab] = useState(searchParams.get('tab') || 'overview');
 
   useEffect(() => {
     // Admin access (adminRole) is independent of role (the marketplace user

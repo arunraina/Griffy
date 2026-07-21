@@ -163,7 +163,7 @@ export default function Navbar() {
                 className="text-sm font-semibold text-[#C0593A] hover:underline">
                 Orders
               </Link>
-              <Link href="/dashboard"
+              <Link href="/dashboard/home"
                 className="text-sm font-semibold text-[#C0593A] hover:underline">
                 Dashboard
               </Link>
@@ -275,7 +275,7 @@ export default function Navbar() {
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Orders
                   </Link>
-                  <Link href="/dashboard" onClick={() => setMenuOpen(false)}
+                  <Link href="/dashboard/home" onClick={() => setMenuOpen(false)}
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Dashboard
                   </Link>

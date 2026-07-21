@@ -82,12 +82,12 @@ export class AuthGuard implements CanActivate {
       // first so every authenticated request doesn't pay for the ghost lookup
       // below. Only a first-ever login for this Supabase id falls through.
       const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
-      if (existing) return existing;
+      if (existing) return await this.trackLogin(existing);
 
       const claimed = await this.claimGhostUser(user);
-      if (claimed) return claimed;
+      if (claimed) return await this.trackLogin(claimed);
 
-      return await this.prisma.user.upsert({
+      const created = await this.prisma.user.upsert({
         where: { id: user.id },
         create: {
           id: user.id,
@@ -102,11 +102,27 @@ export class AuthGuard implements CanActivate {
         },
         update: {},
       });
+      return await this.trackLogin(created);
     } catch {
       const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
       if (existing) return existing;
       throw new UnauthorizedException('Could not resolve user account');
     }
+  }
+
+  // Shared by every path in upsertUser (existing row, claimed ghost, or
+  // freshly created) so "first login ever" and session counting are defined
+  // in exactly one place. Debounced to once per ~30min: several requests
+  // fire in parallel right after login (see the comment above upsertUser),
+  // and without debouncing loginCount would over-increment per page load
+  // instead of per session. Downstream, loginCount <= 1 means "first login".
+  private async trackLogin(user: User): Promise<User> {
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (user.lastLoginAt && user.lastLoginAt >= thirtyMinAgo) return user;
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { loginCount: { increment: 1 }, lastLoginAt: new Date() },
+    });
   }
 
   // An admin can pre-seed a supply-side provider (e.g. an electrician the team

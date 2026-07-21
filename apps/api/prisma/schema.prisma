@@ -144,6 +144,11 @@ model User {
   notificationPrefs Json?   @map("notification_prefs")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+  // Updated by AuthGuard on authenticated requests, debounced to once per
+  // ~30min so concurrent page-load requests don't over-count a single
+  // session. loginCount <= 1 is the "first login ever" signal.
+  lastLoginAt      DateTime? @map("last_login_at")
+  loginCount       Int       @default(0) @map("login_count")
 
   // 1:1 supply-side profiles
   contractorProfile       ContractorProfile?
