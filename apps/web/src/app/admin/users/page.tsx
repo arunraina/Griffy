@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
               <div key={u.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <Link href={`/admin/users/${u.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A] hover:underline">
+                    <Link href={`/admin/profile/${u.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A] hover:underline">
                       #{u.userNumber} · {u.name}
                     </Link>
                     {u.isFirstParty && <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">Griffy</span>}
@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="border-b border-[#F0E8E2] last:border-none">
                     <td className="px-5 py-3 text-xs text-[#A08070] font-semibold">{u.userNumber}</td>
                     <td className="px-5 py-3">
-                      <Link href={`/admin/users/${u.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A] hover:underline">
+                      <Link href={`/admin/profile/${u.id}`} className="font-semibold text-[#2C1810] hover:text-[#C0593A] hover:underline">
                         {u.name}
                       </Link>
                       {u.isFirstParty && <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">Griffy</span>}

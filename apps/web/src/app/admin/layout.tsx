@@ -41,6 +41,11 @@ function allowedNav(adminRole: string | null) {
 }
 
 function isNavItemActive(href: string, pathname: string) {
+  // /admin/profile/:id (the "manage this person's listings" screen reached
+  // by clicking a name in the Users list) lives outside /admin/users, but
+  // belongs to the same section for nav-highlighting and the allowed-section
+  // gating below.
+  if (href === '/admin/users' && pathname.startsWith('/admin/profile/')) return true;
   return pathname === href || (href !== '/admin' && pathname.startsWith(href));
 }
 
