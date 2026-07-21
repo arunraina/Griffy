@@ -18,3 +18,5 @@ apps/api/uploads/
 
 # OS
 .DS_Store
+.vercel
+.env*

@@ -398,6 +398,8 @@ model Material {
   price       Decimal                 @db.Decimal(10, 2)
   unit        String
   stock       Int                     @default(0)
+  minOrderQty Int?                    @map("min_order_qty")
+  deliveryNote String?                @map("delivery_note")
   imageUrls   String[]                @map("image_urls")
   avgRating   Float                   @default(0) @map("avg_rating")
   reviewCount Int                     @default(0) @map("review_count")
@@ -524,6 +526,50 @@ model PortfolioItem {
 
   @@index([profileType, profileId])
   @@map("portfolio_items")
+}
+
+enum PriceUnit {
+  FIXED
+  PER_HOUR
+  PER_DAY
+  PER_POINT
+  PER_SQFT
+  PER_VISIT
+}
+
+// A service expert/labour profile's rate menu (e.g. "Tap repair — ₹150
+// fixed", "Pipe fitting — ₹300 per point") — same polymorphic profileType/
+// profileId pattern as PortfolioItem above, for the same reason (one column
+// can't FK to two different profile tables).
+model ServiceItem {
+  id          String    @id @default(uuid())
+  profileType String    @map("profile_type")
+  profileId   String    @map("profile_id")
+  name        String
+  description String?
+  price       Int // paise
+  priceUnit   PriceUnit @map("price_unit")
+  category    String
+  active      Boolean   @default(true)
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([profileType, profileId])
+  @@map("service_items")
+}
+
+// Audit trail for admin actions taken on behalf of another user (e.g.
+// creating a listing under a supplier's profile) — who did what, to what.
+model AdminActionLog {
+  id         String   @id @default(uuid())
+  adminId    String   @map("admin_id")
+  action     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([targetType, targetId])
+  @@map("admin_action_logs")
 }
 
 model OrderStatusEvent {
