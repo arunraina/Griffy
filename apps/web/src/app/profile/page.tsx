@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { fetchMe, updateMe, fetchReferralStats, fetchMyAnalytics, NotAuthenticatedError, type Me, type ReferralStats, type MyAnalytics } from '@/lib/users';
+import { updateMe as apiUpdateMe, fetchReferralStats, fetchMyAnalytics, type ReferralStats, type MyAnalytics } from '@/lib/users';
+import { useAuth } from '@/lib/auth-provider';
 import { uploadImage } from '@/lib/storage';
 import { Skeleton } from '@/components/Skeleton';
 
@@ -24,10 +25,7 @@ function initials(name: string) {
 }
 
 export default function ProfilePage() {
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsAuth, setNeedsAuth] = useState(false);
-  const [loadError, setLoadError] = useState(false);
+  const { user, me, loading: authLoading, meLoading, setMe } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,21 +36,21 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const formInitialized = useRef(false);
+
+  const loading = authLoading || (!!user && meLoading);
+  const needsAuth = !authLoading && !user;
+  const loadError = !authLoading && !!user && !meLoading && !me;
 
   useEffect(() => {
-    fetchMe()
-      .then((data) => {
-        setMe(data);
-        setForm({ name: data.name, phone: data.phone ?? '', city: data.city ?? '', state: data.state ?? '' });
-        fetchReferralStats().then(setReferral).catch(() => undefined);
-        fetchMyAnalytics().then(setAnalytics).catch(() => undefined);
-      })
-      .catch((e) => {
-        if (e instanceof NotAuthenticatedError) setNeedsAuth(true);
-        else setLoadError(true);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    if (!me) return;
+    if (!formInitialized.current) {
+      formInitialized.current = true;
+      setForm({ name: me.name, phone: me.phone ?? '', city: me.city ?? '', state: me.state ?? '' });
+    }
+    fetchReferralStats().then(setReferral).catch(() => undefined);
+    fetchMyAnalytics().then(setAnalytics).catch(() => undefined);
+  }, [me]);
 
   function copyReferralLink() {
     if (!referral) return;
@@ -67,7 +65,7 @@ export default function ProfilePage() {
     setSaving(true);
     setError('');
     try {
-      const updated = await updateMe(form);
+      const updated = await apiUpdateMe(form);
       setMe(updated);
       setEditing(false);
     } catch (e) {
@@ -84,7 +82,7 @@ export default function ProfilePage() {
     setAvatarError('');
     try {
       const url = await uploadImage('avatars', file);
-      const updated = await updateMe({ avatarUrl: url });
+      const updated = await apiUpdateMe({ avatarUrl: url });
       setMe(updated);
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : 'Failed to upload photo');
