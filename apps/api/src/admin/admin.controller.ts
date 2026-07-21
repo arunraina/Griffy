@@ -5,7 +5,7 @@ import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto } from './dto/admin.dto';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 
@@ -20,13 +20,13 @@ export class AdminController {
 
   @Get('reports')
   async listReports(@CurrentUser() user: User, @Query('status') status?: ReportStatus) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'REPORTS');
     return this.reports.listAll(status);
   }
 
   @Patch('reports/:id/status')
   async updateReportStatus(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateReportStatusDto) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'REPORTS');
     return this.reports.setStatus(id, body.status);
   }
 
@@ -36,7 +36,7 @@ export class AdminController {
     @Param('type') type: string,
     @Query('status') status?: ApprovalStatus,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'APPROVALS');
     return this.admin.listProfiles(type as Parameters<AdminService['listProfiles']>[0], status);
   }
 
@@ -46,7 +46,7 @@ export class AdminController {
     @Param('type') type: string,
     @Param('id') id: string,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'APPROVALS');
     return this.admin.setApproval(
       type as Parameters<AdminService['setApproval']>[0],
       id,
@@ -62,7 +62,7 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: RejectProfileDto,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'APPROVALS');
     return this.admin.setApproval(
       type as Parameters<AdminService['setApproval']>[0],
       id,
@@ -74,7 +74,7 @@ export class AdminController {
 
   @Get('orders')
   async listOrders(@CurrentUser() user: User, @Query('paymentStatus') paymentStatus?: PaymentStatus) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'ORDERS');
     return this.admin.listOrders(paymentStatus);
   }
 
@@ -84,19 +84,19 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: CreateRefundDto,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'ORDERS');
     return this.payments.createRefund(user.id, id, body.amount, body.reason);
   }
 
   @Get('refunds')
   async listRefunds(@CurrentUser() user: User, @Query('status') status?: RefundStatus) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'ORDERS');
     return this.payments.listRefunds(status);
   }
 
   @Get('projects')
   async listProjects(@CurrentUser() user: User, @Query('status') status?: ProjectStatus) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'CONTENT_MODERATION');
     return this.admin.listAllProjects(status);
   }
 
@@ -106,37 +106,37 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: ModerateProjectDto,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'CONTENT_MODERATION');
     return this.admin.moderateProject(id, body.status);
   }
 
   @Get('career-applications')
   async listCareerApplications(@CurrentUser() user: User) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'CAREERS');
     return this.admin.listCareerApplications();
   }
 
   @Get('early-access-signups')
   async listEarlyAccessSignups(@CurrentUser() user: User) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'EARLY_ACCESS');
     return this.admin.listEarlyAccessSignups();
   }
 
   @Get('summary')
   async getSummary(@CurrentUser() user: User) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertFullAccess(user.id);
     return this.admin.getDashboardSummary();
   }
 
   @Get('metrics')
   async getMetrics(@CurrentUser() user: User) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertFullAccess(user.id);
     return this.admin.getGrowthMetrics();
   }
 
   @Get('content/:type')
   async listContent(@CurrentUser() user: User, @Param('type') type: string) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'CONTENT_MODERATION');
     return this.admin.listContent(type as ContentType);
   }
 
@@ -147,7 +147,7 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: ModerateContentDto,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'CONTENT_MODERATION');
     return this.admin.moderateContent(type as ContentType, id, body);
   }
 
@@ -157,38 +157,44 @@ export class AdminController {
     @Query('search') search?: string,
     @Query('role') role?: UserRole,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.listUsers(search, role);
   }
 
   @Post('users')
   async createUser(@CurrentUser() user: User, @Body() body: CreateUserDto) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.createUser(body, user.id);
   }
 
   @Patch('users/:id/suspend')
   async suspendUser(@CurrentUser() user: User, @Param('id') id: string) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'USERS');
     if (id === user.id) throw new ForbiddenException('Cannot suspend your own account');
     return this.admin.setUserSuspended(id, true);
   }
 
   @Patch('users/:id/unsuspend')
   async unsuspendUser(@CurrentUser() user: User, @Param('id') id: string) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.setUserSuspended(id, false);
+  }
+
+  // Super-Admin-only — AdminService.setAdminRole enforces that itself.
+  @Patch('users/:id/admin-role')
+  async setAdminRole(@CurrentUser() user: User, @Param('id') id: string, @Body() body: SetAdminRoleDto) {
+    return this.admin.setAdminRole(id, body.adminRole, user.id);
   }
 
   @Get('kyc')
   async listKyc(@CurrentUser() user: User, @Query('status') status?: KycStatus) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'KYC');
     return this.admin.listKyc(status);
   }
 
   @Patch('kyc/:userId/verify')
   async verifyKyc(@CurrentUser() user: User, @Param('userId') userId: string) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'KYC');
     return this.admin.setKycStatus(userId, KycStatus.VERIFIED);
   }
 
@@ -198,7 +204,7 @@ export class AdminController {
     @Param('userId') userId: string,
     @Body() body: RejectKycDto,
   ) {
-    await this.admin.assertAdmin(user.id);
+    await this.admin.assertAdminSection(user.id, 'KYC');
     return this.admin.setKycStatus(userId, KycStatus.REJECTED, body.reason);
   }
 }

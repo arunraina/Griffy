@@ -197,7 +197,21 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
 export interface AdminUser {
   id: string; userNumber: number; name: string; email: string; phone: string | null;
   city: string | null; state: string | null;
-  role: string; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
+  role: string; adminRole: string | null; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
+}
+
+export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MODERATOR', 'KYC_MODERATOR', 'HR'] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+export async function setAdminRole(id: string, adminRole: AdminRole): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/admin-role`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ adminRole }),
+  });
+  if (!res.ok) throw new Error('Failed to update admin role');
+  return res.json();
 }
 
 export async function fetchAdminUsers(search?: string, role?: string): Promise<AdminUser[]> {

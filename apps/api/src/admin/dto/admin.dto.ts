@@ -13,7 +13,12 @@ import {
   MaxLength,
   ValidateNested,
 } from 'class-validator';
-import { ProjectStatus, UserRole } from '@prisma/client';
+import { ProjectStatus, UserRole, AdminRole } from '@prisma/client';
+
+export class SetAdminRoleDto {
+  @IsEnum(AdminRole)
+  adminRole!: AdminRole;
+}
 
 // Union of every field any of the 8 supply-side ProfileType tables accepts —
 // CreateUserService.createUser() picks the subset relevant to dto.role and

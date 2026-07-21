@@ -1,10 +1,31 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, KycStatus, PaymentStatus } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
+
+export type AdminSection =
+  | 'APPROVALS'
+  | 'KYC'
+  | 'CONTENT_MODERATION'
+  | 'REPORTS'
+  | 'USERS'
+  | 'ORDERS'
+  | 'CAREERS'
+  | 'EARLY_ACCESS';
+
+// Dashboard/Growth Metrics aren't in here — they're full-access-only (see
+// assertAdmin), since a scoped admin (e.g. HR) has nothing meaningful to see
+// on a summary that aggregates GMV, bookings, and every profile type.
+const SECTION_ACCESS: Record<AdminRole, AdminSection[] | 'ALL'> = {
+  SUPER_ADMIN: 'ALL',
+  ADMIN: 'ALL',
+  CONTENT_MODERATOR: ['CONTENT_MODERATION', 'REPORTS'],
+  KYC_MODERATOR: ['KYC'],
+  HR: ['CAREERS', 'EARLY_ACCESS'],
+};
 
 type ProfileType =
   | 'contractor'
@@ -104,9 +125,46 @@ export class AdminService {
     return profile;
   }
 
+  // Base check — "is this an ADMIN row at all", used internally by
+  // assertAdminSection/assertFullAccess/setAdminRole. Doesn't look at
+  // adminRole, so don't call this directly from a controller route.
   async assertAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    return user;
+  }
+
+  // A null adminRole means either a not-yet-migrated row or (defensively) an
+  // unexpected gap — treat it as SUPER_ADMIN rather than locking an admin out.
+  async assertAdminSection(userId: string, section: AdminSection) {
+    const user = await this.assertAdmin(userId);
+    const access = SECTION_ACCESS[user.adminRole ?? 'SUPER_ADMIN'];
+    if (access !== 'ALL' && !access.includes(section)) {
+      throw new ForbiddenException(`Your admin role doesn't have access to ${section}`);
+    }
+    return user;
+  }
+
+  // Dashboard/Growth Metrics aggregate across every section (GMV, bookings,
+  // every profile type) — a scoped role like HR or KYC Moderator has nothing
+  // meaningful to see there, so this requires the full-access tier, not just
+  // "is an admin".
+  async assertFullAccess(userId: string) {
+    const user = await this.assertAdmin(userId);
+    const access = SECTION_ACCESS[user.adminRole ?? 'SUPER_ADMIN'];
+    if (access !== 'ALL') throw new ForbiddenException('Admin access required');
+    return user;
+  }
+
+  async setAdminRole(targetUserId: string, adminRole: AdminRole, actingAdminId: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Only a Super Admin can manage admin roles');
+    }
+    return this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role: 'ADMIN', adminRole },
+    });
   }
 
   listOrders(paymentStatus?: PaymentStatus) {

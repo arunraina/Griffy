@@ -28,6 +28,7 @@ export interface Me {
   phone: string | null;
   name: string;
   role: string;
+  adminRole: string | null;
   avatarUrl: string | null;
   city: string | null;
   state: string | null;

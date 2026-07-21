@@ -25,6 +25,16 @@ enum UserRole {
   ADMIN
 }
 
+// Only meaningful when role === ADMIN — which admin panel sections a given
+// admin can access. See AdminService.SECTION_ACCESS for the actual mapping.
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  CONTENT_MODERATOR
+  KYC_MODERATOR
+  HR
+}
+
 enum ApprovalStatus {
   PENDING
   APPROVED
@@ -116,6 +126,7 @@ model User {
   phone            String?  @unique
   name             String
   role             UserRole
+  adminRole        AdminRole? @map("admin_role")
   avatarUrl        String?  @map("avatar_url")
   // Self-reported, set via profile edit — not backfillable for existing
   // users, so nullable. Basic geo reporting (e.g. "users by city") without

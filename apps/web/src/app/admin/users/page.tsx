@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchAdminUsers, suspendUser, unsuspendUser, type AdminUser } from '@/lib/admin';
+import { fetchAdminUsers, suspendUser, unsuspendUser, setAdminRole, ADMIN_ROLES, type AdminUser, type AdminRole } from '@/lib/admin';
+import { fetchMe } from '@/lib/users';
 import { SkeletonListRows } from '@/components/Skeleton';
 import CreateUserModal from '@/components/admin/CreateUserModal';
 
@@ -15,6 +16,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -30,10 +32,23 @@ export default function AdminUsersPage() {
     return () => clearTimeout(t);
   }, [load]);
 
+  useEffect(() => {
+    fetchMe().then((me) => setIsSuperAdmin(me.adminRole === 'SUPER_ADMIN')).catch(() => {});
+  }, []);
+
   async function handleToggleSuspend(u: AdminUser) {
     setUpdating(u.id);
     try {
       if (u.isSuspended) await unsuspendUser(u.id); else await suspendUser(u.id);
+      load();
+    } catch { /* retry available */ } finally { setUpdating(null); }
+  }
+
+  async function handleSetAdminRole(u: AdminUser, value: string) {
+    if (!value) return;
+    setUpdating(u.id);
+    try {
+      await setAdminRole(u.id, value as AdminRole);
       load();
     } catch { /* retry available */ } finally { setUpdating(null); }
   }
@@ -98,7 +113,9 @@ export default function AdminUsersPage() {
                 {u.phone && <p className="text-xs text-[#A08070]">{u.phone}</p>}
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#F0E8E2]">
                   <div className="text-xs text-[#A08070]">
-                    <span className="font-semibold text-[#6B5248]">{u.role}</span> · Joined {new Date(u.createdAt).toLocaleDateString('en-IN')}
+                    <span className="font-semibold text-[#6B5248]">{u.role}</span>
+                    {u.adminRole && <span className="ml-1 text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{u.adminRole}</span>}
+                    {' '}· Joined {new Date(u.createdAt).toLocaleDateString('en-IN')}
                   </div>
                   <button
                     onClick={() => handleToggleSuspend(u)}
@@ -109,6 +126,17 @@ export default function AdminUsersPage() {
                     {u.isSuspended ? 'Unsuspend' : 'Suspend'}
                   </button>
                 </div>
+                {isSuperAdmin && (
+                  <select
+                    value={u.adminRole ?? ''}
+                    onChange={(e) => handleSetAdminRole(u, e.target.value)}
+                    disabled={updating === u.id}
+                    className="mt-2 w-full text-xs border border-[#EBE0D8] rounded-lg px-2 py-1.5 disabled:opacity-40"
+                  >
+                    <option value="">{u.role === 'ADMIN' ? 'Change admin role…' : 'Grant admin role…'}</option>
+                    {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
               </div>
             ))}
           </div>
@@ -141,7 +169,10 @@ export default function AdminUsersPage() {
                       {u.phone && <p className="text-xs text-[#A08070]">{u.phone}</p>}
                     </td>
                     <td className="px-5 py-3 text-[#6B5248] text-xs">{u.city ? `${u.city}${u.state ? `, ${u.state}` : ''}` : <span className="text-[#A08070]">—</span>}</td>
-                    <td className="px-5 py-3 text-[#6B5248] text-xs">{u.role}</td>
+                    <td className="px-5 py-3 text-[#6B5248] text-xs">
+                      {u.role}
+                      {u.adminRole && <span className="ml-1 text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{u.adminRole}</span>}
+                    </td>
                     <td className="px-5 py-3">
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${u.isSuspended ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'}`}>
                         {u.isSuspended ? 'Suspended' : 'Active'}
@@ -149,14 +180,27 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-3 text-xs text-[#6B5248]">{new Date(u.createdAt).toLocaleDateString('en-IN')}</td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => handleToggleSuspend(u)}
-                        disabled={updating === u.id || u.role === 'ADMIN'}
-                        title={u.role === 'ADMIN' ? 'Cannot suspend an admin from here' : undefined}
-                        className={`text-xs font-semibold hover:underline disabled:opacity-40 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
-                      >
-                        {u.isSuspended ? 'Unsuspend' : 'Suspend'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleToggleSuspend(u)}
+                          disabled={updating === u.id || u.role === 'ADMIN'}
+                          title={u.role === 'ADMIN' ? 'Cannot suspend an admin from here' : undefined}
+                          className={`text-xs font-semibold hover:underline disabled:opacity-40 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
+                        >
+                          {u.isSuspended ? 'Unsuspend' : 'Suspend'}
+                        </button>
+                        {isSuperAdmin && (
+                          <select
+                            value={u.adminRole ?? ''}
+                            onChange={(e) => handleSetAdminRole(u, e.target.value)}
+                            disabled={updating === u.id}
+                            className="text-xs border border-[#EBE0D8] rounded-lg px-1.5 py-1 disabled:opacity-40"
+                          >
+                            <option value="">{u.role === 'ADMIN' ? 'Change role…' : 'Grant admin…'}</option>
+                            {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

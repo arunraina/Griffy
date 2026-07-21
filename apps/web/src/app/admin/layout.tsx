@@ -5,26 +5,51 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { fetchMe } from '@/lib/users';
 
+// 'ALL' = Super Admin / Admin only (full-access tiers) — mirrors
+// AdminService.SECTION_ACCESS on the API side. Sections not listed there
+// (Dashboard, Growth Metrics, Feature Flags) have no backend route to scope,
+// so they stay full-access-only here too.
 const NAV = [
-  { href: '/admin',              icon: '📊', label: 'Dashboard'           },
-  { href: '/admin/metrics',      icon: '📈', label: 'Growth Metrics'      },
-  { href: '/admin/approvals',    icon: '✅', label: 'Profile Approvals'   },
-  { href: '/admin/kyc',          icon: '🪪', label: 'KYC Review'          },
-  { href: '/admin/moderation',   icon: '🚩', label: 'Content Moderation'  },
-  { href: '/admin/reports',      icon: '⚑', label: 'User Reports'        },
-  { href: '/admin/users',        icon: '👥', label: 'Users'               },
-  { href: '/admin/orders',       icon: '📦', label: 'Orders & Refunds'    },
-  { href: '/admin/projects',     icon: '🏗️', label: 'Posted Projects'     },
-  { href: '/admin/careers',      icon: '💼', label: 'Career Applications' },
-  { href: '/admin/early-access', icon: '🚀', label: 'Early Access'        },
-  { href: '/admin/flags',        icon: '🎛️', label: 'Feature Flags'       },
+  { href: '/admin',              icon: '📊', label: 'Dashboard',           sections: 'ALL' as const },
+  { href: '/admin/metrics',      icon: '📈', label: 'Growth Metrics',      sections: 'ALL' as const },
+  { href: '/admin/approvals',    icon: '✅', label: 'Profile Approvals',   sections: 'ALL' as const },
+  { href: '/admin/kyc',          icon: '🪪', label: 'KYC Review',          sections: ['KYC'] },
+  { href: '/admin/moderation',   icon: '🚩', label: 'Content Moderation',  sections: ['CONTENT_MODERATION'] },
+  { href: '/admin/reports',      icon: '⚑', label: 'User Reports',        sections: ['CONTENT_MODERATION', 'REPORTS'] },
+  { href: '/admin/users',        icon: '👥', label: 'Users',               sections: 'ALL' as const },
+  { href: '/admin/orders',       icon: '📦', label: 'Orders & Refunds',    sections: 'ALL' as const },
+  { href: '/admin/projects',     icon: '🏗️', label: 'Posted Projects',     sections: ['CONTENT_MODERATION'] },
+  { href: '/admin/careers',      icon: '💼', label: 'Career Applications', sections: ['CAREERS'] },
+  { href: '/admin/early-access', icon: '🚀', label: 'Early Access',        sections: ['EARLY_ACCESS'] },
+  { href: '/admin/flags',        icon: '🎛️', label: 'Feature Flags',       sections: 'ALL' as const },
 ];
+
+const ROLE_SECTIONS: Record<string, string[] | 'ALL'> = {
+  SUPER_ADMIN: 'ALL',
+  ADMIN: 'ALL',
+  CONTENT_MODERATOR: ['CONTENT_MODERATION', 'REPORTS'],
+  KYC_MODERATOR: ['KYC'],
+  HR: ['CAREERS', 'EARLY_ACCESS'],
+};
+
+function allowedNav(adminRole: string | null) {
+  // Null adminRole: treat as full access, matching the backend's defensive
+  // default for a not-yet-migrated/unexpected-gap row (see AdminService.assertAdminSection).
+  const access = adminRole ? ROLE_SECTIONS[adminRole] ?? 'ALL' : 'ALL';
+  if (access === 'ALL') return NAV;
+  return NAV.filter((item) => item.sections !== 'ALL' && item.sections.some((s) => access.includes(s)));
+}
+
+function isNavItemActive(href: string, pathname: string) {
+  return pathname === href || (href !== '/admin' && pathname.startsWith(href));
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [nav, setNav] = useState<typeof NAV>([]);
 
   useEffect(() => {
     // Real admin-ness lives only in the database User.role column (set via
@@ -38,6 +63,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (me.role !== 'ADMIN') {
           router.replace('/dashboard');
           return;
+        }
+        const allowed = allowedNav(me.adminRole);
+        setNav(allowed);
+        // A scoped admin (e.g. KYC Moderator) hitting a section they can't
+        // use — including the default '/admin' dashboard, which is
+        // full-access-only — lands on their first permitted page instead.
+        // Still clear `checking` here: the redirect target shares this same
+        // layout (it doesn't remount across /admin/* routes), so leaving
+        // `checking` true would spin forever instead of rendering the page
+        // `router.replace` is about to swap in.
+        if (!allowed.some((item) => isNavItemActive(item.href, pathname))) {
+          router.replace(allowed[0]?.href ?? '/dashboard');
         }
         setChecking(false);
       })
@@ -75,8 +112,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV.map(item => {
-            const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+          {nav.map(item => {
+            const active = isNavItemActive(item.href, pathname);
             return (
               <Link key={item.href} href={item.href}
                 onClick={() => setSidebarOpen(false)}
