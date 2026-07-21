@@ -2,17 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
-import { fetchMe } from '@/lib/users';
+import { useAuth } from '@/lib/auth-provider';
 import { isEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useChat } from '@/context/ChatContext';
 import SearchBar from './SearchBar';
 import Logo from './Logo';
-
-interface UserInfo { name: string }
 
 function getMarketplaceLinks() {
   return [
@@ -36,15 +32,12 @@ function getDirectLinks(loggedIn: boolean) {
 }
 
 export default function Navbar() {
-  const router   = useRouter();
-  const supabase = createClient();
+  const { user: authUser, me, isAdmin, signOut } = useAuth();
   const MARKETPLACE_LINKS = getMarketplaceLinks();
   const { count: cartCount } = useCart();
   const { unreadCount } = useNotifications();
   const { unreadCount: chatUnreadCount } = useChat();
 
-  const [user,          setUser]          = useState<UserInfo | null>(null);
-  const [isAdmin,       setIsAdmin]       = useState(false);
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [signupOpen,    setSignupOpen]    = useState(false);
   const [marketOpen,    setMarketOpen]    = useState(false);
@@ -59,40 +52,19 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    // adminRole isn't in the Supabase session/user_metadata (same reason
-    // AuthGuard never trusts client-writable metadata for it) — it's only
-    // known via our own API, so this is a second, non-blocking round trip
-    // purely to decide whether to show the Admin link.
-    function checkAdmin() {
-      fetchMe().then((me) => setIsAdmin(!!me.adminRole)).catch(() => setIsAdmin(false));
-    }
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (u) {
-        setUser({ name: u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User' });
-        checkAdmin();
-      }
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) {
-        const u = session.user;
-        setUser({ name: u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User' });
-        checkAdmin();
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // AuthProvider already resolves `authUser` fast (a local/cheap session read)
+  // and `me` a moment later (the one shared GET /users/me for the whole app)
+  // — showing the name off authUser means the dropdown trigger appears
+  // immediately instead of waiting on that second round trip.
+  const user = authUser
+    ? { name: me?.name ?? authUser.user_metadata?.name ?? authUser.email?.split('@')[0] ?? 'User' }
+    : null;
   const DIRECT_LINKS = getDirectLinks(!!user);
 
   async function handleLogout() {
     setMenuOpen(false);
     setAccountOpen(false);
-    await supabase.auth.signOut();
-    router.push('/login');
+    await signOut(); // navigates to /login itself
   }
 
   return (

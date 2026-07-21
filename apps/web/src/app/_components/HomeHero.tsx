@@ -1,43 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { fetchMe, type Me } from '@/lib/users';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-provider';
 import { Skeleton } from '@/components/Skeleton';
 
-const PROFESSIONAL_ROLES = new Set([
-  'CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT', 'MATERIAL_SUPPLIER',
-  'LAND_OWNER', 'PROPERTY_SELLER', 'BUILDER', 'PROPERTY_AGENT',
-]);
-
-const ROLE_SUBTEXT: Record<string, string> = {
-  HOMEOWNER: 'Pick up where you left off — track your bookings and orders, or find a new professional for your next job.',
-  CONTRACTOR: 'Manage your bookings, browse new projects to bid on, and keep your profile fresh for homeowners.',
-  LABOUR: 'Manage your bookings, browse new projects to bid on, and keep your profile fresh for homeowners.',
-  SERVICE_EXPERT: 'Manage your bookings, browse new projects to bid on, and keep your profile fresh for homeowners.',
-  MATERIAL_SUPPLIER: 'Manage your orders and keep your material listings up to date.',
-  LAND_OWNER: 'Manage your listings and track leads from interested buyers.',
-  PROPERTY_SELLER: 'Manage your listings and track leads from interested buyers.',
-  BUILDER: 'Manage your projects and track leads from interested buyers.',
-  PROPERTY_AGENT: 'Manage your listings and track leads from interested buyers.',
-};
-
 export default function HomeHero() {
-  // Previously defaulted straight to the logged-out hero while the auth
-  // check resolved, to avoid blocking anonymous visitors on a network call.
-  // That meant logged-in visitors saw the wrong (logged-out) CTAs flash for
-  // a moment before swapping to "Welcome back" — jarring, and a real risk of
-  // clicking "Get Started Free" right as it flips underneath you. A neutral
-  // skeleton for both cases is a better trade-off than definitely-wrong
-  // content for one of them.
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
+  // `user` comes from AuthProvider's fast session check (no backend round
+  // trip) — as soon as we know someone's logged in we send them straight
+  // into the app instead of trying to retrofit this marketing page into a
+  // personalized one. That retrofit was the actual bug: it depended on the
+  // slow GET /users/me to decide what to show, so logged-in visitors kept
+  // seeing "Get Started Free" for however long that call took. A redirect
+  // decided by the fast check has no such window.
   useEffect(() => {
-    fetchMe().then(setMe).catch(() => setMe(null)).finally(() => setLoading(false));
-  }, []);
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, user, router]);
 
-  if (loading) {
+  if (loading || user) {
     return (
       <>
         <Skeleton className="h-7 w-56 rounded-full mb-6 mx-auto" />
@@ -53,61 +39,24 @@ export default function HomeHero() {
     );
   }
 
-  if (!me) {
-    return (
-      <>
-        <div className="inline-flex items-center gap-2 bg-[#FAEEE9] text-[#9E3F24] text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-          🏠 For homeowners across India
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-[#2C1810] leading-tight mb-5"
-          style={{ fontFamily: 'Georgia, serif' }}>
-          Build your dream home with{' '}
-          <em className="not-italic text-[#C0593A]">trusted professionals</em>
-        </h1>
-        <p className="text-[#6B5248] text-base leading-relaxed mb-8 max-w-xl mx-auto">
-          India's one-stop platform for construction — find contractors, hire labour, book service experts, source materials and discover land
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-          <Link href="/signup"
-            className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-base px-10 py-4 rounded-xl transition-colors shadow-sm">
-            Get Started Free
-          </Link>
-        </div>
-      </>
-    );
-  }
-
-  const firstName = me.name?.split(' ')[0] || 'there';
-  const isProfessional = PROFESSIONAL_ROLES.has(me.role);
-
   return (
     <>
       <div className="inline-flex items-center gap-2 bg-[#FAEEE9] text-[#9E3F24] text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-        👋 Welcome back
+        🏠 For homeowners across India
       </div>
       <h1 className="text-4xl md:text-5xl font-bold text-[#2C1810] leading-tight mb-5"
         style={{ fontFamily: 'Georgia, serif' }}>
-        Welcome back, <em className="not-italic text-[#C0593A]">{firstName}</em>
+        Build your dream home with{' '}
+        <em className="not-italic text-[#C0593A]">trusted professionals</em>
       </h1>
       <p className="text-[#6B5248] text-base leading-relaxed mb-8 max-w-xl mx-auto">
-        {ROLE_SUBTEXT[me.role] ?? 'Pick up where you left off.'}
+        India's one-stop platform for construction — find contractors, hire labour, book service experts, source materials and discover land
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-        <Link href="/dashboard/home"
+        <Link href="/signup"
           className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-base px-10 py-4 rounded-xl transition-colors shadow-sm">
-          Go to My Dashboard
+          Get Started Free
         </Link>
-        {isProfessional ? (
-          <Link href="/projects"
-            className="inline-block bg-white hover:bg-[#FAEEE9] text-[#C0593A] font-bold text-base px-6 py-4 rounded-xl transition-colors border-2 border-[#C0593A]">
-            🏗️ Browse Projects to Bid On
-          </Link>
-        ) : (
-          <Link href="/post-project"
-            className="inline-block bg-white hover:bg-[#FAEEE9] text-[#C0593A] font-bold text-base px-6 py-4 rounded-xl transition-colors border-2 border-[#C0593A]">
-            📋 Post a Project
-          </Link>
-        )}
       </div>
     </>
   );
