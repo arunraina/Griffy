@@ -119,8 +119,8 @@ export default function AdminUsersPage() {
                   </div>
                   <button
                     onClick={() => handleToggleSuspend(u)}
-                    disabled={updating === u.id || u.role === 'ADMIN'}
-                    title={u.role === 'ADMIN' ? 'Cannot suspend an admin from here' : undefined}
+                    disabled={updating === u.id || !!u.adminRole}
+                    title={u.adminRole ? 'Cannot suspend an admin from here' : undefined}
                     className={`text-xs font-semibold hover:underline disabled:opacity-40 py-1 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
                   >
                     {u.isSuspended ? 'Unsuspend' : 'Suspend'}
@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
                     disabled={updating === u.id}
                     className="mt-2 w-full text-xs border border-[#EBE0D8] rounded-lg px-2 py-1.5 disabled:opacity-40"
                   >
-                    <option value="">{u.role === 'ADMIN' ? 'Change admin role…' : 'Grant admin role…'}</option>
+                    <option value="">{u.adminRole ? 'Change admin role…' : 'Grant admin role…'}</option>
                     {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 )}
@@ -183,8 +183,8 @@ export default function AdminUsersPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleToggleSuspend(u)}
-                          disabled={updating === u.id || u.role === 'ADMIN'}
-                          title={u.role === 'ADMIN' ? 'Cannot suspend an admin from here' : undefined}
+                          disabled={updating === u.id || !!u.adminRole}
+                          title={u.adminRole ? 'Cannot suspend an admin from here' : undefined}
                           className={`text-xs font-semibold hover:underline disabled:opacity-40 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
                         >
                           {u.isSuspended ? 'Unsuspend' : 'Suspend'}
@@ -196,7 +196,7 @@ export default function AdminUsersPage() {
                             disabled={updating === u.id}
                             className="text-xs border border-[#EBE0D8] rounded-lg px-1.5 py-1 disabled:opacity-40"
                           >
-                            <option value="">{u.role === 'ADMIN' ? 'Change role…' : 'Grant admin…'}</option>
+                            <option value="">{u.adminRole ? 'Change role…' : 'Grant admin…'}</option>
                             {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
                         )}

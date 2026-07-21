@@ -125,20 +125,20 @@ export class AdminService {
     return profile;
   }
 
-  // Base check — "is this an ADMIN row at all", used internally by
-  // assertAdminSection/assertFullAccess/setAdminRole. Doesn't look at
-  // adminRole, so don't call this directly from a controller route.
+  // Base check — "does this row have any admin access at all". Deliberately
+  // independent of `role` (the marketplace user type — HOMEOWNER,
+  // CONTRACTOR, etc.): an admin can be a HOMEOWNER on the marketplace side
+  // and a SUPER_ADMIN on the admin side at the same time. adminRole alone
+  // is the source of truth for admin access.
   async assertAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== 'ADMIN') throw new ForbiddenException('Admin access required');
+    if (!user || !user.adminRole) throw new ForbiddenException('Admin access required');
     return user;
   }
 
-  // A null adminRole means either a not-yet-migrated row or (defensively) an
-  // unexpected gap — treat it as SUPER_ADMIN rather than locking an admin out.
   async assertAdminSection(userId: string, section: AdminSection) {
     const user = await this.assertAdmin(userId);
-    const access = SECTION_ACCESS[user.adminRole ?? 'SUPER_ADMIN'];
+    const access = SECTION_ACCESS[user.adminRole!];
     if (access !== 'ALL' && !access.includes(section)) {
       throw new ForbiddenException(`Your admin role doesn't have access to ${section}`);
     }
@@ -151,7 +151,7 @@ export class AdminService {
   // "is an admin".
   async assertFullAccess(userId: string) {
     const user = await this.assertAdmin(userId);
-    const access = SECTION_ACCESS[user.adminRole ?? 'SUPER_ADMIN'];
+    const access = SECTION_ACCESS[user.adminRole!];
     if (access !== 'ALL') throw new ForbiddenException('Admin access required');
     return user;
   }
@@ -161,9 +161,12 @@ export class AdminService {
     if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Only a Super Admin can manage admin roles');
     }
+    // `role` (the marketplace user type) is untouched — admin access is
+    // purely a function of adminRole, so granting it never reclassifies
+    // what kind of marketplace participant this person is.
     return this.prisma.user.update({
       where: { id: targetUserId },
-      data: { role: 'ADMIN', adminRole },
+      data: { adminRole },
     });
   }
 

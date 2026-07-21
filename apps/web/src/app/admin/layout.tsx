@@ -52,15 +52,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [nav, setNav] = useState<typeof NAV>([]);
 
   useEffect(() => {
-    // Real admin-ness lives only in the database User.role column (set via
-    // an existing admin's setRole call), never in Supabase Auth's own
-    // user_metadata — that field is client-writable (a user could set it to
-    // 'ADMIN' from the browser console), which is exactly why AuthGuard on
-    // the API side never trusts it for this role either. Gate on the same
-    // source of truth the backend actually uses.
+    // Real admin-ness lives only in the database User.adminRole column (set
+    // via an existing Super Admin's setAdminRole call), never in Supabase
+    // Auth's own user_metadata — that field is client-writable (a user
+    // could set it from the browser console), which is exactly why
+    // AuthGuard on the API side never trusts it for this either. Gate on
+    // the same source of truth the backend actually uses. Deliberately NOT
+    // `role` — that's the marketplace user type (HOMEOWNER, CONTRACTOR...)
+    // and stays independent of admin access.
     fetchMe()
       .then((me) => {
-        if (me.role !== 'ADMIN') {
+        if (!me.adminRole) {
           router.replace('/dashboard');
           return;
         }

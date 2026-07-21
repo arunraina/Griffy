@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { fetchMe } from '@/lib/users';
 import { isEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -44,20 +45,33 @@ export default function Navbar() {
   const { unreadCount: chatUnreadCount } = useChat();
 
   const [user,          setUser]          = useState<UserInfo | null>(null);
+  const [isAdmin,       setIsAdmin]       = useState(false);
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [signupOpen,    setSignupOpen]    = useState(false);
   const [marketOpen,    setMarketOpen]    = useState(false);
 
   useEffect(() => {
+    // adminRole isn't in the Supabase session/user_metadata (same reason
+    // AuthGuard never trusts client-writable metadata for it) — it's only
+    // known via our own API, so this is a second, non-blocking round trip
+    // purely to decide whether to show the Admin link.
+    function checkAdmin() {
+      fetchMe().then((me) => setIsAdmin(!!me.adminRole)).catch(() => setIsAdmin(false));
+    }
     supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (u) setUser({ name: u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User' });
+      if (u) {
+        setUser({ name: u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User' });
+        checkAdmin();
+      }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) {
         const u = session.user;
         setUser({ name: u.user_metadata?.name ?? u.email?.split('@')[0] ?? 'User' });
+        checkAdmin();
       } else {
         setUser(null);
+        setIsAdmin(false);
       }
     });
     return () => listener.subscription.unsubscribe();
@@ -153,6 +167,12 @@ export default function Navbar() {
                 className="text-sm font-semibold text-[#C0593A] hover:underline">
                 Dashboard
               </Link>
+              {isAdmin && (
+                <Link href="/admin"
+                  className="text-sm font-semibold text-[#9E3F24] bg-[#FAEEE9] px-3 py-1.5 rounded-lg hover:bg-[#F0DDD5]">
+                  Admin
+                </Link>
+              )}
               <button onClick={handleLogout}
                 className="text-sm border border-[#C0593A] text-[#C0593A] px-4 py-1.5 rounded-lg hover:bg-[#FAEEE9] transition-colors">
                 Logout
@@ -259,6 +279,12 @@ export default function Navbar() {
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Dashboard
                   </Link>
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setMenuOpen(false)}
+                      className="text-sm font-semibold text-[#9E3F24] py-1">
+                      Admin Panel
+                    </Link>
+                  )}
                   <button onClick={handleLogout}
                     className="text-sm border border-[#C0593A] text-[#C0593A] px-4 py-2.5 rounded-lg text-left">
                     Logout

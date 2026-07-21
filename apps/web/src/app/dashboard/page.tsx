@@ -74,12 +74,12 @@ export default function DashboardPage() {
   const [tab, setTab] = useState('overview');
 
   useEffect(() => {
+    // Admin access (adminRole) is independent of role (the marketplace user
+    // type) — an admin still has their own homeowner/contractor/etc.
+    // dashboard and isn't redirected away from it. The Navbar's "Admin"
+    // link is how they reach /admin instead.
     fetchMe()
       .then((data) => {
-        if (data.role === 'ADMIN') {
-          router.replace('/admin');
-          return;
-        }
         setMe(data);
       })
       .catch((e) => {
