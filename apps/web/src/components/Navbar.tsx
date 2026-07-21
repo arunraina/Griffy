@@ -9,7 +9,6 @@ import { isEnabled } from '@/lib/featureFlags';
 import { useCart } from '@/context/CartContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useChat } from '@/context/ChatContext';
-import NotificationBell from './NotificationBell';
 import SearchBar from './SearchBar';
 import Logo from './Logo';
 
@@ -141,7 +140,6 @@ export default function Navbar() {
         {/* Right — desktop */}
         <div className="hidden md:flex items-center gap-3 ml-8">
           <SearchBar />
-          {user && <NotificationBell />}
           {user ? (
             <div className="relative" ref={accountRef}>
               <button
@@ -149,9 +147,9 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#C0593A] transition-colors pl-2 pr-1 py-1.5 rounded-lg hover:bg-[#FAEEE9]"
               >
                 <span className="max-w-[120px] truncate font-medium">{user.name}</span>
-                {(cartCount > 0 || chatUnreadCount > 0) && (
+                {(cartCount > 0 || chatUnreadCount > 0 || unreadCount > 0) && (
                   <span className="bg-[#C0593A] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {cartCount + chatUnreadCount > 9 ? '9+' : cartCount + chatUnreadCount}
+                    {cartCount + chatUnreadCount + unreadCount > 9 ? '9+' : cartCount + chatUnreadCount + unreadCount}
                   </span>
                 )}
                 <svg className={`w-3 h-3 transition-transform ${accountOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
@@ -193,6 +191,11 @@ export default function Navbar() {
                       className="flex items-center justify-between px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
                       <span className="flex items-center gap-3"><span className="text-base">💬</span> Messages</span>
                       {chatUnreadCount > 0 && <span className="text-xs font-bold text-[#C0593A]">{chatUnreadCount}</span>}
+                    </Link>
+                    <Link href="/notifications" onClick={() => setAccountOpen(false)}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
+                      <span className="flex items-center gap-3"><span className="text-base">🔔</span> Notifications</span>
+                      {unreadCount > 0 && <span className="text-xs font-bold text-[#C0593A]">{unreadCount}</span>}
                     </Link>
                     <div className="h-px bg-[#F0E8E2] my-1" />
                     <button onClick={handleLogout}
