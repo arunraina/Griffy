@@ -54,6 +54,10 @@ export const FEATURE_FLAGS: Record<string, CategoryFlag> = {
       helper:      { enabled: true,  name: 'Helper / General Labour',icon: '👷' },
       welder:      { enabled: true, name: 'Welder',                icon: '🔧' },
       scaffolding: { enabled: true, name: 'Scaffolding Worker',    icon: '🪜' },
+      // Day-rate hire, distinct from the Service Experts category below
+      // (bookable specialists) — same trade, different engagement model.
+      electrician: { enabled: true, name: 'Electrician',           icon: '⚡' },
+      plumber:     { enabled: true, name: 'Plumber',                icon: '🔧' },
     },
   },
 

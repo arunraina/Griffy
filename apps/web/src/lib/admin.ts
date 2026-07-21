@@ -224,6 +224,67 @@ export async function unsuspendUser(id: string): Promise<AdminUser> {
   return res.json();
 }
 
+// Roles an admin can manually seed via createUser() — every ProfileType has a
+// matching UserRole; HOMEOWNER and ADMIN aren't creatable this way (ADMIN
+// must go through a dedicated setRole flow, HOMEOWNER has no profile table).
+export const CREATABLE_ROLES: { role: string; type: ProfileType }[] = [
+  { role: 'CONTRACTOR', type: 'contractor' },
+  { role: 'LABOUR', type: 'labour' },
+  { role: 'SERVICE_EXPERT', type: 'service-expert' },
+  { role: 'MATERIAL_SUPPLIER', type: 'material-supplier' },
+  { role: 'LAND_OWNER', type: 'land-owner' },
+  { role: 'PROPERTY_SELLER', type: 'property-seller' },
+  { role: 'BUILDER', type: 'builder' },
+  { role: 'PROPERTY_AGENT', type: 'property-agent' },
+];
+
+export interface CreateUserProfilePayload {
+  contractorType?: string;
+  skillType?: string;
+  expertiseType?: string;
+  tradeSkills?: string[];
+  qualifications?: string[];
+  experience?: string;
+  serviceCities?: string[];
+  licenseNumber?: string;
+  dailyRate?: number;
+  projectRate?: number;
+  consultationFee?: number;
+  bio?: string;
+  businessName?: string;
+  gstNumber?: string;
+  businessAddress?: string;
+  deliveryCities?: string[];
+  companyName?: string;
+  registrationNumber?: string;
+  specializations?: string[];
+  agencyName?: string;
+}
+
+export interface CreateUserPayload {
+  role: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  state?: string;
+  profile?: CreateUserProfilePayload;
+}
+
+export async function createUser(payload: CreateUserPayload): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to create user');
+  }
+  return res.json();
+}
+
 // ── KYC review ────────────────────────────────────────────────────────────────
 
 export interface AdminKycDetail {

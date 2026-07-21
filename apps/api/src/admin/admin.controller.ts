@@ -5,7 +5,7 @@ import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto } from './dto/admin.dto';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 
@@ -159,6 +159,12 @@ export class AdminController {
   ) {
     await this.admin.assertAdmin(user.id);
     return this.admin.listUsers(search, role);
+  }
+
+  @Post('users')
+  async createUser(@CurrentUser() user: User, @Body() body: CreateUserDto) {
+    await this.admin.assertAdmin(user.id);
+    return this.admin.createUser(body, user.id);
   }
 
   @Patch('users/:id/suspend')

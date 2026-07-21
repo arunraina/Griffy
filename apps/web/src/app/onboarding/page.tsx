@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { getEnabledSubs, FEATURE_FLAGS } from '@/lib/featureFlags';
+import { TRADE_SKILLS, CONTRACTOR_TYPES, MATERIAL_CATEGORIES } from '@/lib/providerConstants';
+import { INDIAN_STATES, citiesForState } from '@/lib/geoConstants';
+import { ServiceCitiesPicker } from '@/components/LocationPicker';
 
 type Role = 'CUSTOMER' | 'SERVICE_PROVIDER' | 'MATERIAL_SELLER' | 'LAND_OWNER' | 'ADMIN' | 'PROPERTY_SELLER' | 'BUILDER' | 'PROPERTY_AGENT';
 
@@ -94,7 +97,6 @@ const PROJECT_TYPES = [
 ];
 
 const TRADES       = ['Civil', 'Electrical', 'Plumbing', 'Carpentry', 'Painting', 'All'];
-const TRADE_SKILLS = getEnabledSubs('labour').map(key => FEATURE_FLAGS.labour.subcategories[key].name);
 const LANGUAGES    = ['Hindi', 'Urdu', 'Punjabi', 'English', 'Kashmiri'];
 const TEAM_SIZES   = [
   { value: 'just_me', label: 'Just me' },
@@ -103,13 +105,6 @@ const TEAM_SIZES   = [
   { value: '15_50',   label: '15 – 50' },
   { value: '50_plus', label: '50+' },
 ];
-const CONTRACTOR_TYPES = [
-  { value: 'labour',          icon: '👷', label: 'Skilled Labour',   desc: 'Mason, Carpenter, Electrician etc — daily/weekly hire' },
-  { value: 'sub_contractor',  icon: '🏗️', label: 'Sub-Contractor',   desc: 'Takes up project work with a team' },
-  { value: 'full_contractor', icon: '🏢', label: 'Full Contractor',  desc: 'End-to-end construction company' },
-];
-
-const SERVICE_CITIES = ['Delhi', 'Mumbai', 'Bangalore', 'Gurgaon', 'Noida', 'Pune', 'Hyderabad'];
 
 const LISTING_TYPES = [
   { value: 'for_sale',          icon: '🏷️', label: 'For Sale',           desc: 'One-time sale' },
@@ -123,12 +118,6 @@ const LAND_TYPES = getEnabledSubs('land').map(key => ({
 }));
 const AREA_UNITS = ['sq ft', 'sq yards', 'acres', 'bigha'];
 const LAND_AMENITIES = ['Road Access', 'Water Connection', 'Electricity', 'Boundary Wall', 'Corner Plot', 'RERA Registered'];
-const INDIAN_STATES = [
-  'Andhra Pradesh','Assam','Bihar','Chandigarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh',
-  'Jammu & Kashmir','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Odisha','Punjab',
-  'Rajasthan','Tamil Nadu','Telangana','Uttar Pradesh','Uttarakhand','West Bengal',
-];
-
 const PROPERTY_TYPES = ['Apartment / Flat', 'Independent House', 'Villa', 'Builder Floor', 'Studio', 'Row House', 'Penthouse'];
 const PROPERTY_AMENITIES = ['Car Parking', 'Lift', 'Swimming Pool', 'Gym', 'Security', 'Power Backup', 'Club House', 'Garden'];
 const BHK_OPTIONS = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '5 BHK+', 'Villa'];
@@ -137,12 +126,6 @@ const PROJECT_STAGES = [
   { value: 'under_construction', icon: '🏗️', label: 'Under Construction' },
   { value: 'ready_to_move', icon: '✅', label: 'Ready to Move' },
 ];
-
-const MATERIAL_CATEGORIES = getEnabledSubs('materials').map(key => ({
-  value: key,
-  label: FEATURE_FLAGS.materials.subcategories[key].name,
-  icon:  FEATURE_FLAGS.materials.subcategories[key].icon,
-}));
 
 export default function OnboardingPage() {
   const router   = useRouter();
@@ -493,9 +476,9 @@ export default function OnboardingPage() {
                     </Select>
                   </Section>
 
-                  <Section title="Cities you serve" hint="Select all cities where you take work">
-                    <ChipGroup options={SERVICE_CITIES} selected={co.serviceCities}
-                      onToggle={v => setCo(p => ({ ...p, serviceCities: toggle(p.serviceCities, v) }))} />
+                  <Section title="Location" hint="Select all cities where you take work">
+                    <ServiceCitiesPicker selected={co.serviceCities}
+                      onChange={cities => setCo(p => ({ ...p, serviceCities: cities }))} />
                   </Section>
                 </>
               )}
@@ -597,7 +580,7 @@ export default function OnboardingPage() {
               <Section title="Location">
                 <div className="space-y-3">
                   <Field label="State *">
-                    <select value={lo.state} onChange={e => setLo(p => ({ ...p, state: e.target.value }))}
+                    <select value={lo.state} onChange={e => setLo(p => ({ ...p, state: e.target.value, city: '' }))}
                       required className={`${inp} appearance-none`}>
                       <option value="" disabled>Select state</option>
                       {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -605,9 +588,11 @@ export default function OnboardingPage() {
                   </Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="City *">
-                      <input type="text" value={lo.city}
-                        onChange={e => setLo(p => ({ ...p, city: e.target.value }))}
-                        placeholder="e.g. Gurgaon" className={inp} required />
+                      <select value={lo.city} onChange={e => setLo(p => ({ ...p, city: e.target.value }))}
+                        required disabled={!lo.state} className={`${inp} appearance-none disabled:opacity-50`}>
+                        <option value="" disabled>{lo.state ? 'Select city' : 'Select state first'}</option>
+                        {citiesForState(lo.state).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
                     </Field>
                     <Field label="Pincode *">
                       <input type="text" value={lo.pincode}
@@ -835,9 +820,9 @@ export default function OnboardingPage() {
                   onToggle={v => setPa(p => ({ ...p, specialization: toggle(p.specialization, v) }))} />
               </Section>
 
-              <Section title="Cities you serve">
-                <ChipGroup options={SERVICE_CITIES} selected={pa.serviceCities}
-                  onToggle={v => setPa(p => ({ ...p, serviceCities: toggle(p.serviceCities, v) }))} />
+              <Section title="Location">
+                <ServiceCitiesPicker selected={pa.serviceCities}
+                  onChange={cities => setPa(p => ({ ...p, serviceCities: cities }))} />
               </Section>
 
               <Section title="Years of experience">

@@ -78,6 +78,15 @@ export class AuthGuard implements CanActivate {
   // lookup in that case; by then the row certainly exists.
   private async upsertUser(user: SupabaseUser, referredById: string | undefined): Promise<User> {
     try {
+      // The common case, by far, is that this row already exists — check that
+      // first so every authenticated request doesn't pay for the ghost lookup
+      // below. Only a first-ever login for this Supabase id falls through.
+      const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
+      if (existing) return existing;
+
+      const claimed = await this.claimGhostUser(user);
+      if (claimed) return claimed;
+
       return await this.prisma.user.upsert({
         where: { id: user.id },
         create: {
@@ -98,6 +107,23 @@ export class AuthGuard implements CanActivate {
       if (existing) return existing;
       throw new UnauthorizedException('Could not resolve user account');
     }
+  }
+
+  // An admin can pre-seed a supply-side provider (e.g. an electrician the team
+  // recruited directly) before that person ever signs up — see
+  // AdminService.createUser(). When they do sign up for real via phone OTP,
+  // re-key that same ghost row onto their real Supabase id instead of leaving
+  // it orphaned and creating a second, empty account. Matched on phone only —
+  // it's the one channel Firebase OTP actually verifies at this point; email
+  // isn't. `User.id` has no DB default and every FK referencing it already
+  // cascades on update (verified against the live schema), so this is a plain
+  // update, not a copy — any bookings/reviews/messages already made against
+  // the ghost profile move with it automatically.
+  private async claimGhostUser(user: SupabaseUser): Promise<User | undefined> {
+    if (!user.phone) return undefined;
+    const ghost = await this.prisma.user.findFirst({ where: { isGhost: true, phone: user.phone } });
+    if (!ghost) return undefined;
+    return this.prisma.user.update({ where: { id: ghost.id }, data: { id: user.id, isGhost: false } });
   }
 
   private extractBearerToken(request: Request): string | null {

@@ -8,13 +8,7 @@ import { createOrder } from '@/lib/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/payments';
 import { loadRazorpayScript, openRazorpayCheckout } from '@/lib/razorpay';
 import { trackEvent } from '@/lib/analytics';
-
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
-  'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-  'Maharashtra', 'Odisha', 'Punjab', 'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh',
-  'Uttarakhand', 'West Bengal',
-];
+import { INDIAN_STATES } from '@/lib/geoConstants';
 
 type Step = 'address' | 'payment';
 type PaymentMethod = 'online' | 'cod';

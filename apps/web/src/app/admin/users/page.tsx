@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAdminUsers, suspendUser, unsuspendUser, type AdminUser } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
+import CreateUserModal from '@/components/admin/CreateUserModal';
 
 const ROLES = ['', 'HOMEOWNER', 'CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT', 'MATERIAL_SUPPLIER', 'LAND_OWNER', 'PROPERTY_SELLER', 'BUILDER', 'PROPERTY_AGENT', 'ADMIN'];
 
@@ -13,6 +14,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -38,10 +40,20 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-[#2C1810]">Users</h1>
-        <p className="text-sm text-[#6B5248] mt-0.5">Search and manage platform users. Showing up to 100 results.</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#2C1810]">Users</h1>
+          <p className="text-sm text-[#6B5248] mt-0.5">Search and manage platform users. Showing up to 100 results.</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="shrink-0 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-4 py-2.5 rounded-xl"
+        >
+          + Add User
+        </button>
       </div>
+
+      <CreateUserModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={load} />
 
       <div className="flex flex-wrap gap-3 mb-5">
         <input

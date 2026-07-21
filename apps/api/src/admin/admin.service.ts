@@ -1,8 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalStatus, ProjectStatus, UserRole, KycStatus, PaymentStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
 
 type ProfileType =
   | 'contractor'
@@ -18,6 +20,20 @@ const PROFILE_TYPES: ProfileType[] = [
   'contractor', 'labour', 'service-expert', 'material-supplier',
   'land-owner', 'property-seller', 'builder', 'property-agent',
 ];
+
+// Only these 8 supply-side roles can be seeded via AdminService.createUser() —
+// HOMEOWNER has no profile table to attach, and ADMIN must go through
+// UsersService.setRole (see the privilege-escalation note in AuthGuard).
+const ROLE_TO_PROFILE_TYPE: Partial<Record<UserRole, ProfileType>> = {
+  CONTRACTOR: 'contractor',
+  LABOUR: 'labour',
+  SERVICE_EXPERT: 'service-expert',
+  MATERIAL_SUPPLIER: 'material-supplier',
+  LAND_OWNER: 'land-owner',
+  PROPERTY_SELLER: 'property-seller',
+  BUILDER: 'builder',
+  PROPERTY_AGENT: 'property-agent',
+};
 
 export type ContentType = 'review' | 'project' | 'land' | 'property' | 'material';
 
@@ -238,6 +254,151 @@ export class AdminService {
 
   setUserSuspended(id: string, isSuspended: boolean) {
     return this.prisma.user.update({ where: { id }, data: { isSuspended } });
+  }
+
+  // Manually seeds a supply-side user (e.g. an electrician the team recruited
+  // directly) so the platform has bookable providers before organic signups
+  // arrive. Created as isGhost — if the real person later signs up with a
+  // matching phone number, AuthGuard.upsertUser() re-keys this same row onto
+  // their real Supabase id instead of creating a duplicate account.
+  async createUser(dto: CreateUserDto, adminId: string) {
+    const profileType = ROLE_TO_PROFILE_TYPE[dto.role];
+    if (!profileType) {
+      throw new BadRequestException(`Cannot admin-create a user with role ${dto.role}`);
+    }
+
+    const id = randomUUID();
+    const email = dto.email?.trim() || `${id}@ghost.griffy.internal`;
+    // Firebase phone auth stores Supabase user.phone as E.164 digits with no
+    // leading "+" (see FirebasePhoneAuthService.mintSession) — normalize the
+    // same way so AuthGuard.claimGhostUser()'s phone match actually hits.
+    const phone = dto.phone ? dto.phone.replace(/\D/g, '') : null;
+    const p = dto.profile ?? {};
+
+    const approval = { approvalStatus: ApprovalStatus.APPROVED, approvedBy: adminId, approvedAt: new Date() };
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          id,
+          email,
+          phone,
+          name: dto.name,
+          role: dto.role,
+          city: dto.city || null,
+          state: dto.state || null,
+          isGhost: true,
+          createdByAdminId: adminId,
+        },
+      });
+
+      switch (profileType) {
+        case 'contractor':
+          this.requireProfileFields(p, ['contractorType', 'experience'], dto.role);
+          await tx.contractorProfile.create({
+            data: {
+              userId: id,
+              contractorType: p.contractorType!,
+              tradeSkills: p.tradeSkills ?? [],
+              experience: p.experience!,
+              serviceCities: p.serviceCities ?? [],
+              licenseNumber: p.licenseNumber,
+              dailyRate: p.dailyRate,
+              projectRate: p.projectRate,
+              bio: p.bio,
+              portfolioImages: [],
+              ...approval,
+            },
+          });
+          break;
+        case 'labour':
+          this.requireProfileFields(p, ['skillType', 'experience'], dto.role);
+          await tx.labourProfile.create({
+            data: {
+              userId: id,
+              skillType: p.skillType!,
+              experience: p.experience!,
+              serviceCities: p.serviceCities ?? [],
+              dailyRate: p.dailyRate,
+              bio: p.bio,
+              portfolioImages: [],
+              ...approval,
+            },
+          });
+          break;
+        case 'service-expert':
+          this.requireProfileFields(p, ['expertiseType', 'experience'], dto.role);
+          await tx.serviceExpertProfile.create({
+            data: {
+              userId: id,
+              expertiseType: p.expertiseType!,
+              qualifications: p.qualifications ?? [],
+              experience: p.experience!,
+              serviceCities: p.serviceCities ?? [],
+              consultationFee: p.consultationFee,
+              bio: p.bio,
+              portfolioImages: [],
+              ...approval,
+            },
+          });
+          break;
+        case 'material-supplier':
+          this.requireProfileFields(p, ['businessName', 'businessAddress'], dto.role);
+          await tx.materialSupplierProfile.create({
+            data: {
+              userId: id,
+              businessName: p.businessName!,
+              gstNumber: p.gstNumber,
+              businessAddress: p.businessAddress!,
+              deliveryCities: p.deliveryCities ?? [],
+              ...approval,
+            },
+          });
+          break;
+        case 'land-owner':
+          await tx.landOwnerProfile.create({ data: { userId: id, bio: p.bio, ...approval } });
+          break;
+        case 'property-seller':
+          await tx.propertySellerProfile.create({ data: { userId: id, bio: p.bio, ...approval } });
+          break;
+        case 'builder':
+          this.requireProfileFields(p, ['companyName'], dto.role);
+          await tx.builderProfile.create({
+            data: {
+              userId: id,
+              companyName: p.companyName!,
+              registrationNumber: p.registrationNumber,
+              specializations: p.specializations ?? [],
+              serviceCities: p.serviceCities ?? [],
+              bio: p.bio,
+              portfolioImages: [],
+              ...approval,
+            },
+          });
+          break;
+        case 'property-agent':
+          await tx.propertyAgentProfile.create({
+            data: {
+              userId: id,
+              agencyName: p.agencyName,
+              licenseNumber: p.licenseNumber,
+              serviceCities: p.serviceCities ?? [],
+              bio: p.bio,
+              ...approval,
+            },
+          });
+          break;
+      }
+
+      return user;
+    });
+  }
+
+  private requireProfileFields(profile: CreateUserProfileDto, fields: (keyof CreateUserProfileDto)[], role: UserRole) {
+    const missing = fields.filter((f) => !profile[f]);
+    if (missing.length) {
+      throw new BadRequestException(`${role} profile is missing required field(s): ${missing.join(', ')}`);
+    }
   }
 
   listKyc(status?: KycStatus) {

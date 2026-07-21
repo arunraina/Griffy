@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createProject } from '@/lib/projects';
 import { fetchMe, NotAuthenticatedError } from '@/lib/users';
 import { trackEvent } from '@/lib/analytics';
+import { INDIAN_STATES as ALL_INDIAN_STATES } from '@/lib/geoConstants';
 
 const PROJECT_TYPES = [
   { id: 'turnkey', label: 'Turnkey / Full Construction', emoji: '🔑', desc: 'Have land? We handle design to move-in' },
@@ -19,11 +20,7 @@ const PROJECT_TYPES = [
   { id: 'other', label: 'Other', emoji: '🔨' },
 ];
 
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Assam', 'Bihar', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
-  'Jammu and Kashmir', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Odisha', 'Punjab',
-  'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'West Bengal', 'Other',
-];
+const INDIAN_STATES = [...ALL_INDIAN_STATES, 'Other'];
 
 const TIMELINES = ['ASAP (within 1 week)', '1–2 months', '2–4 months', '4–6 months', '6+ months', 'Not decided yet'];
 
