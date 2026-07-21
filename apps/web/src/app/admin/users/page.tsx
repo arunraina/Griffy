@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAdminUsers, suspendUser, unsuspendUser, setAdminRole, ADMIN_ROLES, type AdminUser, type AdminRole } from '@/lib/admin';
-import { fetchMe } from '@/lib/users';
+import { useAuth } from '@/lib/auth-provider';
 import { SkeletonListRows } from '@/components/Skeleton';
 import CreateUserModal from '@/components/admin/CreateUserModal';
 
@@ -16,7 +16,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { me } = useAuth();
+  const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
 
   const load = useCallback(() => {
     setLoading(true);
@@ -31,10 +32,6 @@ export default function AdminUsersPage() {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
   }, [load]);
-
-  useEffect(() => {
-    fetchMe().then((me) => setIsSuperAdmin(me.adminRole === 'SUPER_ADMIN')).catch(() => {});
-  }, []);
 
   async function handleToggleSuspend(u: AdminUser) {
     setUpdating(u.id);

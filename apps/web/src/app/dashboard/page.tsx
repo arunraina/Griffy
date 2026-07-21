@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { fetchMe, NotAuthenticatedError, type Me } from '@/lib/users';
+import { useAuth } from '@/lib/auth-provider';
+import type { Me } from '@/lib/users';
 import {
   fetchMyBookings, fetchIncomingBookings,
   confirmBooking, cancelBooking,
@@ -77,9 +78,7 @@ export default function DashboardPage() {
 function DashboardPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const { user, me, loading, meLoading } = useAuth();
   // Lets cards elsewhere (e.g. /dashboard/home) deep-link straight into a
   // specific tab, e.g. /dashboard?tab=bookings — falls back to the default
   // Overview tab when absent or unrecognized.
@@ -90,16 +89,10 @@ function DashboardPageInner() {
     // type) — an admin still has their own homeowner/contractor/etc.
     // dashboard and isn't redirected away from it. The Navbar's "Admin"
     // link is how they reach /admin instead.
-    fetchMe()
-      .then((data) => {
-        setMe(data);
-      })
-      .catch((e) => {
-        if (e instanceof NotAuthenticatedError) router.replace('/login?redirect=/dashboard');
-        else setLoadError(true);
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+    if (!loading && !user) router.replace('/login?redirect=/dashboard');
+  }, [loading, user, router]);
+
+  const loadError = !loading && !!user && !meLoading && !me;
 
   if (loadError) {
     return (
@@ -112,7 +105,7 @@ function DashboardPageInner() {
     );
   }
 
-  if (loading || !me) {
+  if (loading || !user || !me) {
     return (
       <div className="min-h-screen bg-[#FDF8F5] flex items-center justify-center">
         <svg className="animate-spin h-7 w-7 text-[#C0593A]" viewBox="0 0 24 24" fill="none">

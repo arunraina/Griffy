@@ -12,15 +12,27 @@ interface AuthContextValue {
   role: string | null;
   isAdmin: boolean;
   loading: boolean;
+  // Distinct from `loading` (which only tracks the fast local session
+  // check): true for the window while the shared GET /users/me is in
+  // flight. Pages that actually need `me` (dashboard, profile, admin) use
+  // this to tell "still fetching" apart from "fetch failed" — both look
+  // like `me === null` otherwise, and conflating them either hangs forever
+  // or shows an error while genuinely still loading.
+  meLoading: boolean;
+  // Lets a page push a freshly-saved profile (e.g. after PATCH /users/me)
+  // back into the shared cache, so Navbar's name and every other consumer
+  // update immediately instead of showing stale data until next refetch.
+  setMe: (me: Me) => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser]       = useState<User | null>(null);
-  const [me, setMe]           = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]           = useState<User | null>(null);
+  const [me, setMe]               = useState<Me | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [meLoading, setMeLoading] = useState(false);
   // getSession()'s initial check and onAuthStateChange's immediate
   // INITIAL_SESSION event both fire for the very first load — without this,
   // every page load issued two redundant GET /users/me calls (and every
@@ -36,7 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     function loadMe(userId: string) {
       if (fetchedForRef.current === userId) return;
       fetchedForRef.current = userId;
-      fetchMe().then(setMe).catch(() => setMe(null));
+      setMeLoading(true);
+      fetchMe().then(setMe).catch(() => setMe(null)).finally(() => setMeLoading(false));
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, me, role: me?.role ?? null, isAdmin: !!me?.adminRole, loading, signOut: authSignOut }}>
+    <AuthContext.Provider value={{ user, me, role: me?.role ?? null, isAdmin: !!me?.adminRole, loading, meLoading, setMe, signOut: authSignOut }}>
       {children}
     </AuthContext.Provider>
   );

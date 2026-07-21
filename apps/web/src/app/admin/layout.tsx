@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { fetchMe } from '@/lib/users';
+import { useAuth } from '@/lib/auth-provider';
 
 // 'ALL' = Super Admin / Admin only (full-access tiers) — mirrors
 // AdminService.SECTION_ACCESS on the API side. Sections not listed there
@@ -47,41 +47,33 @@ function isNavItemActive(href: string, pathname: string) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const [checking, setChecking] = useState(true);
+  const { user, me, loading: authLoading, meLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [nav, setNav] = useState<typeof NAV>([]);
+
+  const checking = authLoading || (!!user && meLoading);
+  // Real admin-ness lives only in the database User.adminRole column (set
+  // via an existing Super Admin's setAdminRole call), never in Supabase
+  // Auth's own user_metadata — that field is client-writable (a user
+  // could set it from the browser console), which is exactly why
+  // AuthGuard on the API side never trusts it for this either. Gate on
+  // the same source of truth the backend actually uses. Deliberately NOT
+  // `role` — that's the marketplace user type (HOMEOWNER, CONTRACTOR...)
+  // and stays independent of admin access.
+  const nav = me?.adminRole ? allowedNav(me.adminRole) : [];
 
   useEffect(() => {
-    // Real admin-ness lives only in the database User.adminRole column (set
-    // via an existing Super Admin's setAdminRole call), never in Supabase
-    // Auth's own user_metadata — that field is client-writable (a user
-    // could set it from the browser console), which is exactly why
-    // AuthGuard on the API side never trusts it for this either. Gate on
-    // the same source of truth the backend actually uses. Deliberately NOT
-    // `role` — that's the marketplace user type (HOMEOWNER, CONTRACTOR...)
-    // and stays independent of admin access.
-    fetchMe()
-      .then((me) => {
-        if (!me.adminRole) {
-          router.replace('/dashboard');
-          return;
-        }
-        const allowed = allowedNav(me.adminRole);
-        setNav(allowed);
-        // A scoped admin (e.g. KYC Moderator) hitting a section they can't
-        // use — including the default '/admin' dashboard, which is
-        // full-access-only — lands on their first permitted page instead.
-        // Still clear `checking` here: the redirect target shares this same
-        // layout (it doesn't remount across /admin/* routes), so leaving
-        // `checking` true would spin forever instead of rendering the page
-        // `router.replace` is about to swap in.
-        if (!allowed.some((item) => isNavItemActive(item.href, pathname))) {
-          router.replace(allowed[0]?.href ?? '/dashboard');
-        }
-        setChecking(false);
-      })
-      .catch(() => router.replace('/dashboard'));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (checking) return;
+    if (!me?.adminRole) {
+      router.replace('/dashboard');
+      return;
+    }
+    // A scoped admin (e.g. KYC Moderator) hitting a section they can't use
+    // — including the default '/admin' dashboard, which is full-access-only
+    // — lands on their first permitted page instead.
+    if (!nav.some((item) => isNavItemActive(item.href, pathname))) {
+      router.replace(nav[0]?.href ?? '/dashboard');
+    }
+  }, [checking]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (checking) {
     return (
