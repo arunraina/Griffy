@@ -238,6 +238,77 @@ export async function unsuspendUser(id: string): Promise<AdminUser> {
   return res.json();
 }
 
+// ── User detail (profile + listings a curator can manage) ───────────────────
+
+export interface AdminPortfolioItem {
+  id: string; title: string; description: string | null; imageUrls: string[]; completedAt: string | null;
+}
+
+export interface AdminServiceItem {
+  id: string; name: string; description: string | null; price: number; priceUnit: string; category: string; active: boolean;
+}
+
+export interface AdminUserDetail {
+  user: AdminUser;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  profileType: ProfileType | null;
+  profile: Record<string, unknown> | null;
+  portfolio: AdminPortfolioItem[];
+  services: AdminServiceItem[];
+}
+
+export async function fetchAdminUserDetail(id: string): Promise<AdminUserDetail> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}`, { headers });
+  if (!res.ok) throw new Error('Failed to load user');
+  return res.json();
+}
+
+export interface CreatePortfolioItemPayload {
+  profileType: 'contractor' | 'labour' | 'service-expert';
+  title: string;
+  description?: string;
+  imageUrls: string[];
+  completedAt?: string;
+}
+
+export async function createAdminPortfolioItem(userId: string, payload: CreatePortfolioItemPayload): Promise<AdminPortfolioItem> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/portfolio-items`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to add portfolio item');
+  }
+  return res.json();
+}
+
+export interface CreateServiceItemPayload {
+  profileType: 'labour' | 'service-expert';
+  name: string;
+  description?: string;
+  price: number;
+  priceUnit: 'FIXED' | 'PER_HOUR' | 'PER_DAY' | 'PER_POINT' | 'PER_SQFT' | 'PER_VISIT';
+  category: string;
+}
+
+export async function createAdminServiceItem(userId: string, payload: CreateServiceItemPayload): Promise<AdminServiceItem> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/service-items`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to add service');
+  }
+  return res.json();
+}
+
 // Roles an admin can manually seed via createUser() — every ProfileType has a
 // matching UserRole; HOMEOWNER and ADMIN aren't creatable this way (ADMIN
 // must go through a dedicated setRole flow, HOMEOWNER has no profile table).

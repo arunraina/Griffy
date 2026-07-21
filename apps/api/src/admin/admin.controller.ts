@@ -8,6 +8,8 @@ import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus
 import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
+import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
+import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -165,6 +167,26 @@ export class AdminController {
   async createUser(@CurrentUser() user: User, @Body() body: CreateUserDto) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.createUser(body, user.id);
+  }
+
+  // Profile + existing listings for the "manage this person's listings"
+  // admin screen — reached by clicking a name in the Users list.
+  @Get('users/:id')
+  async getUserDetail(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getUserDetail(id);
+  }
+
+  @Post('users/:id/portfolio-items')
+  async createPortfolioItemFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreatePortfolioItemDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createPortfolioItemFor(id, body, user.id);
+  }
+
+  @Post('users/:id/service-items')
+  async createServiceItemFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreateServiceItemDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createServiceItemFor(id, body, user.id);
   }
 
   @Patch('users/:id/suspend')

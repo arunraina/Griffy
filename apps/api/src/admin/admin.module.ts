@@ -8,9 +8,14 @@ import { ReportsModule } from '../reports/reports.module';
 import { MaterialsModule } from '../materials/materials.module';
 import { LandsModule } from '../lands/lands.module';
 import { PropertiesModule } from '../properties/properties.module';
+import { PortfolioModule } from '../portfolio/portfolio.module';
+import { ServiceItemsModule } from '../service-items/service-items.module';
 
 @Module({
-  imports: [KycModule, NotificationsModule, PaymentsModule, ReportsModule, MaterialsModule, LandsModule, PropertiesModule],
+  imports: [
+    KycModule, NotificationsModule, PaymentsModule, ReportsModule,
+    MaterialsModule, LandsModule, PropertiesModule, PortfolioModule, ServiceItemsModule,
+  ],
   controllers: [AdminController],
   providers: [AdminService],
 })

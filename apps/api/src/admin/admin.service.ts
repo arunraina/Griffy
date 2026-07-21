@@ -4,6 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
+import { ServiceItemsService } from '../service-items/service-items.service';
+import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
+import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
 
 export type AdminSection =
@@ -70,7 +74,70 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly kyc: KycService,
     private readonly notifications: NotificationsService,
+    private readonly portfolio: PortfolioService,
+    private readonly serviceItems: ServiceItemsService,
   ) {}
+
+  // Which listing types a curator can manage on behalf of this profile type
+  // — matches ServiceItemsService/PortfolioService's own profileType unions.
+  // Only the types with a real self-serve counterpart are wired here;
+  // materials/land/property admin-override is a separate follow-up (their
+  // create() methods gate on approvalStatus === 'APPROVED', which an
+  // admin-curated not-yet-approved profile would fail).
+  private static readonly LISTING_KINDS_BY_PROFILE_TYPE: Partial<Record<ProfileType, ('portfolio' | 'services')[]>> = {
+    contractor: ['portfolio'],
+    labour: ['portfolio', 'services'],
+    'service-expert': ['portfolio', 'services'],
+  };
+
+  async getUserDetail(userId: string) {
+    const targetUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw new NotFoundException('User not found');
+
+    const profileType = ROLE_TO_PROFILE_TYPE[targetUser.role];
+    if (!profileType) return { user: targetUser, profileType: null, profile: null, portfolio: [], services: [] };
+
+    const profile = await this.getProfileByUserId(profileType, userId);
+    if (!profile) return { user: targetUser, profileType, profile: null, portfolio: [], services: [] };
+
+    const kinds = AdminService.LISTING_KINDS_BY_PROFILE_TYPE[profileType] ?? [];
+    const [portfolio, services] = await Promise.all([
+      kinds.includes('portfolio') ? this.portfolio.list(profileType, profile.id) : Promise.resolve([]),
+      kinds.includes('services') ? this.serviceItems.list(profileType, profile.id) : Promise.resolve([]),
+    ]);
+
+    return { user: targetUser, profileType, profile, portfolio, services };
+  }
+
+  async createPortfolioItemFor(targetUserId: string, dto: CreatePortfolioItemDto, adminId: string) {
+    const item = await this.portfolio.create(targetUserId, dto);
+    await this.logAction(adminId, 'CREATE_PORTFOLIO_ITEM', 'portfolio-item', item.id);
+    return item;
+  }
+
+  async createServiceItemFor(targetUserId: string, dto: CreateServiceItemDto, adminId: string) {
+    const item = await this.serviceItems.create(targetUserId, dto);
+    await this.logAction(adminId, 'CREATE_SERVICE_ITEM', 'service-item', item.id);
+    return item;
+  }
+
+  private logAction(adminId: string, action: string, targetType: string, targetId: string) {
+    return this.prisma.adminActionLog.create({ data: { adminId, action, targetType, targetId } });
+  }
+
+  private getProfileByUserId(type: ProfileType, userId: string) {
+    switch (type) {
+      case 'contractor': return this.prisma.contractorProfile.findUnique({ where: { userId } });
+      case 'labour': return this.prisma.labourProfile.findUnique({ where: { userId } });
+      case 'service-expert': return this.prisma.serviceExpertProfile.findUnique({ where: { userId } });
+      case 'material-supplier': return this.prisma.materialSupplierProfile.findUnique({ where: { userId } });
+      case 'land-owner': return this.prisma.landOwnerProfile.findUnique({ where: { userId } });
+      case 'property-seller': return this.prisma.propertySellerProfile.findUnique({ where: { userId } });
+      case 'builder': return this.prisma.builderProfile.findUnique({ where: { userId } });
+      case 'property-agent': return this.prisma.propertyAgentProfile.findUnique({ where: { userId } });
+      default: throw new BadRequestException('Invalid profile type');
+    }
+  }
 
   async listProfiles(type: ProfileType, status?: ApprovalStatus) {
     const where = status ? { approvalStatus: status } : {};
