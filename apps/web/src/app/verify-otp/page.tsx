@@ -12,7 +12,7 @@ type Mode = 'email' | 'wp-phone' | 'wp-otp';
 function OtpForm() {
   const searchParams = useSearchParams();
   const email        = searchParams.get('email') ?? '';
-  const redirectTo   = searchParams.get('redirect') || '/dashboard';
+  const redirectTo   = searchParams.get('redirect') || '/dashboard/home';
   const initPhone    = searchParams.get('phone') ?? '';
   // Arriving with method=phone&phone=X means login/signup already triggered
   // the Firebase send and there's a pending confirmation waiting -- skip

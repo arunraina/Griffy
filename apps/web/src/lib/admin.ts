@@ -264,6 +264,30 @@ export async function fetchAdminUserDetail(id: string): Promise<AdminUserDetail>
   return res.json();
 }
 
+export interface AdminProviderBooking {
+  id: string; status: string; scheduledAt: string; amount: string;
+  customer?: { id: string; name: string; phone: string | null; email: string };
+}
+
+export async function fetchAdminUserBookings(id: string): Promise<AdminProviderBooking[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/bookings`, { headers });
+  if (!res.ok) throw new Error('Failed to load bookings');
+  return res.json();
+}
+
+export interface AdminProviderReview {
+  id: string; rating: number; comment: string | null; createdAt: string;
+  reviewer?: { name: string; avatarUrl: string | null };
+}
+
+export async function fetchAdminUserReviews(id: string): Promise<AdminProviderReview[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/reviews`, { headers });
+  if (!res.ok) throw new Error('Failed to load reviews');
+  return res.json();
+}
+
 export interface CreatePortfolioItemPayload {
   profileType: 'contractor' | 'labour' | 'service-expert';
   title: string;

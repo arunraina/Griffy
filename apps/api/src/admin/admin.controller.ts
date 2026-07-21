@@ -189,6 +189,18 @@ export class AdminController {
     return this.admin.createServiceItemFor(id, body, user.id);
   }
 
+  @Get('users/:id/bookings')
+  async getProviderBookings(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getProviderBookings(id);
+  }
+
+  @Get('users/:id/reviews')
+  async getProviderReviews(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getProviderReviewsByUserId(id);
+  }
+
   @Patch('users/:id/suspend')
   async suspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');

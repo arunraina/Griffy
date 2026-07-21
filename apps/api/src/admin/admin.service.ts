@@ -1,11 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { ServiceItemsService } from '../service-items/service-items.service';
+import { BookingsService } from '../bookings/bookings.service';
+import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
@@ -60,6 +62,17 @@ const ROLE_TO_PROFILE_TYPE: Partial<Record<UserRole, ProfileType>> = {
   PROPERTY_AGENT: 'property-agent',
 };
 
+// Not every profile type has a review target — land-owner/property-seller
+// are reviewed via their LAND/PROPERTY listings, not as a provider directly.
+const PROFILE_TYPE_TO_REVIEW_TARGET: Partial<Record<ProfileType, ReviewTargetType>> = {
+  contractor: 'CONTRACTOR',
+  labour: 'LABOUR',
+  'service-expert': 'SERVICE_EXPERT',
+  'material-supplier': 'MATERIAL_SUPPLIER',
+  builder: 'BUILDER',
+  'property-agent': 'PROPERTY_AGENT',
+};
+
 export type ContentType = 'review' | 'project' | 'land' | 'property' | 'material';
 
 interface ModerateContentInput {
@@ -76,7 +89,24 @@ export class AdminService {
     private readonly notifications: NotificationsService,
     private readonly portfolio: PortfolioService,
     private readonly serviceItems: ServiceItemsService,
+    private readonly bookings: BookingsService,
+    private readonly reviews: ReviewsService,
   ) {}
+
+  getProviderBookings(userId: string) {
+    return this.bookings.findByProvider(userId);
+  }
+
+  async getProviderReviewsByUserId(userId: string) {
+    const targetUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw new NotFoundException('User not found');
+    const profileType = ROLE_TO_PROFILE_TYPE[targetUser.role];
+    const targetType = profileType ? PROFILE_TYPE_TO_REVIEW_TARGET[profileType] : undefined;
+    if (!profileType || !targetType) return [];
+    const profile = await this.getProfileByUserId(profileType, userId);
+    if (!profile) return [];
+    return this.reviews.findByTarget(targetType, profile.id);
+  }
 
   // Which listing types a curator can manage on behalf of this profile type
   // — matches ServiceItemsService/PortfolioService's own profileType unions.

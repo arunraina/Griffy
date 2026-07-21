@@ -10,11 +10,14 @@ import { LandsModule } from '../lands/lands.module';
 import { PropertiesModule } from '../properties/properties.module';
 import { PortfolioModule } from '../portfolio/portfolio.module';
 import { ServiceItemsModule } from '../service-items/service-items.module';
+import { BookingsModule } from '../bookings/bookings.module';
+import { ReviewsModule } from '../reviews/reviews.module';
 
 @Module({
   imports: [
     KycModule, NotificationsModule, PaymentsModule, ReportsModule,
     MaterialsModule, LandsModule, PropertiesModule, PortfolioModule, ServiceItemsModule,
+    BookingsModule, ReviewsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],
