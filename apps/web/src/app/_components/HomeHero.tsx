@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchMe, type Me } from '@/lib/users';
+import { Skeleton } from '@/components/Skeleton';
 
 const PROFESSIONAL_ROLES = new Set([
   'CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT', 'MATERIAL_SUPPLIER',
@@ -22,16 +23,35 @@ const ROLE_SUBTEXT: Record<string, string> = {
 };
 
 export default function HomeHero() {
-  // Most visitors landing on the homepage are logged out, so default to
-  // the logged-out hero immediately instead of blocking render on an auth
-  // check — only upgrade once fetchMe() actually confirms a session. See
-  // the git history on this file for why (previously this rendered nothing
-  // until the round-trip resolved).
+  // Previously defaulted straight to the logged-out hero while the auth
+  // check resolved, to avoid blocking anonymous visitors on a network call.
+  // That meant logged-in visitors saw the wrong (logged-out) CTAs flash for
+  // a moment before swapping to "Welcome back" — jarring, and a real risk of
+  // clicking "Get Started Free" right as it flips underneath you. A neutral
+  // skeleton for both cases is a better trade-off than definitely-wrong
+  // content for one of them.
   const [me, setMe] = useState<Me | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMe().then(setMe).catch(() => setMe(null));
+    fetchMe().then(setMe).catch(() => setMe(null)).finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <>
+        <Skeleton className="h-7 w-56 rounded-full mb-6 mx-auto" />
+        <Skeleton className="h-11 w-full max-w-lg rounded-lg mb-2 mx-auto" />
+        <Skeleton className="h-11 w-2/3 rounded-lg mb-5 mx-auto" />
+        <Skeleton className="h-4 w-full max-w-xl rounded-md mb-2 mx-auto" />
+        <Skeleton className="h-4 w-2/3 max-w-md rounded-md mb-8 mx-auto" />
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+          <Skeleton className="h-14 w-48 rounded-xl" />
+          <Skeleton className="h-14 w-56 rounded-xl" />
+        </div>
+      </>
+    );
+  }
 
   if (!me) {
     return (
@@ -77,7 +97,7 @@ export default function HomeHero() {
         {ROLE_SUBTEXT[me.role] ?? 'Pick up where you left off.'}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
-        <Link href="/dashboard"
+        <Link href="/dashboard/home"
           className="inline-block bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold text-base px-10 py-4 rounded-xl transition-colors shadow-sm">
           Go to My Dashboard
         </Link>
