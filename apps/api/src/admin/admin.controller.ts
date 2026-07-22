@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AdminService, type ContentType } from './admin.service';
@@ -10,6 +10,7 @@ import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
+import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -205,6 +206,24 @@ export class AdminController {
   async getProviderReviews(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.getProviderReviewsByUserId(id);
+  }
+
+  @Post('reviews')
+  async createReview(@CurrentUser() user: User, @Body() body: AdminCreateReviewDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createAdminReview(body, user.id);
+  }
+
+  @Patch('reviews/:id')
+  async updateReview(@CurrentUser() user: User, @Param('id') id: string, @Body() body: AdminUpdateReviewDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.updateAdminReview(id, body, user.id);
+  }
+
+  @Delete('reviews/:id')
+  async deleteReview(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.deleteAdminReview(id, user.id);
   }
 
   @Patch('users/:id/suspend')

@@ -290,7 +290,53 @@ export async function fetchAdminUserBookings(id: string): Promise<AdminProviderB
 
 export interface AdminProviderReview {
   id: string; rating: number; comment: string | null; createdAt: string;
-  reviewer?: { name: string; avatarUrl: string | null };
+  reviewer?: { name: string; avatarUrl: string | null } | null;
+  reviewerName: string | null;
+  isAdminAdded: boolean;
+  source: string | null;
+}
+
+// Mirrors AdminService.PROFILE_TYPE_TO_REVIEW_TARGET on the backend — only
+// the profile types that have a real review target.
+export const PROFILE_TYPE_TO_REVIEW_TARGET_TYPE: Partial<Record<ProfileType, string>> = {
+  contractor: 'CONTRACTOR',
+  labour: 'LABOUR',
+  'service-expert': 'SERVICE_EXPERT',
+  'material-supplier': 'MATERIAL_SUPPLIER',
+  builder: 'BUILDER',
+  'property-agent': 'PROPERTY_AGENT',
+};
+
+export const REVIEW_SOURCES = [
+  { value: 'phone_feedback', label: 'Phone feedback' },
+  { value: 'whatsapp_feedback', label: 'WhatsApp feedback' },
+  { value: 'in_person', label: 'In-person feedback' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export interface CreateAdminReviewPayload {
+  targetType: string; targetId: string; rating: number; comment: string;
+  reviewerName: string; reviewerPhone?: string; source?: string;
+}
+
+export async function createAdminReview(payload: CreateAdminReviewPayload): Promise<AdminProviderReview> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to add review');
+  return res.json();
+}
+
+export async function updateAdminReview(id: string, patch: Partial<CreateAdminReviewPayload>): Promise<AdminProviderReview> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews/${id}`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
+  if (!res.ok) throw new Error('Failed to update review');
+  return res.json();
+}
+
+export async function deleteAdminReview(id: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews/${id}`, { method: 'DELETE', headers });
+  if (!res.ok) throw new Error('Failed to delete review');
 }
 
 export async function fetchAdminUserReviews(id: string): Promise<AdminProviderReview[]> {

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
   fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
+  createAdminReview, updateAdminReview, deleteAdminReview,
+  PROFILE_TYPE_TO_REVIEW_TARGET_TYPE, REVIEW_SOURCES,
   type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
@@ -172,6 +174,7 @@ export default function AdminUserDetailPage() {
   const [tab, setTab] = useState<Tab>('profile');
   const [showAddPortfolio, setShowAddPortfolio] = useState(false);
   const [showAddService, setShowAddService] = useState(false);
+  const [reviewSlideOver, setReviewSlideOver] = useState<{ mode: 'create' } | { mode: 'edit'; review: AdminProviderReview } | null>(null);
 
   const [bookings, setBookings] = useState<AdminProviderBooking[] | null>(null);
   const [reviews, setReviews] = useState<AdminProviderReview[] | null>(null);
@@ -370,6 +373,18 @@ export default function AdminUserDetailPage() {
 
       {tab === 'reviews' && (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-[#2C1810]">Reviews</h2>
+            {profileType && PROFILE_TYPE_TO_REVIEW_TARGET_TYPE[profileType] && profile && (
+              <button
+                onClick={() => setReviewSlideOver({ mode: 'create' })}
+                className="text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-3 py-1.5 rounded-lg"
+              >
+                + Add Review
+              </button>
+            )}
+          </div>
+
           {reviews === null ? (
             <SkeletonListRows count={3} />
           ) : reviews.length === 0 ? (
@@ -379,16 +394,47 @@ export default function AdminUserDetailPage() {
               {reviews.map((r) => (
                 <div key={r.id} className="border border-[#EBE0D8] rounded-xl px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer?.name ?? 'Anonymous'}</p>
+                    <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer?.name ?? r.reviewerName ?? 'Anonymous'}</p>
                     <p className="text-sm font-semibold text-[#C0593A]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</p>
                   </div>
                   {r.comment && <p className="text-sm text-[#6B5248] mt-1">{r.comment}</p>}
-                  <p className="text-xs text-[#A08070] mt-1">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-[#A08070]">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      {r.isAdminAdded && (
+                        <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">✓ Verified by Griffy team</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setReviewSlideOver({ mode: 'edit', review: r })} className="text-xs font-semibold text-[#6B5248] hover:text-[#C0593A]">Edit</button>
+                      <DeleteReviewButton id={r.id} onDeleted={() => setReviews((prev) => (prev ?? []).filter((x) => x.id !== r.id))} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {reviewSlideOver && profileType && profile && (
+        <ReviewSlideOver
+          state={reviewSlideOver}
+          targetType={PROFILE_TYPE_TO_REVIEW_TARGET_TYPE[profileType]!}
+          targetId={profile.id as string}
+          onClose={() => setReviewSlideOver(null)}
+          onSaved={(saved) => {
+            setReviews((prev) => {
+              if (!prev) return [saved];
+              const idx = prev.findIndex((x) => x.id === saved.id);
+              if (idx === -1) return [saved, ...prev];
+              const next = [...prev];
+              next[idx] = saved;
+              return next;
+            });
+            setReviewSlideOver(null);
+          }}
+        />
       )}
 
       {showAddService && canHaveServices && (
@@ -738,5 +784,165 @@ function ProfessionalDetailsSection({
         {saving ? 'Saving…' : 'Save Changes'}
       </button>
     </form>
+  );
+}
+
+// Two-step inline confirm instead of window.confirm() -- a native confirm()
+// blocks all further page script until dismissed, which is exactly the kind
+// of dialog browser-automation testing can't safely drive through.
+function DeleteReviewButton({ id, onDeleted }: { id: string; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm() {
+    setDeleting(true);
+    try {
+      await deleteAdminReview(id);
+      onDeleted();
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
+
+  if (confirming) {
+    return (
+      <span className="flex items-center gap-2">
+        <span className="text-xs text-[#6B5248]">Delete this review?</span>
+        <button onClick={handleConfirm} disabled={deleting} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50">
+          {deleting ? 'Deleting…' : 'Yes'}
+        </button>
+        <button onClick={() => setConfirming(false)} disabled={deleting} className="text-xs font-semibold text-[#A08070] hover:underline">No</button>
+      </span>
+    );
+  }
+
+  return (
+    <button onClick={() => setConfirming(true)} className="text-xs font-semibold text-red-600 hover:underline">Delete</button>
+  );
+}
+
+type ReviewSlideOverState = { mode: 'create' } | { mode: 'edit'; review: AdminProviderReview };
+
+// Same form for adding a brand-new offline review and editing an existing
+// one — reviewer name/phone/source only apply to admin-added rows (a real
+// customer's own review keeps its own reviewer identity), so those fields
+// are hidden when editing a non-admin-added review.
+function ReviewSlideOver({
+  state, targetType, targetId, onClose, onSaved,
+}: {
+  state: ReviewSlideOverState;
+  targetType: string;
+  targetId: string;
+  onClose: () => void;
+  onSaved: (review: AdminProviderReview) => void;
+}) {
+  const editing = state.mode === 'edit' ? state.review : null;
+  const isAdminAddedOrNew = editing ? editing.isAdminAdded : true;
+
+  const [rating, setRating] = useState(editing?.rating ?? 5);
+  const [comment, setComment] = useState(editing?.comment ?? '');
+  const [reviewerName, setReviewerName] = useState(editing?.reviewerName ?? '');
+  const [reviewerPhone, setReviewerPhone] = useState('');
+  const [source, setSource] = useState(editing?.source ?? 'phone_feedback');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (comment.trim().length < 20) {
+      setError('Review text must be at least 20 characters.');
+      return;
+    }
+    if (isAdminAddedOrNew && !reviewerName.trim()) {
+      setError('Reviewer name is required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      if (state.mode === 'create') {
+        const saved = await createAdminReview({
+          targetType, targetId, rating, comment: comment.trim(),
+          reviewerName: reviewerName.trim(), reviewerPhone: reviewerPhone.trim() || undefined, source,
+        });
+        onSaved(saved);
+      } else {
+        const saved = await updateAdminReview(state.review.id, {
+          rating, comment: comment.trim(),
+          ...(isAdminAddedOrNew ? { reviewerName: reviewerName.trim(), source } : {}),
+        });
+        onSaved(saved);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save review');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#EBE0D8] sticky top-0 bg-white">
+          <h2 className="font-semibold text-[#2C1810]">{state.mode === 'create' ? 'Add Review' : 'Edit Review'}</h2>
+          <button onClick={onClose} className="text-[#A08070] hover:text-[#C0593A] text-xl leading-none">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Rating</label>
+            <div className="flex gap-1 mt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setRating(n)}
+                  className={`text-2xl leading-none ${n <= rating ? 'text-[#C0593A]' : 'text-[#E4D5CC]'}`}>
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {isAdminAddedOrNew && (
+            <div>
+              <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Reviewer Name</label>
+              <input value={reviewerName} onChange={(e) => setReviewerName(e.target.value)}
+                className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Review Text (min 20 chars)</label>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={500}
+              className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+          </div>
+
+          {isAdminAddedOrNew && (
+            <>
+              <div>
+                <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Source</label>
+                <select value={source ?? 'phone_feedback'} onChange={(e) => setSource(e.target.value)}
+                  className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2">
+                  {REVIEW_SOURCES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              {state.mode === 'create' && (
+                <div>
+                  <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Reviewer Phone (optional, not displayed)</label>
+                  <input value={reviewerPhone} onChange={(e) => setReviewerPhone(e.target.value)}
+                    className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+                </div>
+              )}
+            </>
+          )}
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button type="submit" disabled={saving}
+            className="w-full text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2.5 rounded-lg">
+            {saving ? 'Saving…' : state.mode === 'create' ? 'Add Review' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
+import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
 import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { AdminHierarchyService } from './admin-hierarchy.service';
 
@@ -108,6 +109,24 @@ export class AdminService {
     const profile = await this.getProfileByUserId(profileType, userId);
     if (!profile) return [];
     return this.reviews.findByTarget(targetType, profile.id);
+  }
+
+  async createAdminReview(dto: AdminCreateReviewDto, adminId: string) {
+    const review = await this.reviews.adminCreate(dto, adminId);
+    await this.logAction(adminId, 'CREATE_ADMIN_REVIEW', 'review', review.id);
+    return review;
+  }
+
+  async updateAdminReview(id: string, dto: AdminUpdateReviewDto, adminId: string) {
+    const review = await this.reviews.adminUpdate(id, dto);
+    await this.logAction(adminId, 'UPDATE_ADMIN_REVIEW', 'review', id);
+    return review;
+  }
+
+  async deleteAdminReview(id: string, adminId: string) {
+    await this.reviews.adminDelete(id);
+    await this.logAction(adminId, 'DELETE_REVIEW', 'review', id);
+    return { success: true };
   }
 
   // Which listing types a curator can manage on behalf of this profile type

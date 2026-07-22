@@ -184,6 +184,7 @@ model User {
   bookingsAsCustomer        Booking[]        @relation("BookingCustomer")
   bookingsAsProvider        Booking[]        @relation("BookingProvider")
   reviewsGiven              Review[]         @relation("ReviewsGiven")
+  reviewsAdminAdded         Review[]         @relation("ReviewAdminAddedBy")
   notifications             Notification[]
   projectsPosted            Project[]        @relation("ProjectOwner")
   bidsSubmitted             Bid[]            @relation("BidContractor")
@@ -750,11 +751,21 @@ model Property {
 
 model Review {
   id                        String                   @id @default(uuid())
-  reviewerId                String                   @map("reviewer_id")
-  reviewer                  User                     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  // Nullable -- an admin-added review (isAdminAdded) represents an offline
+  // customer (phone call, WhatsApp, in-person) who has no real User account
+  // to attribute it to; reviewerName/reviewerPhone carry their identity
+  // instead. Self-service reviews always set reviewerId and leave those null.
+  reviewerId                String?                  @map("reviewer_id")
+  reviewer                  User?                    @relation("ReviewsGiven", fields: [reviewerId], references: [id])
   targetType                ReviewTargetType         @map("target_type")
   rating                    Int
   comment                   String?
+  reviewerName              String?                  @map("reviewer_name")
+  reviewerPhone             String?                  @map("reviewer_phone")
+  isAdminAdded              Boolean                  @default(false) @map("is_admin_added")
+  adminAddedById            String?                  @map("admin_added_by_id")
+  adminAddedBy              User?                    @relation("ReviewAdminAddedBy", fields: [adminAddedById], references: [id])
+  source                    String?
   contractorProfileId       String?                  @map("contractor_profile_id")
   contractorProfile         ContractorProfile?       @relation(fields: [contractorProfileId], references: [id])
   labourProfileId           String?                  @map("labour_profile_id")

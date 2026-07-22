@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewTargetType, UserRole } from '@prisma/client';
+import { AdminCreateReviewDto, AdminUpdateReviewDto } from './dto/review.dto';
 
 const TARGET_FK: Record<ReviewTargetType, string> = {
   CONTRACTOR: 'contractorProfileId',
@@ -105,6 +106,59 @@ export class ReviewsService {
 
     await this.updateAggregates(data.targetType, data.targetId);
     return review;
+  }
+
+  // Bypasses checkEligibility entirely -- there's no booking/order to verify
+  // against for feedback a customer gave over the phone, so isVerified is
+  // always false here (displayed as "Verified by Griffy team" instead of
+  // "Verified purchase" on the frontend, a different claim about the same
+  // trustworthiness signal).
+  async adminCreate(dto: AdminCreateReviewDto, adminId: string) {
+    const review = await this.prisma.review.create({
+      data: {
+        targetType: dto.targetType,
+        rating: dto.rating,
+        comment: dto.comment,
+        reviewerName: dto.reviewerName,
+        reviewerPhone: dto.reviewerPhone,
+        source: dto.source,
+        isAdminAdded: true,
+        isVerified: false,
+        adminAddedById: adminId,
+        [TARGET_FK[dto.targetType]]: dto.targetId,
+      },
+    });
+
+    await this.updateAggregates(dto.targetType, dto.targetId);
+    return review;
+  }
+
+  async adminUpdate(id: string, dto: AdminUpdateReviewDto) {
+    const existing = await this.prisma.review.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Review not found');
+
+    const review = await this.prisma.review.update({ where: { id }, data: dto });
+
+    if (dto.rating !== undefined) {
+      const targetId = this.resolveTargetId(existing);
+      if (targetId) await this.updateAggregates(existing.targetType, targetId);
+    }
+    return review;
+  }
+
+  async adminDelete(id: string) {
+    const existing = await this.prisma.review.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Review not found');
+
+    await this.prisma.review.delete({ where: { id } });
+
+    const targetId = this.resolveTargetId(existing);
+    if (targetId) await this.updateAggregates(existing.targetType, targetId);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private resolveTargetId(review: any): string | null {
+    return review[TARGET_FK[review.targetType as ReviewTargetType]] ?? null;
   }
 
   private async hasCompletedBooking(reviewerId: string, targetType: ReviewTargetType, profileId: string): Promise<boolean> {
