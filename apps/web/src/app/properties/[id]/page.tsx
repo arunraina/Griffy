@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import PropertyDetailClient from './PropertyDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -9,6 +11,21 @@ async function fetchProperty(id: string): Promise<any | null> {
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchProperty(params.id);
+  if (!raw) return buildMetadata({ title: 'Property not found', description: 'This listing may have been removed or is unavailable.', path: `/properties/${params.id}` });
+
+  const price = raw.price != null ? `₹${Number(raw.price).toLocaleString('en-IN')}` : null;
+  const bhk = raw.bedrooms ? `${raw.bedrooms}BHK ` : '';
+  const action = raw.listingType === 'rent' ? 'for rent' : 'for sale';
+
+  return buildMetadata({
+    title: `${bhk}${raw.title} — ${action} in ${raw.city ?? 'India'}`,
+    description: `${raw.title}${price ? ` ${action} at ${price}` : ` ${action}`} in ${raw.city ?? ''}${raw.state ? `, ${raw.state}` : ''}. ${raw.description ?? ''}`.trim(),
+    path: `/properties/${params.id}`,
+  });
 }
 
 export default async function PropertyDetailPage({ params }: { params: { id: string } }) {

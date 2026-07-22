@@ -520,3 +520,70 @@ export const SEO_KEYWORDS = {
     'rental apartment India',
   ],
 } as const;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Metadata factory (CTO optimization pass, Part 2A) — single source of truth
+// for title format, OG/Twitter cards, and canonical URLs. Section listing
+// pages (contractors, labour, etc.) already set their own metadata via
+// layout.tsx using SEO_KEYWORDS above; this factory is for the *detail*
+// pages underneath them ([id]/page.tsx), which previously had no metadata
+// of their own and silently inherited the listing layout's generic title —
+// meaning every single contractor/labour/material/etc. profile page served
+// an identical, non-unique <title>, a real duplicate-content SEO problem.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import type { Metadata } from 'next';
+
+const BASE_URL = 'https://griffy.in';
+
+export interface SeoProps {
+  title: string;
+  description: string;
+  path: string;
+  type?: 'website' | 'article' | 'profile';
+  image?: string;
+  keywords?: string[];
+}
+
+export function buildMetadata({ title, description, path, type = 'website', image, keywords }: SeoProps): Metadata {
+  const fullTitle = `${title} | Griffy`;
+  const url = `${BASE_URL}${path}`;
+
+  return {
+    title: fullTitle,
+    description,
+    keywords: keywords?.join(', '),
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+    openGraph: {
+      title: fullTitle,
+      description,
+      url,
+      siteName: 'Griffy',
+      locale: 'en_IN',
+      type: type === 'profile' ? 'profile' : type,
+      // No fallback OG image -- this repo has no default social-share image
+      // asset anywhere (the root layout's own metadata doesn't set one
+      // either), so omit `images` entirely rather than link a file that
+      // doesn't exist and would just 404 on every share.
+      ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: fullTitle,
+      description,
+      images: image ? [image] : undefined,
+    },
+    alternates: {
+      canonical: url,
+    },
+  };
+}

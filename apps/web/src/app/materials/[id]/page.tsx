@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import MaterialDetailClient from './MaterialDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -19,6 +21,21 @@ async function fetchReviews(id: string): Promise<any[]> {
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchMaterial(params.id);
+  if (!raw) return buildMetadata({ title: 'Material not found', description: 'This listing may have been removed or is unavailable.', path: `/materials/${params.id}` });
+
+  const city = raw.supplier?.deliveryCities?.[0];
+  const price = raw.price != null ? `₹${Number(raw.price).toLocaleString('en-IN')}${raw.unit ? `/${raw.unit}` : ''}` : null;
+
+  return buildMetadata({
+    title: `${raw.name} — ${raw.category ?? 'Material'}${city ? ` in ${city}` : ''}`,
+    description: `Buy ${raw.name}${price ? ` at ${price}` : ''}${city ? ` in ${city}` : ''} on Griffy — India's construction marketplace. ${raw.description ?? ''}`.trim(),
+    path: `/materials/${params.id}`,
+    image: raw.imageUrls?.[0] ?? undefined,
+  });
 }
 
 export default async function MaterialDetailPage({ params }: { params: { id: string } }) {

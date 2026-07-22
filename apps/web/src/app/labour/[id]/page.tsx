@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import LabourDetailClient from './LabourDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -19,6 +21,24 @@ async function fetchReviews(id: string): Promise<any[]> {
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchProfile(params.id);
+  if (!raw) return buildMetadata({ title: 'Worker not found', description: 'This profile may have been removed or is unavailable.', path: `/labour/${params.id}` });
+
+  const name = raw.user?.name ?? 'Worker';
+  const city = raw.serviceCities?.[0];
+  const skill = raw.skillType ?? 'General Labour';
+  const rating = raw.avgRating ? Number(raw.avgRating).toFixed(1) : null;
+
+  return buildMetadata({
+    title: `${name} — ${skill}${city ? ` in ${city}` : ''}`,
+    description: `${name}${city ? `, ${skill} in ${city}` : `, ${skill}`}.${rating ? ` Rated ${rating}/5` : ''}${raw.totalReviews ? ` from ${raw.totalReviews} reviews` : ''} on Griffy — India's construction marketplace.`,
+    path: `/labour/${params.id}`,
+    type: 'profile',
+    image: raw.user?.avatarUrl ?? undefined,
+  });
 }
 
 export default async function LabourDetailPage({ params }: { params: { id: string } }) {

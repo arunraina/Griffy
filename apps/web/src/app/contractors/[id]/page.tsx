@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import ContractorDetailClient from './ContractorDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -19,6 +21,27 @@ async function fetchReviews(id: string): Promise<any[]> {
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
+}
+
+// Every contractor profile page previously inherited the listing layout's
+// generic "Find Verified Contractors..." title -- a duplicate <title> across
+// every single profile. This gives each one a unique, entity-specific tag.
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchProfile(params.id);
+  if (!raw) return buildMetadata({ title: 'Contractor not found', description: 'This profile may have been removed or is unavailable.', path: `/contractors/${params.id}` });
+
+  const name = raw.user?.name ?? 'Contractor';
+  const city = raw.serviceCities?.[0];
+  const type = raw.contractorType ?? 'Contractor';
+  const rating = raw.avgRating ? Number(raw.avgRating).toFixed(1) : null;
+
+  return buildMetadata({
+    title: `${name} — ${type}${city ? ` in ${city}` : ''}`,
+    description: `${name}${city ? `, ${type} in ${city}` : `, ${type}`}.${rating ? ` Rated ${rating}/5` : ''}${raw.totalReviews ? ` from ${raw.totalReviews} reviews` : ''} on Griffy — India's construction marketplace.`,
+    path: `/contractors/${params.id}`,
+    type: 'profile',
+    image: raw.user?.avatarUrl ?? undefined,
+  });
 }
 
 export default async function ContractorDetailPage({ params }: { params: { id: string } }) {

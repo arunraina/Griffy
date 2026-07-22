@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import ServiceExpertDetailClient from './ServiceExpertDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -19,6 +21,24 @@ async function fetchReviews(id: string): Promise<any[]> {
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchProfile(params.id);
+  if (!raw) return buildMetadata({ title: 'Expert not found', description: 'This profile may have been removed or is unavailable.', path: `/service-experts/${params.id}` });
+
+  const name = raw.user?.name ?? 'Service Expert';
+  const city = raw.serviceCities?.[0];
+  const expertise = raw.expertiseType ?? 'Service Expert';
+  const rating = raw.avgRating ? Number(raw.avgRating).toFixed(1) : null;
+
+  return buildMetadata({
+    title: `${name} — ${expertise}${city ? ` in ${city}` : ''}`,
+    description: `${name}${city ? `, ${expertise} in ${city}` : `, ${expertise}`}.${rating ? ` Rated ${rating}/5` : ''}${raw.totalReviews ? ` from ${raw.totalReviews} reviews` : ''} on Griffy — India's construction marketplace.`,
+    path: `/service-experts/${params.id}`,
+    type: 'profile',
+    image: raw.user?.avatarUrl ?? undefined,
+  });
 }
 
 export default async function ServiceExpertDetailPage({ params }: { params: { id: string } }) {
