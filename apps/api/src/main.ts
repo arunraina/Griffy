@@ -1,9 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import compression from 'compression';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Gzips JSON responses -- list endpoints (contractors, materials, etc.)
+  // routinely run 60-70% smaller over the wire, which is both a Core Web
+  // Vitals win (faster TTFB/LCP on slow J&K connections) and a direct
+  // Railway egress-cost reduction.
+  app.use(compression());
 
   // /media is static file serving (ServeStaticModule), not an API route —
   // excluded so its URLs stay clean and match what StorageService constructs.
