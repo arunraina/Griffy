@@ -389,7 +389,7 @@ export class AdminService {
   // Admin's access (demoting one is exactly the kind of privilege-escalation
   // path this exists to prevent). Nobody can change their own admin role,
   // regardless of tier, mirroring the self-suspend guard on setUserSuspended.
-  async setAdminRole(targetUserId: string, adminRole: AdminRole, actingAdminId: string) {
+  async setAdminRole(targetUserId: string, adminRole: AdminRole | null, actingAdminId: string) {
     const actingAdmin = await this.assertAdmin(actingAdminId);
 
     if (targetUserId === actingAdminId) {

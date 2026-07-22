@@ -216,16 +216,24 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
 
 // ── Users (search / suspend) ─────────────────────────────────────────────────
 
+export const ACCOUNT_STATUSES = [
+  'ACTIVE', 'SUSPENDED', 'TEMP_SUSPENDED', 'RESTRICTED_LISTING',
+  'RESTRICTED_BOOKING', 'RESTRICTED_EXPLORE', 'PENDING_REVIEW',
+] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+
 export interface AdminUser {
   id: string; userNumber: number; name: string; email: string; phone: string | null;
   city: string | null; state: string | null;
   role: string; adminRole: string | null; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
+  accountStatus: AccountStatus; statusReason: string | null; statusExpiresAt: string | null;
 }
 
 export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MODERATOR', 'KYC_MODERATOR', 'HR'] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-export async function setAdminRole(id: string, adminRole: AdminRole): Promise<AdminUser> {
+// adminRole: null removes admin access entirely (reverts to a plain user).
+export async function setAdminRole(id: string, adminRole: AdminRole | null): Promise<AdminUser> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/users/${id}/admin-role`, {
     method: 'PATCH',
@@ -233,6 +241,33 @@ export async function setAdminRole(id: string, adminRole: AdminRole): Promise<Ad
     body: JSON.stringify({ adminRole }),
   });
   if (!res.ok) throw new Error('Failed to update admin role');
+  return res.json();
+}
+
+export interface SetAccountStatusPayload {
+  status: AccountStatus; reason?: string; expiresAt?: string; notifyUser?: boolean;
+}
+
+export async function setAccountStatus(id: string, payload: SetAccountStatusPayload): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/status`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.message?.[0] ?? 'Failed to change status');
+  return res.json();
+}
+
+export interface AdminStatusHistoryEntry {
+  id: string; previousStatus: AccountStatus; newStatus: AccountStatus; reason: string;
+  expiresAt: string | null; createdAt: string; changedBy: { name: string; email: string } | null;
+}
+
+export async function fetchAdminStatusHistory(id: string): Promise<AdminStatusHistoryEntry[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/status-history`, { headers });
+  if (!res.ok) throw new Error('Failed to load status history');
   return res.json();
 }
 

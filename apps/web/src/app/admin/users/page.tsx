@@ -2,12 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { fetchAdminUsers, suspendUser, unsuspendUser, setAdminRole, ADMIN_ROLES, type AdminUser, type AdminRole } from '@/lib/admin';
+import { fetchAdminUsers, setAdminRole, startImpersonation, ADMIN_ROLES, type AdminUser, type AdminRole } from '@/lib/admin';
 import { useAuth } from '@/lib/auth-provider';
 import { SkeletonListRows } from '@/components/Skeleton';
 import CreateUserModal from '@/components/admin/CreateUserModal';
+import StatusChangeModal from '@/components/admin/StatusChangeModal';
+import StatusChip from '@/components/admin/StatusChip';
+import { beginImpersonation } from '@/lib/impersonation';
 
 const ROLES = ['', 'HOMEOWNER', 'CONTRACTOR', 'LABOUR', 'SERVICE_EXPERT', 'MATERIAL_SUPPLIER', 'LAND_OWNER', 'PROPERTY_SELLER', 'BUILDER', 'PROPERTY_AGENT', 'ADMIN'];
+
+// Sentinel for the role <select> -- distinct from the empty placeholder
+// value (which means "no selection made"), this one means "explicitly set
+// adminRole to null", i.e. remove admin access entirely.
+const REMOVE_ADMIN_ACCESS = '__REMOVE__';
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
@@ -17,12 +25,16 @@ export default function AdminUsersPage() {
   const [error, setError] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [statusModalTarget, setStatusModalTarget] = useState<AdminUser | null>(null);
+  const [impersonateTarget, setImpersonateTarget] = useState<AdminUser | null>(null);
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateError, setImpersonateError] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const { me } = useAuth();
   const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
   // A regular Admin can manage the scoped tiers too (matches the backend's
   // setAdminRole rules) -- just never grant Super Admin or touch an
-  // existing Super Admin, and never their own row. See ROLE_OPTIONS below
-  // for the tier-filtering and the disabled-for-self/target check inline.
+  // existing Super Admin, and never their own row.
   const canManageRoles = isSuperAdmin || me?.adminRole === 'ADMIN';
   const roleOptions = isSuperAdmin ? ADMIN_ROLES : ADMIN_ROLES.filter((r) => r !== 'SUPER_ADMIN');
 
@@ -40,21 +52,105 @@ export default function AdminUsersPage() {
     return () => clearTimeout(t);
   }, [load]);
 
-  async function handleToggleSuspend(u: AdminUser) {
-    setUpdating(u.id);
-    try {
-      if (u.isSuspended) await unsuspendUser(u.id); else await suspendUser(u.id);
-      load();
-    } catch { /* retry available */ } finally { setUpdating(null); }
+  // Mirrors the hierarchy rule already enforced server-side (AdminHierarchyService):
+  // a regular Admin can't touch any admin's status, only a Super Admin can.
+  function canChangeStatus(u: AdminUser): boolean {
+    if (u.id === me?.id) return false;
+    if (u.adminRole && !isSuperAdmin) return false;
+    return true;
+  }
+
+  function canActAsUser(u: AdminUser): boolean {
+    return isSuperAdmin && u.id !== me?.id && u.adminRole !== 'SUPER_ADMIN';
   }
 
   async function handleSetAdminRole(u: AdminUser, value: string) {
     if (!value) return;
     setUpdating(u.id);
+    setOpenMenuId(null);
     try {
-      await setAdminRole(u.id, value as AdminRole);
+      await setAdminRole(u.id, value === REMOVE_ADMIN_ACCESS ? null : (value as AdminRole));
       load();
     } catch { /* retry available */ } finally { setUpdating(null); }
+  }
+
+  async function handleImpersonate() {
+    if (!impersonateTarget) return;
+    setImpersonating(true);
+    setImpersonateError('');
+    try {
+      const { impersonationToken, targetUser } = await startImpersonation(impersonateTarget.id);
+      beginImpersonation(impersonationToken, { id: targetUser.id, name: targetUser.name, role: targetUser.role });
+      window.location.href = '/dashboard/home';
+    } catch (e) {
+      setImpersonateError(e instanceof Error ? e.message : 'Failed to start impersonation');
+      setImpersonating(false);
+    }
+  }
+
+  function RoleSelect({ u }: { u: AdminUser }) {
+    if (!canManageRoles || u.id === me?.id || (u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin)) return null;
+    return (
+      <select
+        value=""
+        onChange={(e) => handleSetAdminRole(u, e.target.value)}
+        disabled={updating === u.id}
+        className="w-full text-xs border border-[#EBE0D8] rounded-lg px-2 py-1.5 disabled:opacity-40"
+      >
+        <option value="">{u.adminRole ? 'Change admin role…' : 'Grant admin role…'}</option>
+        {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+        {u.adminRole && <option value={REMOVE_ADMIN_ACCESS}>Remove admin access</option>}
+      </select>
+    );
+  }
+
+  function RowMenu({ u }: { u: AdminUser }) {
+    const open = openMenuId === u.id;
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setOpenMenuId(open ? null : u.id)}
+          className="text-[#A08070] hover:text-[#C0593A] px-2 py-1 text-lg leading-none"
+        >
+          ⋮
+        </button>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+            <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#EBE0D8] rounded-xl shadow-lg w-56 p-2 space-y-1">
+              <Link
+                href={`/admin/profile/${u.id}`}
+                onClick={() => setOpenMenuId(null)}
+                className="block text-sm text-[#2C1810] hover:bg-[#FAEEE9] rounded-lg px-3 py-2"
+              >
+                View / Edit Profile
+              </Link>
+              {canActAsUser(u) && (
+                <button
+                  onClick={() => { setOpenMenuId(null); setImpersonateTarget(u); }}
+                  className="w-full text-left text-sm text-[#6B2FB3] hover:bg-[#F3E8FF] rounded-lg px-3 py-2"
+                >
+                  👁️ Act as User
+                </button>
+              )}
+              {canChangeStatus(u) && (
+                <button
+                  onClick={() => { setOpenMenuId(null); setStatusModalTarget(u); }}
+                  className="w-full text-left text-sm text-[#2C1810] hover:bg-[#FAEEE9] rounded-lg px-3 py-2"
+                >
+                  Change Status…
+                </button>
+              )}
+              {canManageRoles && (u.id !== me?.id) && !(u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin) && (
+                <div className="border-t border-[#F0E8E2] pt-1.5 mt-1.5">
+                  <RoleSelect u={u} />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -73,6 +169,47 @@ export default function AdminUsersPage() {
       </div>
 
       <CreateUserModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={load} />
+
+      {statusModalTarget && (
+        <StatusChangeModal
+          userId={statusModalTarget.id}
+          userName={statusModalTarget.name}
+          currentStatus={statusModalTarget.accountStatus}
+          onClose={() => setStatusModalTarget(null)}
+          onChanged={() => { setStatusModalTarget(null); load(); }}
+        />
+      )}
+
+      {impersonateTarget && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !impersonating && setImpersonateTarget(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+              <p className="text-sm text-[#2C1810]">
+                You are about to view Griffy as <span className="font-semibold">{impersonateTarget.name}</span> ({impersonateTarget.role}).
+                Your admin session will be preserved. All actions you take will be logged.
+              </p>
+              {impersonateError && <p className="text-xs text-red-600 mt-3">{impersonateError}</p>}
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={() => setImpersonateTarget(null)}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold text-[#6B5248] border border-[#EBE0D8] px-4 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg"
+                >
+                  {impersonating ? 'Starting…' : `Confirm — View as ${impersonateTarget.name}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="flex flex-wrap gap-3 mb-5">
         <input
@@ -111,9 +248,7 @@ export default function AdminUsersPage() {
                     </Link>
                     {u.isFirstParty && <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">Griffy</span>}
                   </div>
-                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${u.isSuspended ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'}`}>
-                    {u.isSuspended ? 'Suspended' : 'Active'}
-                  </span>
+                  <StatusChip status={u.accountStatus} expiresAt={u.statusExpiresAt} />
                 </div>
                 <p className="text-sm text-[#6B5248]">{u.email}</p>
                 {u.phone && <p className="text-xs text-[#A08070]">{u.phone}</p>}
@@ -123,32 +258,14 @@ export default function AdminUsersPage() {
                     {u.adminRole && <span className="ml-1 text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{u.adminRole}</span>}
                     {' '}· Joined {new Date(u.createdAt).toLocaleDateString('en-IN')}
                   </div>
-                  <button
-                    onClick={() => handleToggleSuspend(u)}
-                    disabled={updating === u.id || !!u.adminRole}
-                    title={u.adminRole ? 'Cannot suspend an admin from here' : undefined}
-                    className={`text-xs font-semibold hover:underline disabled:opacity-40 py-1 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
-                  >
-                    {u.isSuspended ? 'Unsuspend' : 'Suspend'}
-                  </button>
+                  <RowMenu u={u} />
                 </div>
-                {canManageRoles && (u.id !== me?.id) && !(u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin) && (
-                  <select
-                    value={u.adminRole ?? ''}
-                    onChange={(e) => handleSetAdminRole(u, e.target.value)}
-                    disabled={updating === u.id}
-                    className="mt-2 w-full text-xs border border-[#EBE0D8] rounded-lg px-2 py-1.5 disabled:opacity-40"
-                  >
-                    <option value="">{u.adminRole ? 'Change admin role…' : 'Grant admin role…'}</option>
-                    {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                )}
               </div>
             ))}
           </div>
 
           {/* Desktop/tablet: table */}
-          <div className="hidden md:block bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden overflow-x-auto">
+          <div className="hidden md:block bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBE0D8] text-left text-xs text-[#A08070] uppercase tracking-wide">
@@ -182,33 +299,11 @@ export default function AdminUsersPage() {
                       {u.adminRole && <span className="ml-1 text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{u.adminRole}</span>}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${u.isSuspended ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'}`}>
-                        {u.isSuspended ? 'Suspended' : 'Active'}
-                      </span>
+                      <StatusChip status={u.accountStatus} expiresAt={u.statusExpiresAt} />
                     </td>
                     <td className="px-5 py-3 text-xs text-[#6B5248]">{new Date(u.createdAt).toLocaleDateString('en-IN')}</td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleSuspend(u)}
-                          disabled={updating === u.id || !!u.adminRole}
-                          title={u.adminRole ? 'Cannot suspend an admin from here' : undefined}
-                          className={`text-xs font-semibold hover:underline disabled:opacity-40 ${u.isSuspended ? 'text-green-700' : 'text-red-600'}`}
-                        >
-                          {u.isSuspended ? 'Unsuspend' : 'Suspend'}
-                        </button>
-                        {canManageRoles && (u.id !== me?.id) && !(u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin) && (
-                          <select
-                            value={u.adminRole ?? ''}
-                            onChange={(e) => handleSetAdminRole(u, e.target.value)}
-                            disabled={updating === u.id}
-                            className="text-xs border border-[#EBE0D8] rounded-lg px-1.5 py-1 disabled:opacity-40"
-                          >
-                            <option value="">{u.adminRole ? 'Change role…' : 'Grant admin…'}</option>
-                            {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                        )}
-                      </div>
+                      <RowMenu u={u} />
                     </td>
                   </tr>
                 ))}

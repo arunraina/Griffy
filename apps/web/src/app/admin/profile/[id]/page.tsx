@@ -7,8 +7,10 @@ import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
   fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
   createAdminReview, updateAdminReview, deleteAdminReview, startImpersonation,
+  fetchAdminStatusHistory,
   PROFILE_TYPE_TO_REVIEW_TARGET_TYPE, REVIEW_SOURCES,
   type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
+  type AdminStatusHistoryEntry,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
 import { useAuth } from '@/lib/auth-provider';
@@ -692,6 +694,39 @@ function ProfileEditForm({
       )}
       {profileType && profile && fields.length > 0 && (
         <ProfessionalDetailsSection userId={userId} profile={profile} fields={fields} onSaved={onSaved} />
+      )}
+      <StatusHistorySection userId={userId} />
+    </div>
+  );
+}
+
+function StatusHistorySection({ userId }: { userId: string }) {
+  const [history, setHistory] = useState<AdminStatusHistoryEntry[] | null>(null);
+
+  useEffect(() => {
+    fetchAdminStatusHistory(userId).then(setHistory).catch(() => setHistory([]));
+  }, [userId]);
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Status History</h2>
+      {history === null ? (
+        <SkeletonListRows count={2} />
+      ) : history.length === 0 ? (
+        <p className="text-sm text-[#A08070]">No status changes recorded yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {history.map((h) => (
+            <div key={h.id} className="border-l-2 border-[#EBE0D8] pl-4 pb-1">
+              <p className="text-sm text-[#2C1810]">
+                <span className="font-semibold">{new Date(h.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                {' — Changed from '}<span className="font-medium">{h.previousStatus}</span>{' to '}<span className="font-medium">{h.newStatus}</span>
+                {h.changedBy && <> by {h.changedBy.name}</>}
+              </p>
+              <p className="text-xs text-[#6B5248] mt-0.5">Reason: &ldquo;{h.reason}&rdquo;</p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

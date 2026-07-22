@@ -20,8 +20,12 @@ import {
 import { ProjectStatus, UserRole, AdminRole, AccountStatus } from '@prisma/client';
 
 export class SetAdminRoleDto {
+  // null removes admin access entirely, reverting the person to acting like
+  // a plain marketplace user -- IsOptional skips validation for null/
+  // undefined, which is exactly the case we want to allow here.
+  @IsOptional()
   @IsEnum(AdminRole)
-  adminRole!: AdminRole;
+  adminRole!: AdminRole | null;
 }
 
 export class SetAccountStatusDto {
