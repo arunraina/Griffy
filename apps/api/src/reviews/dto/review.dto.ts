@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, MaxLength, MinLength } from 'class-validator';
 import { ReviewTargetType } from '@prisma/client';
 
 export const REVIEW_SOURCES = ['phone_feedback', 'whatsapp_feedback', 'in_person', 'other'] as const;
@@ -84,4 +84,11 @@ export class AdminUpdateReviewDto {
   @IsOptional()
   @IsIn(REVIEW_SOURCES)
   source?: ReviewSource;
+
+  // Admin override for the "Verified purchase"/"Verified by Griffy team"
+  // badge -- independent of isAdminAdded, since a real customer's review can
+  // be manually verified (or a suspicious one manually unverified) too.
+  @IsOptional()
+  @IsBoolean()
+  isVerified?: boolean;
 }

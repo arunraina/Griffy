@@ -12,6 +12,7 @@ import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
+import { CreateProjectDto } from '../projects/dto/project.dto';
 import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
 
 @Controller('admin')
@@ -196,6 +197,18 @@ export class AdminController {
   async createServiceItemFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreateServiceItemDto) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.createServiceItemFor(id, body, user.id);
+  }
+
+  @Get('users/:id/projects')
+  async getUserProjects(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getUserProjects(id);
+  }
+
+  @Post('users/:id/projects')
+  async createProjectFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreateProjectDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createProjectFor(id, body, user.id);
   }
 
   @Get('users/:id/bookings')

@@ -7,10 +7,10 @@ import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
   fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
   createAdminReview, updateAdminReview, deleteAdminReview, startImpersonation,
-  fetchAdminStatusHistory,
+  fetchAdminStatusHistory, fetchAdminUserProjects, createAdminProject,
   PROFILE_TYPE_TO_REVIEW_TARGET_TYPE, REVIEW_SOURCES,
   type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
-  type AdminStatusHistoryEntry,
+  type AdminStatusHistoryEntry, type AdminProject,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
 import { useAuth } from '@/lib/auth-provider';
@@ -229,6 +229,10 @@ export default function AdminUserDetailPage() {
   const { user, profileType, profile, portfolio, services } = detail;
   const canHavePortfolio = profileType === 'contractor' || profileType === 'labour' || profileType === 'service-expert';
   const canHaveServices = profileType === 'labour' || profileType === 'service-expert';
+  // Verification-badge toggle ships for the hands-on trade professions
+  // first; material suppliers/builders/property agents are a follow-up.
+  const isServiceProfessional = profileType === 'contractor' || profileType === 'labour' || profileType === 'service-expert';
+  const isHomeowner = user.role === 'HOMEOWNER';
   const skillKey = (profile?.skillType ?? profile?.expertiseType) as string | undefined;
   const quickAdd = skillKey ? QUICK_ADD_SERVICES[skillKey.toLowerCase().replace(/\s+/g, '_')] : undefined;
   const canImpersonate = isSuperAdmin && user.id !== me?.id && user.adminRole !== 'SUPER_ADMIN';
@@ -323,7 +327,7 @@ export default function AdminUserDetailPage() {
               tab === t.id ? 'border-[#C0593A] text-[#C0593A]' : 'border-transparent text-[#A08070] hover:text-[#6B5248]'
             }`}
           >
-            {t.label}
+            {t.id === 'listings' && isHomeowner ? 'Projects' : t.label}
           </button>
         ))}
       </div>
@@ -338,7 +342,11 @@ export default function AdminUserDetailPage() {
         />
       )}
 
-      {tab === 'listings' && (
+      {tab === 'listings' && isHomeowner && (
+        <ProjectsSection userId={userId} />
+      )}
+
+      {tab === 'listings' && !isHomeowner && (
         <>
           {canHavePortfolio && (
             <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
@@ -467,11 +475,20 @@ export default function AdminUserDetailPage() {
                   <div className="flex items-center justify-between mt-1.5">
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-[#A08070]">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                      {r.isAdminAdded && (
-                        <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">✓ Verified by Griffy team</span>
+                      {r.isVerified && (
+                        <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">
+                          ✓ {r.isAdminAdded ? 'Verified by Griffy team' : 'Verified purchase'}
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
+                      {isServiceProfessional && (
+                        <VerifiedToggle
+                          reviewId={r.id}
+                          isVerified={r.isVerified}
+                          onToggled={(updated) => setReviews((prev) => (prev ?? []).map((x) => (x.id === updated.id ? updated : x)))}
+                        />
+                      )}
                       <button onClick={() => setReviewSlideOver({ mode: 'edit', review: r })} className="text-xs font-semibold text-[#6B5248] hover:text-[#C0593A]">Edit</button>
                       <DeleteReviewButton id={r.id} onDeleted={() => setReviews((prev) => (prev ?? []).filter((x) => x.id !== r.id))} />
                     </div>
@@ -1043,5 +1060,149 @@ function ReviewSlideOver({
         </form>
       </div>
     </>
+  );
+}
+
+function VerifiedToggle({
+  reviewId, isVerified, onToggled,
+}: { reviewId: string; isVerified: boolean; onToggled: (updated: AdminProviderReview) => void }) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleClick() {
+    setSaving(true);
+    try {
+      const updated = await updateAdminReview(reviewId, { isVerified: !isVerified });
+      onToggled(updated);
+    } catch { /* retry available */ } finally { setSaving(false); }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={saving}
+      className={`text-xs font-semibold hover:underline disabled:opacity-40 ${isVerified ? 'text-[#9E3F24]' : 'text-[#A08070]'}`}
+    >
+      {isVerified ? 'Unverify' : 'Verify'}
+    </button>
+  );
+}
+
+// Homeowners have no supply-side profile to manage -- their equivalent of
+// "listings" is the projects they post looking for contractor bids, so this
+// replaces the Portfolio/Services blocks entirely for that role.
+function ProjectsSection({ userId }: { userId: string }) {
+  const [projects, setProjects] = useState<AdminProject[] | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = useCallback(() => {
+    fetchAdminUserProjects(userId).then(setProjects).catch(() => setProjects([]));
+  }, [userId]);
+
+  useEffect(load, [load]);
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-[#2C1810]">Posted Projects</h2>
+        <button
+          onClick={() => setShowAdd((s) => !s)}
+          className="text-sm font-semibold text-[#C0593A] border border-[#C0593A] px-3 py-1.5 rounded-lg hover:bg-[#FAEEE9]"
+        >
+          {showAdd ? 'Cancel' : '+ Add Project'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <AddProjectForm userId={userId} onCreated={() => { setShowAdd(false); load(); }} />
+      )}
+
+      {projects === null ? (
+        <SkeletonListRows count={2} />
+      ) : projects.length === 0 ? (
+        <p className="text-sm text-[#A08070]">No projects posted yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {projects.map((p) => (
+            <div key={p.id} className="border border-[#EBE0D8] rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#2C1810]">{p.title}</p>
+                <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{p.status}</span>
+              </div>
+              <p className="text-xs text-[#A08070] mt-0.5">
+                {p.projectType} · {p.city}, {p.state} · ₹{Number(p.budgetMin).toLocaleString('en-IN')}–₹{Number(p.budgetMax).toLocaleString('en-IN')}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddProjectForm({ userId, onCreated }: { userId: string; onCreated: () => void }) {
+  const [projectType, setProjectType] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [timeline, setTimeline] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const min = Number(budgetMin);
+    const max = Number(budgetMax);
+    if (!projectType.trim() || !title.trim() || !description.trim() || !city.trim() || !state.trim() || !timeline.trim() || !min || !max) {
+      setError('All fields are required, and budget must be greater than 0.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      await createAdminProject(userId, {
+        projectType: projectType.trim(), title: title.trim(), description: description.trim(),
+        city: city.trim(), state: state.trim(), budgetMin: min, budgetMax: max, timeline: timeline.trim(),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add project');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-[#FAEEE9] rounded-xl p-4 mb-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <input value={projectType} onChange={(e) => setProjectType(e.target.value)} placeholder="Project type (e.g. Renovation)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={timeline} onChange={(e) => setTimeline(e.target.value)} placeholder="Timeline (e.g. 2 weeks)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
+        className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" rows={3}
+        className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      <div className="grid grid-cols-2 gap-3">
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <input value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} type="number" min="1" placeholder="Budget min (₹)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} type="number" min="1" placeholder="Budget max (₹)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <button type="submit" disabled={saving}
+        className="text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Add Project'}
+      </button>
+    </form>
   );
 }

@@ -12,6 +12,8 @@ import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
 import { ImpersonationService } from '../auth/impersonation.service';
+import { ProjectsService } from '../projects/projects.service';
+import { CreateProjectDto } from '../projects/dto/project.dto';
 import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { AdminHierarchyService } from './admin-hierarchy.service';
 
@@ -96,6 +98,7 @@ export class AdminService {
     private readonly reviews: ReviewsService,
     private readonly hierarchy: AdminHierarchyService,
     private readonly impersonation: ImpersonationService,
+    private readonly projects: ProjectsService,
   ) {}
 
   getProviderBookings(userId: string) {
@@ -278,6 +281,20 @@ export class AdminService {
     const item = await this.serviceItems.create(targetUserId, dto);
     await this.logAction(adminId, 'CREATE_SERVICE_ITEM', 'service-item', item.id);
     return item;
+  }
+
+  // Homeowners have no supply-side profile/listing to manage (that's what
+  // the Portfolio/Services blocks are for) -- their equivalent is the
+  // projects they post looking for bids, so this is what the "listings" tab
+  // manages on their behalf instead.
+  getUserProjects(userId: string) {
+    return this.prisma.project.findMany({ where: { ownerId: userId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async createProjectFor(targetUserId: string, dto: CreateProjectDto, adminId: string) {
+    const project = await this.projects.create(targetUserId, dto);
+    await this.logAction(adminId, 'CREATE_PROJECT', 'project', project.id);
+    return project;
   }
 
   private logAction(adminId: string, action: string, targetType: string, targetId: string) {

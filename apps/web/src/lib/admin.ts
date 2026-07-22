@@ -38,11 +38,13 @@ export async function endImpersonation(): Promise<void> {
 export interface AdminProject {
   id: string;
   title: string;
+  description?: string;
   projectType: string;
   city: string;
   state: string;
   budgetMin: string;
   budgetMax: string;
+  timeline?: string;
   status: 'OPEN' | 'AWARDED' | 'CLOSED';
   createdAt: string;
   owner?: { name: string; email: string };
@@ -53,6 +55,25 @@ export async function fetchAdminProjects(status?: string): Promise<AdminProject[
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/projects${status ? `?status=${status}` : ''}`, { headers });
   if (!res.ok) throw new Error('Failed to load projects');
+  return res.json();
+}
+
+export interface CreateAdminProjectPayload {
+  projectType: string; title: string; description: string; city: string; state: string;
+  budgetMin: number; budgetMax: number; timeline: string;
+}
+
+export async function fetchAdminUserProjects(userId: string): Promise<AdminProject[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/projects`, { headers });
+  if (!res.ok) throw new Error('Failed to load projects');
+  return res.json();
+}
+
+export async function createAdminProject(userId: string, payload: CreateAdminProjectPayload): Promise<AdminProject> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/projects`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to create project');
   return res.json();
 }
 
@@ -350,6 +371,7 @@ export interface AdminProviderReview {
   reviewer?: { name: string; avatarUrl: string | null } | null;
   reviewerName: string | null;
   isAdminAdded: boolean;
+  isVerified: boolean;
   source: string | null;
 }
 
@@ -383,7 +405,7 @@ export async function createAdminReview(payload: CreateAdminReviewPayload): Prom
   return res.json();
 }
 
-export async function updateAdminReview(id: string, patch: Partial<CreateAdminReviewPayload>): Promise<AdminProviderReview> {
+export async function updateAdminReview(id: string, patch: Partial<CreateAdminReviewPayload> & { isVerified?: boolean }): Promise<AdminProviderReview> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/reviews/${id}`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
   if (!res.ok) throw new Error('Failed to update review');

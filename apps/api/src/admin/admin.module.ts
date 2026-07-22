@@ -14,12 +14,13 @@ import { PortfolioModule } from '../portfolio/portfolio.module';
 import { ServiceItemsModule } from '../service-items/service-items.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { ReviewsModule } from '../reviews/reviews.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
     KycModule, NotificationsModule, PaymentsModule, ReportsModule,
     MaterialsModule, LandsModule, PropertiesModule, PortfolioModule, ServiceItemsModule,
-    BookingsModule, ReviewsModule,
+    BookingsModule, ReviewsModule, ProjectsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminHierarchyService, AccountStatusExpiryCron],
