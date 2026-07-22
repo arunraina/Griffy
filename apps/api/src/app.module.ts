@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -42,6 +43,7 @@ import { AppController } from './app.controller';
   controllers: [AppController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     // Serves the local-disk fallback for avatar/portfolio uploads (used when
     // AWS_* isn't configured) publicly at /media — dev-only in practice,
     // since production is expected to have S3 configured. Deliberately not

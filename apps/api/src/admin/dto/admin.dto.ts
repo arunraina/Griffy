@@ -2,22 +2,47 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsPositive,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { ProjectStatus, UserRole, AdminRole } from '@prisma/client';
+import { ProjectStatus, UserRole, AdminRole, AccountStatus } from '@prisma/client';
 
 export class SetAdminRoleDto {
   @IsEnum(AdminRole)
   adminRole!: AdminRole;
+}
+
+export class SetAccountStatusDto {
+  @IsEnum(AccountStatus)
+  status!: AccountStatus;
+
+  // Required for every status except ACTIVE (restoring access needs no
+  // justification); enforced here rather than just in the service so bad
+  // requests fail fast with a clear validation error.
+  @ValidateIf((o) => o.status !== 'ACTIVE')
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason?: string;
+
+  @ValidateIf((o) => o.status === 'TEMP_SUSPENDED')
+  @IsDateString()
+  expiresAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyUser?: boolean;
 }
 
 // Union of every field any of the 8 supply-side ProfileType tables accepts —

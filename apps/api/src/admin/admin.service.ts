@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType, AccountStatus } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
@@ -10,7 +10,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
-import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
+import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto } from './dto/admin.dto';
 import { AdminHierarchyService } from './admin-hierarchy.service';
 
 export type AdminSection =
@@ -444,6 +444,70 @@ export class AdminService {
         isSuspended,
         accountStatus: isSuspended ? 'SUSPENDED' : 'ACTIVE',
       },
+    });
+  }
+
+  // The richer status control behind the "Change Status" admin UI — unlike
+  // setUserSuspended (a simple boolean toggle kept for backward compat),
+  // this supports the full restriction spectrum and records history.
+  async setAccountStatus(targetUserId: string, dto: SetAccountStatusDto, actingAdminId: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('User not found');
+    if (!this.hierarchy.canSuspend(actingAdmin, target)) {
+      throw new ForbiddenException("You don't have permission to change this user's status");
+    }
+
+    const previousStatus = target.accountStatus;
+    const isSuspendedLike = dto.status === 'SUSPENDED' || dto.status === 'TEMP_SUSPENDED';
+    const wasSuspendedLike = previousStatus === 'SUSPENDED' || previousStatus === 'TEMP_SUSPENDED';
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          accountStatus: dto.status,
+          statusReason: dto.status === 'ACTIVE' ? null : dto.reason,
+          statusExpiresAt: dto.status === 'TEMP_SUSPENDED' ? new Date(dto.expiresAt!) : null,
+          statusUpdatedAt: new Date(),
+          statusUpdatedById: actingAdminId,
+          isSuspended: isSuspendedLike,
+          ...(isSuspendedLike && !wasSuspendedLike ? { suspensionCount: { increment: 1 } } : {}),
+        },
+      });
+
+      await tx.userStatusHistory.create({
+        data: {
+          userId: targetUserId,
+          previousStatus,
+          newStatus: dto.status,
+          reason: dto.reason ?? 'Restored to active',
+          changedById: actingAdminId,
+          expiresAt: dto.status === 'TEMP_SUSPENDED' ? new Date(dto.expiresAt!) : null,
+        },
+      });
+
+      return user;
+    });
+
+    await this.logAction(actingAdminId, 'SET_ACCOUNT_STATUS', 'user', targetUserId);
+
+    if (dto.notifyUser !== false) {
+      await this.notifications.notify(targetUserId, 'account.status_changed', {
+        status: dto.status,
+        reason: dto.reason,
+        expiresAt: updated.statusExpiresAt,
+      });
+    }
+
+    return updated;
+  }
+
+  getStatusHistory(userId: string) {
+    return this.prisma.userStatusHistory.findMany({
+      where: { userId },
+      include: { changedBy: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

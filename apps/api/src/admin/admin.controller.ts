@@ -5,7 +5,7 @@ import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto } from './dto/admin.dto';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto, SetAccountStatusDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
@@ -212,6 +212,18 @@ export class AdminController {
   async unsuspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.setUserSuspended(id, false, user.id);
+  }
+
+  @Patch('users/:id/status')
+  async setAccountStatus(@CurrentUser() user: User, @Param('id') id: string, @Body() body: SetAccountStatusDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.setAccountStatus(id, body, user.id);
+  }
+
+  @Get('users/:id/status-history')
+  async getStatusHistory(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getStatusHistory(id);
   }
 
   // Tiered — AdminService.setAdminRole enforces exactly who can grant what.
