@@ -82,5 +82,42 @@ export default async function ContractorDetailPage({ params }: { params: { id: s
     createdAt:       raw.createdAt ?? new Date().toISOString(),
   };
 
-  return <ContractorDetailClient profile={profile} reviews={reviews} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jsonLd: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': ['Person', 'LocalBusiness'],
+    name: profile.name,
+    jobTitle: profile.contractorType,
+    ...(profile.serviceCities[0]
+      ? { address: { '@type': 'PostalAddress', addressLocality: profile.serviceCities[0], addressCountry: 'IN' } }
+      : {}),
+    ...(profile.totalReviews > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: profile.avgRating,
+            reviewCount: profile.totalReviews,
+            bestRating: 5,
+          },
+        }
+      : {}),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(reviews.length > 0
+      ? {
+          review: reviews.slice(0, 3).map((r: any) => ({
+            '@type': 'Review',
+            reviewRating: { '@type': 'Rating', ratingValue: r.rating },
+            author: { '@type': 'Person', name: r.reviewer?.name ?? r.reviewerName ?? 'Griffy user' },
+            reviewBody: r.comment ?? '',
+          })),
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <ContractorDetailClient profile={profile} reviews={reviews} />
+    </>
+  );
 }

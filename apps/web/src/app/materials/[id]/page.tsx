@@ -85,5 +85,38 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
       : null,
   };
 
-  return <MaterialDetailClient material={material} reviews={reviews} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jsonLd: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: material.name,
+    description: material.description ?? undefined,
+    ...(material.brand ? { brand: { '@type': 'Brand', name: material.brand } } : {}),
+    ...(material.sku ? { sku: material.sku } : {}),
+    ...(material.imageUrls[0] ? { image: material.imageUrls[0] } : {}),
+    offers: {
+      '@type': 'Offer',
+      price: material.price,
+      priceCurrency: 'INR',
+      availability: material.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: { '@type': 'Organization', name: material.supplier?.name ?? 'Griffy' },
+    },
+    ...(material.totalReviews > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: material.avgRating,
+            reviewCount: material.totalReviews,
+            bestRating: 5,
+          },
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <MaterialDetailClient material={material} reviews={reviews} />
+    </>
+  );
 }
