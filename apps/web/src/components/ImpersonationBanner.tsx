@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { getImpersonationTarget, clearImpersonation, type ImpersonationTarget } from '@/lib/impersonation';
 import { endImpersonation } from '@/lib/admin';
 
@@ -10,7 +9,6 @@ import { endImpersonation } from '@/lib/admin';
 // than through AuthProvider, since this needs to work independent of that
 // context's own load state.
 export default function ImpersonationBanner() {
-  const router = useRouter();
   const [target, setTarget] = useState<ImpersonationTarget | null>(null);
   const [exiting, setExiting] = useState(false);
 
@@ -31,8 +29,10 @@ export default function ImpersonationBanner() {
       // because of a network blip is worse than an unmatched end record.
     } finally {
       clearImpersonation();
-      router.push(`/admin/profile/${targetId}`);
-      router.refresh();
+      // Hard navigation -- this banner only re-reads sessionStorage on
+      // mount, so a soft client-side nav would leave it showing "Viewing
+      // as..." even though the override was just cleared.
+      window.location.href = `/admin/profile/${targetId}`;
     }
   }
 

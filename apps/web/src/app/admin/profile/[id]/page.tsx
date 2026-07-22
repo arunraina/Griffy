@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
@@ -168,7 +168,6 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AdminUserDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const userId = params.id as string;
   const { me } = useAuth();
   const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
@@ -238,7 +237,11 @@ export default function AdminUserDetailPage() {
     try {
       const { impersonationToken, targetUser } = await startImpersonation(user.id);
       beginImpersonation(impersonationToken, { id: targetUser.id, name: targetUser.name, role: targetUser.role });
-      router.push('/dashboard/home');
+      // Hard navigation, not router.push() -- the root layout (and
+      // ImpersonationBanner's mount-only sessionStorage read) doesn't
+      // remount on client-side navigation, so a soft nav would leave the
+      // banner not knowing impersonation just started.
+      window.location.href = '/dashboard/home';
     } catch (e) {
       setImpersonateError(e instanceof Error ? e.message : 'Failed to start impersonation');
       setImpersonating(false);

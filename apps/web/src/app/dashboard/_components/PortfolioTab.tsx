@@ -11,6 +11,9 @@ import { SkeletonCardGrid } from '@/components/Skeleton';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function authHeaders(): Promise<Record<string, string>> {
+  const { getImpersonationToken } = await import('@/lib/impersonation');
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) return { Authorization: `Bearer ${impersonationToken}` };
   const { createClient } = await import('@/lib/supabase');
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
