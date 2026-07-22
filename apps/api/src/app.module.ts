@@ -37,6 +37,7 @@ import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.modul
 import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ServiceItemsModule } from './service-items/service-items.module';
+import { BlogModule } from './blog/blog.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -94,6 +95,7 @@ import { AppController } from './app.controller';
     ReportsModule,
     DashboardModule,
     ServiceItemsModule,
+    BlogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
