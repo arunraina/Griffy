@@ -214,7 +214,7 @@ export class AdminController {
     return this.admin.setUserSuspended(id, false);
   }
 
-  // Super-Admin-only — AdminService.setAdminRole enforces that itself.
+  // Tiered — AdminService.setAdminRole enforces exactly who can grant what.
   @Patch('users/:id/admin-role')
   async setAdminRole(@CurrentUser() user: User, @Param('id') id: string, @Body() body: SetAdminRoleDto) {
     return this.admin.setAdminRole(id, body.adminRole, user.id);
