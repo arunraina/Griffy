@@ -183,7 +183,7 @@ export default function OnboardingPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.replace('/login?redirect=/onboarding'); return; }
       const r = (user.user_metadata?.role ?? 'CUSTOMER') as Role;
-      if (r === 'ADMIN') { router.replace('/dashboard'); return; }
+      if (r === 'ADMIN') { router.replace('/dashboard/home'); return; }
       setRole(r);
       setPageLoading(false);
     });
@@ -249,7 +249,7 @@ export default function OnboardingPage() {
       setContractorSubmitted(true);
       return;
     }
-    router.push('/dashboard');
+    router.push('/dashboard/home');
   }
 
   if (pageLoading) {
@@ -300,7 +300,7 @@ export default function OnboardingPage() {
               </div>
             </div>
           </div>
-          <button onClick={() => router.push('/dashboard')}
+          <button onClick={() => router.push('/dashboard/home')}
             className="w-full bg-[#C0593A] hover:bg-[#9E3F24] text-white font-semibold text-sm py-3.5 rounded-xl transition-colors">
             Go to Dashboard →
           </button>

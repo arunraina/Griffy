@@ -5,5 +5,6 @@ import { LandsService } from './lands.service';
 @Module({
   controllers: [LandsController],
   providers: [LandsService],
+  exports: [LandsService],
 })
 export class LandsModule {}

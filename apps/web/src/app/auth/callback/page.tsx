@@ -29,7 +29,7 @@ function AuthCallbackInner() {
         localStorage.removeItem('griffy_signup_pro_label');
         localStorage.removeItem('griffy_signup_ref');
       }
-      router.replace(params.get('next') || '/dashboard');
+      router.replace(params.get('next') || '/dashboard/home');
     }
     finish();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -5,7 +5,7 @@ import { firebaseAuth } from '@/lib/firebase';
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 // ── Google OAuth ───────────────────────────────────────────────
-export async function signInWithGoogle(redirectTo = '/dashboard') {
+export async function signInWithGoogle(redirectTo = '/dashboard/home') {
   const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

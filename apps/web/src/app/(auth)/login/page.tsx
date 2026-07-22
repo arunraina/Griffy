@@ -23,7 +23,7 @@ function LoginForm() {
   const router   = useRouter();
   const searchParams = useSearchParams();
 
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = searchParams.get('redirect') || '/dashboard/home';
 
   async function handleGoogle() {
     trackEvent('login', { method: 'google' });

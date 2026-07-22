@@ -6,9 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, User as SupabaseUser } from '@supabase/supabase-js';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Request } from 'express';
-import ws from 'ws';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
 
@@ -28,20 +27,38 @@ const LEGACY_ROLE_MAP: Record<string, UserRole> = {
   PROPERTY_AGENT: 'PROPERTY_AGENT',
 };
 
+// The fields we actually use off a verified Supabase access token — narrower
+// than @supabase/supabase-js's full User type, which we no longer fetch (see
+// the comment on the jwks field below for why).
+interface VerifiedSupabaseUser {
+  id: string;
+  email?: string;
+  phone?: string;
+  user_metadata?: Record<string, unknown>;
+}
+
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly supabase: SupabaseClient;
+  // Verifies the JWT's signature locally against the project's public
+  // signing key instead of calling supabase.auth.getUser(token) — that was
+  // a network round-trip to Supabase's Auth API on every single protected
+  // request, measured taking 5-9s routinely under load (and considerably
+  // longer, or outright failing, when several protected requests fire
+  // concurrently, which every authenticated page load does). That round
+  // trip is exactly what was making /dashboard, /admin, and the homepage
+  // hang or error for logged-in users. This is Supabase's own recommended
+  // approach for projects on asymmetric (ES256) signing keys — see
+  // https://supabase.com/docs/guides/auth/jwts. `createRemoteJWKSet` caches
+  // the key set and only refetches on a cache miss (e.g. key rotation), not
+  // per request.
+  private readonly jwks: ReturnType<typeof createRemoteJWKSet>;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    this.supabase = createClient(
-      config.getOrThrow('SUPABASE_URL'),
-      config.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { realtime: { transport: ws as any } },
-    );
+    const supabaseUrl = config.getOrThrow('SUPABASE_URL');
+    this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -49,12 +66,18 @@ export class AuthGuard implements CanActivate {
     const token = this.extractBearerToken(request);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
-    const {
-      data: { user },
-      error,
-    } = await this.supabase.auth.getUser(token);
-
-    if (error || !user) throw new UnauthorizedException('Invalid token');
+    let user: VerifiedSupabaseUser;
+    try {
+      const { payload } = await jwtVerify(token, this.jwks);
+      user = {
+        id: payload.sub!,
+        email: payload.email as string | undefined,
+        phone: payload.phone as string | undefined,
+        user_metadata: payload.user_metadata as Record<string, unknown> | undefined,
+      };
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
 
     const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
 
@@ -62,8 +85,8 @@ export class AuthGuard implements CanActivate {
 
     if (dbUser.isSuspended) throw new ForbiddenException('This account has been suspended');
 
-    (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).supabaseUser = user;
-    (request as Request & { supabaseUser: SupabaseUser; dbUser: User }).dbUser = dbUser;
+    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).supabaseUser = user;
+    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).dbUser = dbUser;
     return true;
   }
 
@@ -76,18 +99,18 @@ export class AuthGuard implements CanActivate {
   // can come back as "required to return data, but found no record(s))"
   // instead of cleanly resolving to the winner's row. Retry as a plain
   // lookup in that case; by then the row certainly exists.
-  private async upsertUser(user: SupabaseUser, referredById: string | undefined): Promise<User> {
+  private async upsertUser(user: VerifiedSupabaseUser, referredById: string | undefined): Promise<User> {
     try {
       // The common case, by far, is that this row already exists — check that
       // first so every authenticated request doesn't pay for the ghost lookup
       // below. Only a first-ever login for this Supabase id falls through.
       const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
-      if (existing) return existing;
+      if (existing) return await this.trackLogin(existing);
 
       const claimed = await this.claimGhostUser(user);
-      if (claimed) return claimed;
+      if (claimed) return await this.trackLogin(claimed);
 
-      return await this.prisma.user.upsert({
+      const created = await this.prisma.user.upsert({
         where: { id: user.id },
         create: {
           id: user.id,
@@ -102,11 +125,27 @@ export class AuthGuard implements CanActivate {
         },
         update: {},
       });
+      return await this.trackLogin(created);
     } catch {
       const existing = await this.prisma.user.findUnique({ where: { id: user.id } });
       if (existing) return existing;
       throw new UnauthorizedException('Could not resolve user account');
     }
+  }
+
+  // Shared by every path in upsertUser (existing row, claimed ghost, or
+  // freshly created) so "first login ever" and session counting are defined
+  // in exactly one place. Debounced to once per ~30min: several requests
+  // fire in parallel right after login (see the comment above upsertUser),
+  // and without debouncing loginCount would over-increment per page load
+  // instead of per session. Downstream, loginCount <= 1 means "first login".
+  private async trackLogin(user: User): Promise<User> {
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (user.lastLoginAt && user.lastLoginAt >= thirtyMinAgo) return user;
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { loginCount: { increment: 1 }, lastLoginAt: new Date() },
+    });
   }
 
   // An admin can pre-seed a supply-side provider (e.g. an electrician the team
@@ -119,7 +158,7 @@ export class AuthGuard implements CanActivate {
   // cascades on update (verified against the live schema), so this is a plain
   // update, not a copy — any bookings/reviews/messages already made against
   // the ghost profile move with it automatically.
-  private async claimGhostUser(user: SupabaseUser): Promise<User | undefined> {
+  private async claimGhostUser(user: VerifiedSupabaseUser): Promise<User | undefined> {
     if (!user.phone) return undefined;
     const ghost = await this.prisma.user.findFirst({ where: { isGhost: true, phone: user.phone } });
     if (!ghost) return undefined;

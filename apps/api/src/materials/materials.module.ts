@@ -7,5 +7,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   controllers: [MaterialsController],
   providers: [MaterialsService],
+  exports: [MaterialsService],
 })
 export class MaterialsModule {}

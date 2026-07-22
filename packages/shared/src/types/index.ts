@@ -4,3 +4,4 @@ export * from './material';
 export * from './order';
 export * from './booking';
 export * from './review';
+export * from './user-state';

@@ -34,6 +34,8 @@ import { PortfolioModule } from './portfolio/portfolio.module';
 import { ChatModule } from './chat/chat.module';
 import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.module';
 import { ReportsModule } from './reports/reports.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ServiceItemsModule } from './service-items/service-items.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -88,6 +90,8 @@ import { AppController } from './app.controller';
     ChatModule,
     TurnkeyProjectsModule,
     ReportsModule,
+    DashboardModule,
+    ServiceItemsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
