@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType, AccountStatus } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType, AccountStatus, Prisma } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
@@ -10,7 +10,7 @@ import { BookingsService } from '../bookings/bookings.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
-import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto } from './dto/admin.dto';
+import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { AdminHierarchyService } from './admin-hierarchy.service';
 
 export type AdminSection =
@@ -139,6 +139,75 @@ export class AdminService {
     ]);
 
     return { user: targetUser, profileType, profile, portfolio, services };
+  }
+
+  // Only the fields that are real columns on each profile type's Prisma model
+  // -- deliberately narrower than what an idealized admin form might want
+  // (e.g. no "RERA number" or "delivery radius", since those columns don't
+  // exist yet). Add a field here only once it's actually on the schema.
+  private static readonly PROFILE_FIELDS_BY_TYPE: Record<ProfileType, (keyof UpdateAdminProfileDto)[]> = {
+    contractor: ['contractorType', 'tradeSkills', 'experience', 'serviceCities', 'licenseNumber', 'dailyRate', 'projectRate', 'bio', 'portfolioImages', 'isAvailable'],
+    labour: ['skillType', 'experience', 'serviceCities', 'dailyRate', 'bio', 'portfolioImages', 'isAvailable'],
+    'service-expert': ['expertiseType', 'qualifications', 'experience', 'serviceCities', 'consultationFee', 'bio', 'portfolioImages', 'isAvailable'],
+    'material-supplier': ['businessName', 'gstNumber', 'businessAddress', 'deliveryCities', 'isAvailable'],
+    'land-owner': ['bio', 'isAvailable', 'govtIdVerified'],
+    'property-seller': ['bio', 'isAvailable', 'govtIdVerified'],
+    builder: ['companyName', 'registrationNumber', 'specializations', 'serviceCities', 'bio', 'portfolioImages', 'isAvailable'],
+    'property-agent': ['agencyName', 'licenseNumber', 'serviceCities', 'bio', 'isAvailable'],
+  };
+
+  // Admin edit of "this person" as a whole -- User-level fields (name/phone/
+  // city/state/avatarUrl) plus whatever their profile type actually has,
+  // in one transaction. Mirrors the self-serve profile edit screens rather
+  // than the spec's idealized field list (see PROFILE_FIELDS_BY_TYPE above).
+  async updateUserProfile(userId: string, dto: UpdateAdminProfileDto, actingAdminId: string) {
+    await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!target) throw new NotFoundException('User not found');
+
+    const userData: Record<string, unknown> = {};
+    for (const key of ['name', 'phone', 'city', 'state', 'avatarUrl'] as const) {
+      if (dto[key] !== undefined) userData[key] = dto[key];
+    }
+
+    const profileType = ROLE_TO_PROFILE_TYPE[target.role];
+    const profileData: Record<string, unknown> = {};
+    if (profileType) {
+      for (const key of AdminService.PROFILE_FIELDS_BY_TYPE[profileType]) {
+        if (dto[key] !== undefined) profileData[key] = dto[key];
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userData).length > 0) {
+        await tx.user.update({ where: { id: userId }, data: userData });
+      }
+      if (profileType && Object.keys(profileData).length > 0) {
+        await this.updateProfileByType(tx, profileType, userId, profileData);
+      }
+    });
+
+    await this.logAction(actingAdminId, 'UPDATE_PROFILE', 'user', userId);
+    return this.getUserDetail(userId);
+  }
+
+  private updateProfileByType(
+    tx: Prisma.TransactionClient,
+    type: ProfileType,
+    userId: string,
+    data: Record<string, unknown>,
+  ) {
+    switch (type) {
+      case 'contractor': return tx.contractorProfile.update({ where: { userId }, data });
+      case 'labour': return tx.labourProfile.update({ where: { userId }, data });
+      case 'service-expert': return tx.serviceExpertProfile.update({ where: { userId }, data });
+      case 'material-supplier': return tx.materialSupplierProfile.update({ where: { userId }, data });
+      case 'land-owner': return tx.landOwnerProfile.update({ where: { userId }, data });
+      case 'property-seller': return tx.propertySellerProfile.update({ where: { userId }, data });
+      case 'builder': return tx.builderProfile.update({ where: { userId }, data });
+      case 'property-agent': return tx.propertyAgentProfile.update({ where: { userId }, data });
+      default: throw new BadRequestException('Invalid profile type');
+    }
   }
 
   async createPortfolioItemFor(targetUserId: string, dto: CreatePortfolioItemDto, adminId: string) {

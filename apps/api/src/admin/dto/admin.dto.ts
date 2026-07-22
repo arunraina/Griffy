@@ -1,3 +1,4 @@
+import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -69,6 +70,24 @@ export class CreateUserProfileDto {
   @IsOptional() @IsString() registrationNumber?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) specializations?: string[];
   @IsOptional() @IsString() agencyName?: string;
+}
+
+// Admin's "edit this person's profile" form -- covers both the User-level
+// fields (name/phone/city/state/avatarUrl, same as the self-serve profile
+// edit screen) and every profile-specific field CreateUserProfileDto already
+// validates, plus the few fields creation never needed (portfolioImages,
+// isAvailable, govtIdVerified). AdminService.updateUserProfile() picks the
+// subset relevant to the target's actual profile type.
+export class UpdateAdminProfileDto extends PartialType(CreateUserProfileDto) {
+  @IsOptional() @IsString() @MaxLength(150) name?: string;
+  @IsOptional() @IsString() @MaxLength(20) phone?: string;
+  @IsOptional() @IsString() @MaxLength(100) city?: string;
+  @IsOptional() @IsString() @MaxLength(100) state?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true }) portfolioImages?: string[];
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+  @IsOptional() @IsBoolean() govtIdVerified?: boolean;
 }
 
 export class CreateUserDto {

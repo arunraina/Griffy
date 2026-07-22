@@ -264,6 +264,18 @@ export async function fetchAdminUserDetail(id: string): Promise<AdminUserDetail>
   return res.json();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminUserProfile(id: string, patch: Record<string, any>): Promise<AdminUserDetail> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/profile`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error('Failed to update profile');
+  return res.json();
+}
+
 export interface AdminProviderBooking {
   id: string; status: string; scheduledAt: string; amount: string;
   customer?: { id: string; name: string; phone: string | null; email: string };

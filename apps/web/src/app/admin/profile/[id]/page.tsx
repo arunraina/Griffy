@@ -5,21 +5,81 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
-  fetchAdminUserBookings, fetchAdminUserReviews,
-  type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview,
+  fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
+  type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
 
 const PRICE_UNITS = ['FIXED', 'PER_HOUR', 'PER_DAY', 'PER_POINT', 'PER_SQFT', 'PER_VISIT'] as const;
 type PriceUnit = typeof PRICE_UNITS[number];
 
-// Profile rows we don't want in the generic key/value dump below — either
-// redundant with the header (name lives on User, not the profile row) or
-// internal bookkeeping the admin doesn't need to see here.
-const HIDDEN_PROFILE_FIELDS = new Set([
-  'id', 'userId', 'createdAt', 'updatedAt', 'approvalStatus', 'approvedBy', 'approvedAt',
-  'rejectionReason', 'portfolioImages', 'avgRating', 'totalReviews', 'totalOrders', 'user',
-]);
+// Mirrors AdminService.PROFILE_FIELDS_BY_TYPE on the backend — only real
+// columns on each profile type's Prisma model, nothing invented.
+type FieldType = 'text' | 'textarea' | 'number' | 'array' | 'boolean';
+interface FieldConfig { key: string; label: string; type: FieldType; }
+
+const PROFILE_FIELD_CONFIG: Record<string, FieldConfig[]> = {
+  contractor: [
+    { key: 'contractorType', label: 'Contractor Type', type: 'text' },
+    { key: 'tradeSkills', label: 'Trade Skills (comma-separated)', type: 'array' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'licenseNumber', label: 'License Number', type: 'text' },
+    { key: 'dailyRate', label: 'Daily Rate (₹)', type: 'number' },
+    { key: 'projectRate', label: 'Project Rate (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  labour: [
+    { key: 'skillType', label: 'Skill Type', type: 'text' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'dailyRate', label: 'Daily Rate (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  'service-expert': [
+    { key: 'expertiseType', label: 'Expertise Type', type: 'text' },
+    { key: 'qualifications', label: 'Qualifications (comma-separated)', type: 'array' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'consultationFee', label: 'Consultation Fee (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  'material-supplier': [
+    { key: 'businessName', label: 'Business Name', type: 'text' },
+    { key: 'gstNumber', label: 'GST Number', type: 'text' },
+    { key: 'businessAddress', label: 'Business Address', type: 'textarea' },
+    { key: 'deliveryCities', label: 'Delivery Cities (comma-separated)', type: 'array' },
+    { key: 'isAvailable', label: 'Currently supplying', type: 'boolean' },
+  ],
+  'land-owner': [
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+    { key: 'govtIdVerified', label: 'Govt ID Verified', type: 'boolean' },
+  ],
+  'property-seller': [
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+    { key: 'govtIdVerified', label: 'Govt ID Verified', type: 'boolean' },
+  ],
+  builder: [
+    { key: 'companyName', label: 'Company Name', type: 'text' },
+    { key: 'registrationNumber', label: 'Registration Number', type: 'text' },
+    { key: 'specializations', label: 'Specializations (comma-separated)', type: 'array' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+  ],
+  'property-agent': [
+    { key: 'agencyName', label: 'Agency Name', type: 'text' },
+    { key: 'licenseNumber', label: 'License Number', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+  ],
+};
 
 // Keyed by LabourProfile.skillType / ServiceExpertProfile.expertiseType (see
 // featureFlags.ts's labour/service_experts subcategories — these are the
@@ -93,16 +153,6 @@ const QUICK_ADD_SERVICES: Record<string, { name: string; category: string; unit:
     { name: 'Scaffolding dismantling', category: 'Setup', unit: 'FIXED' },
   ],
 };
-
-function formatFieldName(key: string) {
-  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
-}
-
-function formatFieldValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-  return String(value);
-}
 
 type Tab = 'profile' | 'listings' | 'bookings' | 'reviews';
 const TABS: { id: Tab; label: string }[] = [
@@ -210,26 +260,13 @@ export default function AdminUserDetailPage() {
       </div>
 
       {tab === 'profile' && (
-        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
-          {!profileType && (
-            <p className="text-sm text-[#A08070]">This role has no professional profile to manage.</p>
-          )}
-          {profileType && !profile && (
-            <p className="text-sm text-[#A08070]">No {profileType} profile found for this user.</p>
-          )}
-          {profile && (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              {Object.entries(profile)
-                .filter(([key]) => !HIDDEN_PROFILE_FIELDS.has(key))
-                .map(([key, value]) => (
-                  <div key={key}>
-                    <p className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">{formatFieldName(key)}</p>
-                    <p className="text-sm text-[#2C1810] mt-0.5">{formatFieldValue(value)}</p>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
+        <ProfileEditForm
+          userId={userId}
+          user={user}
+          profileType={profileType}
+          profile={profile}
+          onSaved={load}
+        />
       )}
 
       {tab === 'listings' && (
@@ -517,5 +554,189 @@ function ServiceSlideOver({
         </div>
       </div>
     </>
+  );
+}
+
+// Two independently-saveable sections rather than one giant form: Basic Info
+// (User-level, every role has it) and Professional Details (profile-type-
+// specific, absent for HOMEOWNER). Each section tracks its own edit state so
+// saving one doesn't require touching the other's fields.
+function ProfileEditForm({
+  userId, user, profileType, profile, onSaved,
+}: {
+  userId: string;
+  user: AdminUser;
+  profileType: string | null;
+  profile: Record<string, unknown> | null;
+  onSaved: () => void;
+}) {
+  const fields = profileType ? (PROFILE_FIELD_CONFIG[profileType] ?? []) : [];
+
+  return (
+    <div className="space-y-6">
+      <BasicInfoSection userId={userId} user={user} onSaved={onSaved} />
+      {profileType && !profile && (
+        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+          <p className="text-sm text-[#A08070]">No {profileType} profile found for this user yet.</p>
+        </div>
+      )}
+      {profileType && profile && fields.length > 0 && (
+        <ProfessionalDetailsSection userId={userId} profile={profile} fields={fields} onSaved={onSaved} />
+      )}
+    </div>
+  );
+}
+
+function arrayToText(value: unknown): string {
+  return Array.isArray(value) ? value.join(', ') : '';
+}
+
+function textToArray(value: string): string[] {
+  return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function BasicInfoSection({ userId, user, onSaved }: { userId: string; user: AdminUser; onSaved: () => void }) {
+  const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phone ?? '');
+  const [city, setCity] = useState(user.city ?? '');
+  const [state, setState] = useState(user.state ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await updateAdminUserProfile(userId, {
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+      });
+      setSaved(true);
+      onSaved();
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Basic Info</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Full Name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Phone</label>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">City</label>
+          <input value={city} onChange={(e) => setCity(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">State</label>
+          <input value={state} onChange={(e) => setState(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+      {saved && <p className="text-xs text-green-700 mt-3">✓ Saved</p>}
+      <button type="submit" disabled={saving}
+        className="mt-4 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Save Changes'}
+      </button>
+    </form>
+  );
+}
+
+function ProfessionalDetailsSection({
+  userId, profile, fields, onSaved,
+}: { userId: string; profile: Record<string, unknown>; fields: FieldConfig[]; onSaved: () => void }) {
+  const [values, setValues] = useState<Record<string, string | boolean>>(() => {
+    const init: Record<string, string | boolean> = {};
+    for (const f of fields) {
+      const raw = profile[f.key];
+      if (f.type === 'boolean') init[f.key] = Boolean(raw);
+      else if (f.type === 'array') init[f.key] = arrayToText(raw);
+      else init[f.key] = raw === null || raw === undefined ? '' : String(raw);
+    }
+    return init;
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  function setValue(key: string, value: string | boolean) {
+    setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const patch: Record<string, unknown> = {};
+      for (const f of fields) {
+        const raw = values[f.key];
+        if (f.type === 'boolean') patch[f.key] = Boolean(raw);
+        else if (f.type === 'array') patch[f.key] = textToArray(String(raw));
+        else if (f.type === 'number') patch[f.key] = raw === '' ? undefined : Number(raw);
+        else patch[f.key] = String(raw).trim() || undefined;
+      }
+      await updateAdminUserProfile(userId, patch);
+      setSaved(true);
+      onSaved();
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Professional Details</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {fields.map((f) => (
+          <div key={f.key} className={f.type === 'textarea' ? 'col-span-2' : ''}>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">{f.label}</label>
+            {f.type === 'boolean' ? (
+              <div className="mt-1.5">
+                <input type="checkbox" checked={Boolean(values[f.key])}
+                  onChange={(e) => setValue(f.key, e.target.checked)} className="w-4 h-4" />
+              </div>
+            ) : f.type === 'textarea' ? (
+              <textarea value={String(values[f.key] ?? '')} onChange={(e) => setValue(f.key, e.target.value)}
+                rows={3} className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+            ) : (
+              <input
+                type={f.type === 'number' ? 'number' : 'text'}
+                value={String(values[f.key] ?? '')}
+                onChange={(e) => setValue(f.key, e.target.value)}
+                className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+      {saved && <p className="text-xs text-green-700 mt-3">✓ Saved</p>}
+      <button type="submit" disabled={saving}
+        className="mt-4 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Save Changes'}
+      </button>
+    </form>
   );
 }

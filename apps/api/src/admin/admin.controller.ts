@@ -5,7 +5,7 @@ import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto, SetAccountStatusDto } from './dto/admin.dto';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
@@ -175,6 +175,12 @@ export class AdminController {
   async getUserDetail(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.getUserDetail(id);
+  }
+
+  @Patch('users/:id/profile')
+  async updateUserProfile(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateAdminProfileDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.updateUserProfile(id, body, user.id);
   }
 
   @Post('users/:id/portfolio-items')
