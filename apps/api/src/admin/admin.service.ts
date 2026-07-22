@@ -11,6 +11,7 @@ import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
+import { ImpersonationService } from '../auth/impersonation.service';
 import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { AdminHierarchyService } from './admin-hierarchy.service';
 
@@ -94,6 +95,7 @@ export class AdminService {
     private readonly bookings: BookingsService,
     private readonly reviews: ReviewsService,
     private readonly hierarchy: AdminHierarchyService,
+    private readonly impersonation: ImpersonationService,
   ) {}
 
   getProviderBookings(userId: string) {
@@ -126,6 +128,43 @@ export class AdminService {
   async deleteAdminReview(id: string, adminId: string) {
     await this.reviews.adminDelete(id);
     await this.logAction(adminId, 'DELETE_REVIEW', 'review', id);
+    return { success: true };
+  }
+
+  // Super-Admin-only, and never against another Super Admin -- isProtected()
+  // is the same "untouchable" rule that already governs suspend/status
+  // changes, applied here to the highest-privilege action of all.
+  async startImpersonation(targetUserId: string, actingAdminId: string, ipAddress?: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Only a Super Admin can impersonate users');
+    }
+    if (targetUserId === actingAdminId) {
+      throw new ForbiddenException('Cannot impersonate yourself');
+    }
+
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('User not found');
+    if (this.hierarchy.isProtected(target)) {
+      throw new ForbiddenException('Cannot impersonate a Super Admin');
+    }
+
+    await this.prisma.adminImpersonation.create({
+      data: { adminId: actingAdminId, targetUserId, ipAddress },
+    });
+    const impersonationToken = this.impersonation.sign(targetUserId, actingAdminId);
+    await this.logAction(actingAdminId, 'START_IMPERSONATION', 'user', targetUserId);
+    return { impersonationToken, targetUser: target };
+  }
+
+  async endImpersonation(targetUserId: string, adminId: string) {
+    const record = await this.prisma.adminImpersonation.findFirst({
+      where: { adminId, targetUserId, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (record) {
+      await this.prisma.adminImpersonation.update({ where: { id: record.id }, data: { endedAt: new Date() } });
+    }
     return { success: true };
   }
 

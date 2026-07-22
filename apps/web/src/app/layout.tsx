@@ -6,6 +6,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 import Footer from '@/components/Footer';
 import ChatWidget from '@/components/ChatWidget';
 import AnalyticsPageview from '@/components/AnalyticsPageview';
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <SavedProvider>
               <NotificationProvider>
                 <ChatProvider>
+                  <ImpersonationBanner />
                   <Navbar />
                   {children}
                   <Footer />

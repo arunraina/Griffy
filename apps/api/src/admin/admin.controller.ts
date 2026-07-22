@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ImpersonatedBy } from '../auth/impersonated-by.decorator';
 import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
@@ -277,5 +279,22 @@ export class AdminController {
   ) {
     await this.admin.assertAdminSection(user.id, 'KYC');
     return this.admin.setKycStatus(userId, KycStatus.REJECTED, body.reason);
+  }
+
+  @Post('users/:id/impersonate')
+  async startImpersonation(@CurrentUser() user: User, @Param('id') id: string, @Req() req: Request) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.startImpersonation(id, user.id, req.ip);
+  }
+
+  // Not gated by assertAdminSection -- during impersonation, @CurrentUser()
+  // resolves to the impersonated *target*, who may not be an admin at all.
+  // ImpersonatedBy() is only ever populated by AuthGuard for a token it
+  // verified as a genuine impersonation token, so there's nothing here for a
+  // non-impersonated caller to spoof by passing an arbitrary body/header.
+  @Delete('impersonate/end')
+  async endImpersonation(@CurrentUser() user: User, @ImpersonatedBy() impersonatedBy?: string) {
+    if (!impersonatedBy) throw new BadRequestException('Not currently impersonating');
+    return this.admin.endImpersonation(user.id, impersonatedBy);
   }
 }

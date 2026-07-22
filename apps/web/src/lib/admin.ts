@@ -1,9 +1,18 @@
 import { createClient } from './supabase';
 import { NotAuthenticatedError } from './users';
+import { getImpersonationToken, type ImpersonationTarget } from './impersonation';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function authHeaders(): Promise<Record<string, string>> {
+  // The only admin.ts call expected to fire during active impersonation is
+  // endImpersonation() itself -- the backend needs the impersonation token
+  // to know which admin/target pair to close out.
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) {
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${impersonationToken}` };
+  }
+
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new NotAuthenticatedError();
@@ -11,6 +20,19 @@ async function authHeaders(): Promise<Record<string, string>> {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${session.access_token}`,
   };
+}
+
+export async function startImpersonation(userId: string): Promise<{ impersonationToken: string; targetUser: ImpersonationTarget }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/impersonate`, { method: 'POST', headers });
+  if (!res.ok) throw new Error('Failed to start impersonation');
+  return res.json();
+}
+
+export async function endImpersonation(): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/impersonate/end`, { method: 'DELETE', headers });
+  if (!res.ok) throw new Error('Failed to end impersonation');
 }
 
 export interface AdminProject {

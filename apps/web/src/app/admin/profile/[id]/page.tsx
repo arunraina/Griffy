@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
   fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
-  createAdminReview, updateAdminReview, deleteAdminReview,
+  createAdminReview, updateAdminReview, deleteAdminReview, startImpersonation,
   PROFILE_TYPE_TO_REVIEW_TARGET_TYPE, REVIEW_SOURCES,
   type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
+import { useAuth } from '@/lib/auth-provider';
+import { beginImpersonation } from '@/lib/impersonation';
 
 const PRICE_UNITS = ['FIXED', 'PER_HOUR', 'PER_DAY', 'PER_POINT', 'PER_SQFT', 'PER_VISIT'] as const;
 type PriceUnit = typeof PRICE_UNITS[number];
@@ -166,7 +168,10 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AdminUserDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const userId = params.id as string;
+  const { me } = useAuth();
+  const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
 
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,6 +180,9 @@ export default function AdminUserDetailPage() {
   const [showAddPortfolio, setShowAddPortfolio] = useState(false);
   const [showAddService, setShowAddService] = useState(false);
   const [reviewSlideOver, setReviewSlideOver] = useState<{ mode: 'create' } | { mode: 'edit'; review: AdminProviderReview } | null>(null);
+  const [showImpersonateConfirm, setShowImpersonateConfirm] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateError, setImpersonateError] = useState('');
 
   const [bookings, setBookings] = useState<AdminProviderBooking[] | null>(null);
   const [reviews, setReviews] = useState<AdminProviderReview[] | null>(null);
@@ -222,6 +230,20 @@ export default function AdminUserDetailPage() {
   const canHaveServices = profileType === 'labour' || profileType === 'service-expert';
   const skillKey = (profile?.skillType ?? profile?.expertiseType) as string | undefined;
   const quickAdd = skillKey ? QUICK_ADD_SERVICES[skillKey.toLowerCase().replace(/\s+/g, '_')] : undefined;
+  const canImpersonate = isSuperAdmin && user.id !== me?.id && user.adminRole !== 'SUPER_ADMIN';
+
+  async function handleImpersonate() {
+    setImpersonating(true);
+    setImpersonateError('');
+    try {
+      const { impersonationToken, targetUser } = await startImpersonation(user.id);
+      beginImpersonation(impersonationToken, { id: targetUser.id, name: targetUser.name, role: targetUser.role });
+      router.push('/dashboard/home');
+    } catch (e) {
+      setImpersonateError(e instanceof Error ? e.message : 'Failed to start impersonation');
+      setImpersonating(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -229,8 +251,16 @@ export default function AdminUserDetailPage() {
         ← Back to Users
       </Link>
 
-      <div className="bg-[#F3E8FF] border border-[#E4CCFF] rounded-xl px-4 py-2.5 text-sm text-[#6B2FB3] font-medium">
-        ⚙️ Managing on behalf of {user.name}
+      <div className="bg-[#F3E8FF] border border-[#E4CCFF] rounded-xl px-4 py-2.5 text-sm text-[#6B2FB3] font-medium flex items-center justify-between gap-3 flex-wrap">
+        <span>⚙️ Managing on behalf of {user.name}</span>
+        {canImpersonate && (
+          <button
+            onClick={() => setShowImpersonateConfirm(true)}
+            className="text-xs font-semibold bg-white border border-[#E4CCFF] text-[#6B2FB3] px-3 py-1.5 rounded-lg hover:bg-[#F3E8FF]"
+          >
+            👁️ Act as User
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
@@ -247,6 +277,37 @@ export default function AdminUserDetailPage() {
           </span>
         </div>
       </div>
+
+      {showImpersonateConfirm && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !impersonating && setShowImpersonateConfirm(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+              <p className="text-sm text-[#2C1810]">
+                You are about to view Griffy as <span className="font-semibold">{user.name}</span> ({user.role}).
+                Your admin session will be preserved. All actions you take will be logged.
+              </p>
+              {impersonateError && <p className="text-xs text-red-600 mt-3">{impersonateError}</p>}
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={() => setShowImpersonateConfirm(false)}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold text-[#6B5248] border border-[#EBE0D8] px-4 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg"
+                >
+                  {impersonating ? 'Starting…' : `Confirm — View as ${user.name}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="flex gap-1 border-b border-[#EBE0D8]">
         {TABS.map((t) => (

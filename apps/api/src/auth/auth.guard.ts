@@ -10,6 +10,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
+import { ImpersonationService } from './impersonation.service';
 
 // Route prefixes gated by RESTRICTED_LISTING -- a supplier/provider can still
 // browse and transact as a customer, just not publish or edit their own
@@ -81,6 +82,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly impersonation: ImpersonationService,
   ) {
     const supabaseUrl = config.getOrThrow('SUPABASE_URL');
     this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
@@ -92,6 +94,9 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
     let user: VerifiedSupabaseUser;
+    let dbUser: User;
+    let impersonatedBy: string | undefined;
+
     try {
       const { payload } = await jwtVerify(token, this.jwks);
       user = {
@@ -100,20 +105,44 @@ export class AuthGuard implements CanActivate {
         phone: payload.phone as string | undefined,
         user_metadata: payload.user_metadata as Record<string, unknown> | undefined,
       };
+
+      const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
+      dbUser = await this.upsertUser(user, referredById);
     } catch {
-      throw new UnauthorizedException('Invalid token');
+      // Not a Supabase-issued token (wrong signature scheme entirely, since
+      // Supabase signs asymmetrically and impersonation tokens are HS256) --
+      // check whether it's one of our own before giving up.
+      const target = await this.tryVerifyImpersonationToken(token);
+      if (!target) throw new UnauthorizedException('Invalid token');
+      dbUser = target.user;
+      impersonatedBy = target.impersonatedBy;
+      user = { id: dbUser.id, email: dbUser.email, phone: dbUser.phone ?? undefined };
     }
-
-    const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
-
-    const dbUser = await this.upsertUser(user, referredById);
 
     const response = context.switchToHttp().getResponse<Response>();
     this.enforceAccountStatus(dbUser, request, response);
 
-    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).supabaseUser = user;
-    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).dbUser = dbUser;
+    type AuthedRequest = Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User; impersonatedBy?: string };
+    (request as AuthedRequest).supabaseUser = user;
+    (request as AuthedRequest).dbUser = dbUser;
+    (request as AuthedRequest).impersonatedBy = impersonatedBy;
     return true;
+  }
+
+  // Impersonation never runs upsertUser/trackLogin -- the target is always
+  // an existing real user (impersonate-creation already verified that), and
+  // an admin viewing as them shouldn't bump their login count or referral
+  // resolution, which are both real signup/session semantics.
+  private async tryVerifyImpersonationToken(token: string): Promise<{ user: User; impersonatedBy: string } | null> {
+    try {
+      const payload = this.impersonation.verify(token);
+      if (!payload.isImpersonation) return null;
+      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+      if (!user) return null;
+      return { user, impersonatedBy: payload.impersonatedBy };
+    } catch {
+      return null;
+    }
   }
 
   // Enforced on every authenticated request, not just the ones each
