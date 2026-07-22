@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 function initialsOf(name: string): string {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 }
@@ -20,8 +22,11 @@ export default function Avatar({
   const base = `${SIZE_CLASSES[size]} rounded-full shrink-0 overflow-hidden ${className}`;
 
   if (avatarUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avatarUrl} alt={name} className={`${base} object-cover`} />;
+    return (
+      <div className={`${base} relative`}>
+        <Image src={avatarUrl} alt={name} fill sizes="96px" className="object-cover" />
+      </div>
+    );
   }
 
   return (
