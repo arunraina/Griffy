@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { buildMetadata } from '@/lib/seo';
 
 const DISTRICTS = [
   'Srinagar', 'Baramulla', 'Anantnag', 'Sopore', 'Pulwama', 'Budgam',
@@ -14,10 +15,11 @@ function findDistrict(slug: string): string | undefined {
 export function generateMetadata({ params }: { params: { city: string } }): Metadata {
   const district = findDistrict(params.city);
   if (!district) return {};
-  return {
-    title: `Contractors & Labour in ${district} — Griffy`,
+  return buildMetadata({
+    title: `Contractors & Labour in ${district}`,
     description: `Find verified contractors, labour, service experts, and building materials in ${district}, Jammu & Kashmir.`,
-  };
+    path: `/cities/${params.city}`,
+  });
 }
 
 export function generateStaticParams() {
@@ -35,8 +37,19 @@ export default function CityPage({ params }: { params: { city: string } }) {
   const district = findDistrict(params.city);
   if (!district) notFound();
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://griffy.in' },
+      { '@type': 'ListItem', position: 2, name: 'Cities', item: 'https://griffy.in/cities' },
+      { '@type': 'ListItem', position: 3, name: district, item: `https://griffy.in/cities/${params.city}` },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <section className="bg-white border-b border-[#EBE0D8] px-6 py-16 text-center">
         <div className="max-w-[700px] mx-auto">
           <Link href="/cities" className="text-xs text-[#A08070] hover:text-[#C0593A]">← All Cities</Link>
