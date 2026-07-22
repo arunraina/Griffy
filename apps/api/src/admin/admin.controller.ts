@@ -205,13 +205,13 @@ export class AdminController {
   async suspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     if (id === user.id) throw new ForbiddenException('Cannot suspend your own account');
-    return this.admin.setUserSuspended(id, true);
+    return this.admin.setUserSuspended(id, true, user.id);
   }
 
   @Patch('users/:id/unsuspend')
   async unsuspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
-    return this.admin.setUserSuspended(id, false);
+    return this.admin.setUserSuspended(id, false, user.id);
   }
 
   // Tiered — AdminService.setAdminRole enforces exactly who can grant what.

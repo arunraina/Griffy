@@ -11,6 +11,7 @@ import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
 import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
+import { AdminHierarchyService } from './admin-hierarchy.service';
 
 export type AdminSection =
   | 'APPROVALS'
@@ -91,6 +92,7 @@ export class AdminService {
     private readonly serviceItems: ServiceItemsService,
     private readonly bookings: BookingsService,
     private readonly reviews: ReviewsService,
+    private readonly hierarchy: AdminHierarchyService,
   ) {}
 
   getProviderBookings(userId: string) {
@@ -429,8 +431,20 @@ export class AdminService {
     });
   }
 
-  setUserSuspended(id: string, isSuspended: boolean) {
-    return this.prisma.user.update({ where: { id }, data: { isSuspended } });
+  async setUserSuspended(id: string, isSuspended: boolean, actingAdminId: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
+    if (!this.hierarchy.canSuspend(actingAdmin, target)) {
+      throw new ForbiddenException("You don't have permission to change this user's status");
+    }
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        isSuspended,
+        accountStatus: isSuspended ? 'SUSPENDED' : 'ACTIVE',
+      },
+    });
   }
 
   // Manually seeds a supply-side user (e.g. an electrician the team recruited

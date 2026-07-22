@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminHierarchyService } from './admin-hierarchy.service';
 import { KycModule } from '../kyc/kyc.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -20,6 +21,6 @@ import { ReviewsModule } from '../reviews/reviews.module';
     BookingsModule, ReviewsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, AdminHierarchyService],
 })
 export class AdminModule {}

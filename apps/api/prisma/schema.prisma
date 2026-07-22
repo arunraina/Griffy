@@ -41,6 +41,19 @@ enum ApprovalStatus {
   REJECTED
 }
 
+// Account-level access state, orthogonal to role/adminRole. isSuspended on
+// User is kept in sync automatically (true for SUSPENDED/TEMP_SUSPENDED,
+// false otherwise) so existing call sites reading that flag don't break.
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  TEMP_SUSPENDED
+  RESTRICTED_LISTING
+  RESTRICTED_BOOKING
+  RESTRICTED_EXPLORE
+  PENDING_REVIEW
+}
+
 enum DegreeStatus {
   PURSUING
   COMPLETED
@@ -117,38 +130,44 @@ enum FurnishingStatus {
 // ---------------------------------------------------------------------------
 
 model User {
-  id               String   @id
+  id                String        @id
   // Sequential, human-readable signup number (1, 2, 3, ...) — distinct from
   // `id` (the Supabase auth UUID). Purely for "how many users have signed up"
   // visibility; never use this as a foreign key or expose it as an auth token.
-  userNumber       Int      @unique @default(autoincrement()) @map("user_number")
-  email            String   @unique
-  phone            String?  @unique
-  name             String
-  role             UserRole
-  adminRole        AdminRole? @map("admin_role")
-  avatarUrl        String?  @map("avatar_url")
+  userNumber        Int           @unique @default(autoincrement()) @map("user_number")
+  email             String        @unique
+  phone             String?       @unique
+  name              String
+  role              UserRole
+  adminRole         AdminRole?    @map("admin_role")
+  avatarUrl         String?       @map("avatar_url")
   // Self-reported, set via profile edit — not backfillable for existing
   // users, so nullable. Basic geo reporting (e.g. "users by city") without
   // joining through supply-side profiles, which only cover professionals.
-  city             String?
-  state            String?
-  referredById     String?  @map("referred_by_id")
-  referredBy       User?    @relation("Referrals", fields: [referredById], references: [id])
-  referrals        User[]   @relation("Referrals")
-  isSuspended      Boolean  @default(false) @map("is_suspended")
-  isFirstParty     Boolean  @default(false) @map("is_first_party")
-  isGhost          Boolean  @default(false) @map("is_ghost")
-  createdByAdminId String?  @map("created_by_admin_id")
+  city              String?
+  state             String?
+  referredById      String?       @map("referred_by_id")
+  referredBy        User?         @relation("Referrals", fields: [referredById], references: [id])
+  referrals         User[]        @relation("Referrals")
+  isSuspended       Boolean       @default(false) @map("is_suspended")
+  isFirstParty      Boolean       @default(false) @map("is_first_party")
+  isGhost           Boolean       @default(false) @map("is_ghost")
+  createdByAdminId  String?       @map("created_by_admin_id")
+  accountStatus     AccountStatus @default(ACTIVE) @map("account_status")
+  statusReason      String?       @map("status_reason")
+  statusExpiresAt   DateTime?     @map("status_expires_at")
+  statusUpdatedAt   DateTime?     @map("status_updated_at")
+  statusUpdatedById String?       @map("status_updated_by_id")
+  suspensionCount   Int           @default(0) @map("suspension_count")
   // Per-channel opt-out, e.g. { "whatsapp": false }. Absent key/null = on.
-  notificationPrefs Json?   @map("notification_prefs")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  notificationPrefs Json?         @map("notification_prefs")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
   // Updated by AuthGuard on authenticated requests, debounced to once per
   // ~30min so concurrent page-load requests don't over-count a single
   // session. loginCount <= 1 is the "first login ever" signal.
-  lastLoginAt      DateTime? @map("last_login_at")
-  loginCount       Int       @default(0) @map("login_count")
+  lastLoginAt       DateTime?     @map("last_login_at")
+  loginCount        Int           @default(0) @map("login_count")
 
   // 1:1 supply-side profiles
   contractorProfile       ContractorProfile?
@@ -161,23 +180,59 @@ model User {
   propertyAgentProfile    PropertyAgentProfile?
 
   // transactional relations
-  orders                     Order[]
-  bookingsAsCustomer         Booking[]        @relation("BookingCustomer")
-  bookingsAsProvider         Booking[]        @relation("BookingProvider")
-  reviewsGiven               Review[]         @relation("ReviewsGiven")
-  notifications              Notification[]
-  projectsPosted             Project[]        @relation("ProjectOwner")
-  bidsSubmitted              Bid[]            @relation("BidContractor")
-  turnkeyProjectsAsCustomer  TurnkeyProject[] @relation("TurnkeyProjectCustomer")
-  turnkeyProjectsAsProvider  TurnkeyProject[] @relation("TurnkeyProjectProvider")
-  kycDetail                  KycDetail?
-  refundsInitiated           Refund[]
-  conversationsAsUserA       Conversation[]   @relation("ConversationUserA")
-  conversationsAsUserB       Conversation[]   @relation("ConversationUserB")
-  messagesSent               Message[]        @relation("MessageSender")
-  reportsSubmitted           Report[]
+  orders                    Order[]
+  bookingsAsCustomer        Booking[]        @relation("BookingCustomer")
+  bookingsAsProvider        Booking[]        @relation("BookingProvider")
+  reviewsGiven              Review[]         @relation("ReviewsGiven")
+  notifications             Notification[]
+  projectsPosted            Project[]        @relation("ProjectOwner")
+  bidsSubmitted             Bid[]            @relation("BidContractor")
+  turnkeyProjectsAsCustomer TurnkeyProject[] @relation("TurnkeyProjectCustomer")
+  turnkeyProjectsAsProvider TurnkeyProject[] @relation("TurnkeyProjectProvider")
+  kycDetail                 KycDetail?
+  refundsInitiated          Refund[]
+  conversationsAsUserA      Conversation[]   @relation("ConversationUserA")
+  conversationsAsUserB      Conversation[]   @relation("ConversationUserB")
+  messagesSent              Message[]        @relation("MessageSender")
+  reportsSubmitted          Report[]
+
+  statusHistoryAsTarget  UserStatusHistory[]  @relation("StatusHistoryTarget")
+  statusChangesMade      UserStatusHistory[]  @relation("StatusHistoryChangedBy")
+  impersonationsAsAdmin  AdminImpersonation[] @relation("ImpersonationAdmin")
+  impersonationsAsTarget AdminImpersonation[] @relation("ImpersonationTarget")
 
   @@map("users")
+}
+
+model UserStatusHistory {
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  user           User          @relation("StatusHistoryTarget", fields: [userId], references: [id])
+  previousStatus AccountStatus @map("previous_status")
+  newStatus      AccountStatus @map("new_status")
+  reason         String
+  changedById    String        @map("changed_by_id")
+  changedBy      User          @relation("StatusHistoryChangedBy", fields: [changedById], references: [id])
+  expiresAt      DateTime?     @map("expires_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("user_status_history")
+}
+
+model AdminImpersonation {
+  id           String    @id @default(uuid())
+  adminId      String    @map("admin_id")
+  admin        User      @relation("ImpersonationAdmin", fields: [adminId], references: [id])
+  targetUserId String    @map("target_user_id")
+  targetUser   User      @relation("ImpersonationTarget", fields: [targetUserId], references: [id])
+  startedAt    DateTime  @default(now()) @map("started_at")
+  endedAt      DateTime? @map("ended_at")
+  ipAddress    String?   @map("ip_address")
+
+  @@index([adminId])
+  @@index([targetUserId])
+  @@map("admin_impersonations")
 }
 
 // ---------------------------------------------------------------------------
@@ -185,29 +240,29 @@ model User {
 // ---------------------------------------------------------------------------
 
 model ContractorProfile {
-  id              String         @id @default(uuid())
-  userId          String         @unique @map("user_id")
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contractorType  String         @map("contractor_type")
-  tradeSkills     String[]       @map("trade_skills")
+  id              String                   @id @default(uuid())
+  userId          String                   @unique @map("user_id")
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractorType  String                   @map("contractor_type")
+  tradeSkills     String[]                 @map("trade_skills")
   experience      String
-  serviceCities   String[]       @map("service_cities")
-  licenseNumber   String?        @map("license_number")
-  dailyRate       Decimal?       @map("daily_rate") @db.Decimal(10, 2)
-  projectRate     Decimal?       @map("project_rate") @db.Decimal(10, 2)
-  isAvailable     Boolean        @default(true) @map("is_available")
+  serviceCities   String[]                 @map("service_cities")
+  licenseNumber   String?                  @map("license_number")
+  dailyRate       Decimal?                 @map("daily_rate") @db.Decimal(10, 2)
+  projectRate     Decimal?                 @map("project_rate") @db.Decimal(10, 2)
+  isAvailable     Boolean                  @default(true) @map("is_available")
   bio             String?
-  portfolioImages String[]       @map("portfolio_images")
-  approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
-  rejectionReason String?        @map("rejection_reason")
-  approvedAt      DateTime?      @map("approved_at")
-  approvedBy      String?        @map("approved_by")
-  avgRating       Float          @default(0) @map("avg_rating")
-  totalReviews    Int            @default(0) @map("total_reviews")
-  totalJobs       Int            @default(0) @map("total_jobs")
-  completionRate  Float          @default(0) @map("completion_rate")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  portfolioImages String[]                 @map("portfolio_images")
+  approvalStatus  ApprovalStatus           @default(PENDING) @map("approval_status")
+  rejectionReason String?                  @map("rejection_reason")
+  approvedAt      DateTime?                @map("approved_at")
+  approvedBy      String?                  @map("approved_by")
+  avgRating       Float                    @default(0) @map("avg_rating")
+  totalReviews    Int                      @default(0) @map("total_reviews")
+  totalJobs       Int                      @default(0) @map("total_jobs")
+  completionRate  Float                    @default(0) @map("completion_rate")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
   searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
@@ -216,25 +271,25 @@ model ContractorProfile {
 }
 
 model LabourProfile {
-  id              String         @id @default(uuid())
-  userId          String         @unique @map("user_id")
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skillType       String         @map("skill_type")
+  id              String                   @id @default(uuid())
+  userId          String                   @unique @map("user_id")
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillType       String                   @map("skill_type")
   experience      String
-  serviceCities   String[]       @map("service_cities")
-  dailyRate       Decimal?       @map("daily_rate") @db.Decimal(10, 2)
-  isAvailable     Boolean        @default(true) @map("is_available")
+  serviceCities   String[]                 @map("service_cities")
+  dailyRate       Decimal?                 @map("daily_rate") @db.Decimal(10, 2)
+  isAvailable     Boolean                  @default(true) @map("is_available")
   bio             String?
-  portfolioImages String[]       @map("portfolio_images")
-  approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
-  rejectionReason String?        @map("rejection_reason")
-  approvedAt      DateTime?      @map("approved_at")
-  approvedBy      String?        @map("approved_by")
-  avgRating       Float          @default(0) @map("avg_rating")
-  totalReviews    Int            @default(0) @map("total_reviews")
-  totalJobs       Int            @default(0) @map("total_jobs")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  portfolioImages String[]                 @map("portfolio_images")
+  approvalStatus  ApprovalStatus           @default(PENDING) @map("approval_status")
+  rejectionReason String?                  @map("rejection_reason")
+  approvedAt      DateTime?                @map("approved_at")
+  approvedBy      String?                  @map("approved_by")
+  avgRating       Float                    @default(0) @map("avg_rating")
+  totalReviews    Int                      @default(0) @map("total_reviews")
+  totalJobs       Int                      @default(0) @map("total_jobs")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
   searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
@@ -243,26 +298,26 @@ model LabourProfile {
 }
 
 model ServiceExpertProfile {
-  id              String         @id @default(uuid())
-  userId          String         @unique @map("user_id")
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expertiseType   String         @map("expertise_type")
+  id              String                   @id @default(uuid())
+  userId          String                   @unique @map("user_id")
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expertiseType   String                   @map("expertise_type")
   qualifications  String[]
   experience      String
-  serviceCities   String[]       @map("service_cities")
-  consultationFee Decimal?       @map("consultation_fee") @db.Decimal(10, 2)
-  isAvailable     Boolean        @default(true) @map("is_available")
+  serviceCities   String[]                 @map("service_cities")
+  consultationFee Decimal?                 @map("consultation_fee") @db.Decimal(10, 2)
+  isAvailable     Boolean                  @default(true) @map("is_available")
   bio             String?
-  portfolioImages String[]       @map("portfolio_images")
-  approvalStatus  ApprovalStatus @default(PENDING) @map("approval_status")
-  rejectionReason String?        @map("rejection_reason")
-  approvedAt      DateTime?      @map("approved_at")
-  approvedBy      String?        @map("approved_by")
-  avgRating       Float          @default(0) @map("avg_rating")
-  totalReviews    Int            @default(0) @map("total_reviews")
-  totalJobs       Int            @default(0) @map("total_jobs")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  portfolioImages String[]                 @map("portfolio_images")
+  approvalStatus  ApprovalStatus           @default(PENDING) @map("approval_status")
+  rejectionReason String?                  @map("rejection_reason")
+  approvedAt      DateTime?                @map("approved_at")
+  approvedBy      String?                  @map("approved_by")
+  avgRating       Float                    @default(0) @map("avg_rating")
+  totalReviews    Int                      @default(0) @map("total_reviews")
+  totalJobs       Int                      @default(0) @map("total_jobs")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
   searchVector    Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
@@ -334,25 +389,25 @@ model PropertySellerProfile {
 }
 
 model BuilderProfile {
-  id                  String         @id @default(uuid())
-  userId              String         @unique @map("user_id")
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyName         String         @map("company_name")
-  registrationNumber  String?        @map("registration_number")
-  specializations     String[]
-  completedProjects   Int            @default(0) @map("completed_projects")
-  serviceCities       String[]       @map("service_cities")
-  bio                 String?
-  portfolioImages     String[]       @map("portfolio_images")
-  isAvailable         Boolean        @default(true) @map("is_available")
-  approvalStatus      ApprovalStatus @default(PENDING) @map("approval_status")
-  rejectionReason     String?        @map("rejection_reason")
-  approvedAt          DateTime?      @map("approved_at")
-  approvedBy          String?        @map("approved_by")
-  avgRating           Float          @default(0) @map("avg_rating")
-  totalReviews        Int            @default(0) @map("total_reviews")
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  id                 String         @id @default(uuid())
+  userId             String         @unique @map("user_id")
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName        String         @map("company_name")
+  registrationNumber String?        @map("registration_number")
+  specializations    String[]
+  completedProjects  Int            @default(0) @map("completed_projects")
+  serviceCities      String[]       @map("service_cities")
+  bio                String?
+  portfolioImages    String[]       @map("portfolio_images")
+  isAvailable        Boolean        @default(true) @map("is_available")
+  approvalStatus     ApprovalStatus @default(PENDING) @map("approval_status")
+  rejectionReason    String?        @map("rejection_reason")
+  approvedAt         DateTime?      @map("approved_at")
+  approvedBy         String?        @map("approved_by")
+  avgRating          Float          @default(0) @map("avg_rating")
+  totalReviews       Int            @default(0) @map("total_reviews")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
   reviews Review[]
 
@@ -387,28 +442,28 @@ model PropertyAgentProfile {
 // ---------------------------------------------------------------------------
 
 model Material {
-  id          String                  @id @default(uuid())
-  supplierId  String                  @map("supplier_id")
-  supplier    MaterialSupplierProfile @relation(fields: [supplierId], references: [id])
-  name        String
-  description String?
-  category    String
-  subcategory String
-  roomTypes   String[]                @default([]) @map("room_types")
-  price       Decimal                 @db.Decimal(10, 2)
-  unit        String
-  stock       Int                     @default(0)
-  minOrderQty Int?                    @map("min_order_qty")
-  deliveryNote String?                @map("delivery_note")
-  imageUrls   String[]                @map("image_urls")
-  avgRating   Float                   @default(0) @map("avg_rating")
-  reviewCount Int                     @default(0) @map("review_count")
-  isHidden    Boolean                 @default(false) @map("is_hidden")
-  isDemoted   Boolean                 @default(false) @map("is_demoted")
-  moderationNote String?              @map("moderation_note")
-  createdAt   DateTime                @default(now()) @map("created_at")
-  updatedAt   DateTime                @updatedAt @map("updated_at")
-  searchVector Unsupported("tsvector")? @map("search_vector")
+  id             String                   @id @default(uuid())
+  supplierId     String                   @map("supplier_id")
+  supplier       MaterialSupplierProfile  @relation(fields: [supplierId], references: [id])
+  name           String
+  description    String?
+  category       String
+  subcategory    String
+  roomTypes      String[]                 @default([]) @map("room_types")
+  price          Decimal                  @db.Decimal(10, 2)
+  unit           String
+  stock          Int                      @default(0)
+  minOrderQty    Int?                     @map("min_order_qty")
+  deliveryNote   String?                  @map("delivery_note")
+  imageUrls      String[]                 @map("image_urls")
+  avgRating      Float                    @default(0) @map("avg_rating")
+  reviewCount    Int                      @default(0) @map("review_count")
+  isHidden       Boolean                  @default(false) @map("is_hidden")
+  isDemoted      Boolean                  @default(false) @map("is_demoted")
+  moderationNote String?                  @map("moderation_note")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  searchVector   Unsupported("tsvector")? @map("search_vector")
 
   orderItems OrderItem[]
   reviews    Review[]
@@ -483,7 +538,7 @@ model Refund {
   orderId          String       @map("order_id")
   order            Order        @relation(fields: [orderId], references: [id])
   razorpayRefundId String?      @map("razorpay_refund_id")
-  amount           Int          // paise
+  amount           Int // paise
   reason           String
   status           RefundStatus @default(INITIATED)
   initiatedById    String       @map("initiated_by_id")
@@ -626,27 +681,27 @@ model Booking {
 // ---------------------------------------------------------------------------
 
 model Land {
-  id          String           @id @default(uuid())
-  ownerId     String           @map("owner_id")
-  owner       LandOwnerProfile @relation(fields: [ownerId], references: [id])
-  title       String
-  description String?
-  landType    LandType         @map("land_type")
-  areaSqFt    Decimal          @map("area_sq_ft") @db.Decimal(12, 2)
-  price       Decimal          @db.Decimal(12, 2)
-  location    String
-  city        String
-  state       String
-  latitude    Float?
-  longitude   Float?
-  imageUrls   String[]         @map("image_urls")
-  isAvailable Boolean          @default(true) @map("is_available")
-  isHidden    Boolean          @default(false) @map("is_hidden")
-  isDemoted   Boolean          @default(false) @map("is_demoted")
-  moderationNote String?       @map("moderation_note")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  searchVector Unsupported("tsvector")? @map("search_vector")
+  id             String                   @id @default(uuid())
+  ownerId        String                   @map("owner_id")
+  owner          LandOwnerProfile         @relation(fields: [ownerId], references: [id])
+  title          String
+  description    String?
+  landType       LandType                 @map("land_type")
+  areaSqFt       Decimal                  @map("area_sq_ft") @db.Decimal(12, 2)
+  price          Decimal                  @db.Decimal(12, 2)
+  location       String
+  city           String
+  state          String
+  latitude       Float?
+  longitude      Float?
+  imageUrls      String[]                 @map("image_urls")
+  isAvailable    Boolean                  @default(true) @map("is_available")
+  isHidden       Boolean                  @default(false) @map("is_hidden")
+  isDemoted      Boolean                  @default(false) @map("is_demoted")
+  moderationNote String?                  @map("moderation_note")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  searchVector   Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -658,31 +713,31 @@ model Land {
 // ---------------------------------------------------------------------------
 
 model Property {
-  id           String                @id @default(uuid())
-  sellerId     String                @map("seller_id")
-  seller       PropertySellerProfile @relation(fields: [sellerId], references: [id])
-  title        String
-  description  String?
-  propertyType PropertyType          @map("property_type")
-  furnishing   FurnishingStatus
-  areaSqFt     Decimal               @map("area_sq_ft") @db.Decimal(12, 2)
-  price        Decimal               @db.Decimal(12, 2)
-  bedrooms     Int?
-  bathrooms    Int?
-  location     String
-  city         String
-  state        String
-  latitude     Float?
-  longitude    Float?
-  imageUrls    String[]              @map("image_urls")
-  listingType  String               @default("buy") @map("listing_type")
-  isAvailable  Boolean               @default(true) @map("is_available")
-  isHidden     Boolean               @default(false) @map("is_hidden")
-  isDemoted    Boolean               @default(false) @map("is_demoted")
-  moderationNote String?             @map("moderation_note")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
-  searchVector Unsupported("tsvector")? @map("search_vector")
+  id             String                   @id @default(uuid())
+  sellerId       String                   @map("seller_id")
+  seller         PropertySellerProfile    @relation(fields: [sellerId], references: [id])
+  title          String
+  description    String?
+  propertyType   PropertyType             @map("property_type")
+  furnishing     FurnishingStatus
+  areaSqFt       Decimal                  @map("area_sq_ft") @db.Decimal(12, 2)
+  price          Decimal                  @db.Decimal(12, 2)
+  bedrooms       Int?
+  bathrooms      Int?
+  location       String
+  city           String
+  state          String
+  latitude       Float?
+  longitude      Float?
+  imageUrls      String[]                 @map("image_urls")
+  listingType    String                   @default("buy") @map("listing_type")
+  isAvailable    Boolean                  @default(true) @map("is_available")
+  isHidden       Boolean                  @default(false) @map("is_hidden")
+  isDemoted      Boolean                  @default(false) @map("is_demoted")
+  moderationNote String?                  @map("moderation_note")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  searchVector   Unsupported("tsvector")? @map("search_vector")
 
   reviews Review[]
 
@@ -694,36 +749,36 @@ model Property {
 // ---------------------------------------------------------------------------
 
 model Review {
-  id                       String                   @id @default(uuid())
-  reviewerId               String                   @map("reviewer_id")
-  reviewer                 User                     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
-  targetType               ReviewTargetType         @map("target_type")
-  rating                   Int
-  comment                  String?
-  contractorProfileId      String?                  @map("contractor_profile_id")
-  contractorProfile        ContractorProfile?       @relation(fields: [contractorProfileId], references: [id])
-  labourProfileId          String?                  @map("labour_profile_id")
-  labourProfile            LabourProfile?           @relation(fields: [labourProfileId], references: [id])
-  serviceExpertProfileId   String?                  @map("service_expert_profile_id")
-  serviceExpertProfile     ServiceExpertProfile?    @relation(fields: [serviceExpertProfileId], references: [id])
-  materialSupplierProfileId String?                 @map("material_supplier_profile_id")
-  materialSupplierProfile  MaterialSupplierProfile? @relation(fields: [materialSupplierProfileId], references: [id])
-  builderProfileId         String?                  @map("builder_profile_id")
-  builderProfile           BuilderProfile?          @relation(fields: [builderProfileId], references: [id])
-  propertyAgentProfileId   String?                  @map("property_agent_profile_id")
-  propertyAgentProfile     PropertyAgentProfile?    @relation(fields: [propertyAgentProfileId], references: [id])
-  materialId               String?                  @map("material_id")
-  material                 Material?                @relation(fields: [materialId], references: [id])
-  landId                   String?                  @map("land_id")
-  land                     Land?                    @relation(fields: [landId], references: [id])
-  propertyId               String?                  @map("property_id")
-  property                 Property?                @relation(fields: [propertyId], references: [id])
-  isHidden                 Boolean                  @default(false) @map("is_hidden")
-  isDemoted                Boolean                  @default(false) @map("is_demoted")
-  isVerified               Boolean                  @default(false) @map("is_verified")
-  moderationNote           String?                  @map("moderation_note")
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  id                        String                   @id @default(uuid())
+  reviewerId                String                   @map("reviewer_id")
+  reviewer                  User                     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  targetType                ReviewTargetType         @map("target_type")
+  rating                    Int
+  comment                   String?
+  contractorProfileId       String?                  @map("contractor_profile_id")
+  contractorProfile         ContractorProfile?       @relation(fields: [contractorProfileId], references: [id])
+  labourProfileId           String?                  @map("labour_profile_id")
+  labourProfile             LabourProfile?           @relation(fields: [labourProfileId], references: [id])
+  serviceExpertProfileId    String?                  @map("service_expert_profile_id")
+  serviceExpertProfile      ServiceExpertProfile?    @relation(fields: [serviceExpertProfileId], references: [id])
+  materialSupplierProfileId String?                  @map("material_supplier_profile_id")
+  materialSupplierProfile   MaterialSupplierProfile? @relation(fields: [materialSupplierProfileId], references: [id])
+  builderProfileId          String?                  @map("builder_profile_id")
+  builderProfile            BuilderProfile?          @relation(fields: [builderProfileId], references: [id])
+  propertyAgentProfileId    String?                  @map("property_agent_profile_id")
+  propertyAgentProfile      PropertyAgentProfile?    @relation(fields: [propertyAgentProfileId], references: [id])
+  materialId                String?                  @map("material_id")
+  material                  Material?                @relation(fields: [materialId], references: [id])
+  landId                    String?                  @map("land_id")
+  land                      Land?                    @relation(fields: [landId], references: [id])
+  propertyId                String?                  @map("property_id")
+  property                  Property?                @relation(fields: [propertyId], references: [id])
+  isHidden                  Boolean                  @default(false) @map("is_hidden")
+  isDemoted                 Boolean                  @default(false) @map("is_demoted")
+  isVerified                Boolean                  @default(false) @map("is_verified")
+  moderationNote            String?                  @map("moderation_note")
+  createdAt                 DateTime                 @default(now()) @map("created_at")
+  updatedAt                 DateTime                 @updatedAt @map("updated_at")
 
   @@map("reviews")
 }
@@ -788,23 +843,23 @@ model Notification {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id          String        @id @default(uuid())
-  ownerId     String        @map("owner_id")
-  owner       User          @relation("ProjectOwner", fields: [ownerId], references: [id])
-  projectType String        @map("project_type")
-  title       String
-  description String
-  city        String
-  state       String
-  budgetMin   Decimal       @map("budget_min") @db.Decimal(12, 2)
-  budgetMax   Decimal       @map("budget_max") @db.Decimal(12, 2)
-  timeline    String
-  status      ProjectStatus @default(OPEN)
-  isHidden    Boolean       @default(false) @map("is_hidden")
-  isDemoted   Boolean       @default(false) @map("is_demoted")
-  moderationNote String?    @map("moderation_note")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  ownerId        String        @map("owner_id")
+  owner          User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  projectType    String        @map("project_type")
+  title          String
+  description    String
+  city           String
+  state          String
+  budgetMin      Decimal       @map("budget_min") @db.Decimal(12, 2)
+  budgetMax      Decimal       @map("budget_max") @db.Decimal(12, 2)
+  timeline       String
+  status         ProjectStatus @default(OPEN)
+  isHidden       Boolean       @default(false) @map("is_hidden")
+  isDemoted      Boolean       @default(false) @map("is_demoted")
+  moderationNote String?       @map("moderation_note")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   bids Bid[]
 
@@ -948,20 +1003,20 @@ enum MilestoneStatus {
 }
 
 model TurnkeyMilestone {
-  id                    String          @id @default(uuid())
-  projectId             String          @map("project_id")
-  project               TurnkeyProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title                 String
-  description           String?
-  amount                Decimal         @db.Decimal(12, 2)
-  sequence              Int
-  status                MilestoneStatus @default(PENDING)
-  changesRequestedNote  String?         @map("changes_requested_note")
-  paymentStatus         PaymentStatus   @default(UNPAID) @map("payment_status")
-  razorpayOrderId       String?         @map("razorpay_order_id")
-  razorpayPaymentId     String?         @map("razorpay_payment_id")
-  createdAt             DateTime        @default(now()) @map("created_at")
-  updatedAt             DateTime        @updatedAt @map("updated_at")
+  id                   String          @id @default(uuid())
+  projectId            String          @map("project_id")
+  project              TurnkeyProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title                String
+  description          String?
+  amount               Decimal         @db.Decimal(12, 2)
+  sequence             Int
+  status               MilestoneStatus @default(PENDING)
+  changesRequestedNote String?         @map("changes_requested_note")
+  paymentStatus        PaymentStatus   @default(UNPAID) @map("payment_status")
+  razorpayOrderId      String?         @map("razorpay_order_id")
+  razorpayPaymentId    String?         @map("razorpay_payment_id")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
 
   @@index([projectId, sequence])
   @@map("turnkey_milestones")
@@ -982,24 +1037,24 @@ enum KycStatus {
 }
 
 model KycDetail {
-  id                     String    @id @default(uuid())
-  userId                 String    @unique @map("user_id")
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  aadhaarNumber          String?   @map("aadhaar_number")
-  panNumber              String?   @map("pan_number")
-  gstNumber              String?   @map("gst_number")
-  businessName           String?   @map("business_name")
-  bankAccountNumber      String?   @map("bank_account_number")
-  bankIfsc               String?   @map("bank_ifsc")
-  bankAccountHolderName  String?   @map("bank_account_holder_name")
-  panCardUrl             String?   @map("pan_card_url")
-  bankProofUrl           String?   @map("bank_proof_url")
-  status                 KycStatus @default(NOT_SUBMITTED)
-  rejectionReason        String?   @map("rejection_reason")
-  submittedAt            DateTime? @map("submitted_at")
-  verifiedAt             DateTime? @map("verified_at")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aadhaarNumber         String?   @map("aadhaar_number")
+  panNumber             String?   @map("pan_number")
+  gstNumber             String?   @map("gst_number")
+  businessName          String?   @map("business_name")
+  bankAccountNumber     String?   @map("bank_account_number")
+  bankIfsc              String?   @map("bank_ifsc")
+  bankAccountHolderName String?   @map("bank_account_holder_name")
+  panCardUrl            String?   @map("pan_card_url")
+  bankProofUrl          String?   @map("bank_proof_url")
+  status                KycStatus @default(NOT_SUBMITTED)
+  rejectionReason       String?   @map("rejection_reason")
+  submittedAt           DateTime? @map("submitted_at")
+  verifiedAt            DateTime? @map("verified_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@map("kyc_details")
 }
@@ -1011,15 +1066,15 @@ model KycDetail {
 // ---------------------------------------------------------------------------
 
 model Conversation {
-  id            String    @id @default(uuid())
-  userAId       String    @map("user_a_id")
-  userA         User      @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
-  userBId       String    @map("user_b_id")
-  userB         User      @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
-  lastMessageAt DateTime  @default(now()) @map("last_message_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  userAId       String   @map("user_a_id")
+  userA         User     @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String   @map("user_b_id")
+  userB         User     @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime @default(now()) @map("last_message_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  messages      Message[]
+  messages Message[]
 
   @@unique([userAId, userBId])
   @@map("conversations")
