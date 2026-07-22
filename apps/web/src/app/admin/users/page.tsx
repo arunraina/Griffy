@@ -19,6 +19,12 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const { me } = useAuth();
   const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
+  // A regular Admin can manage the scoped tiers too (matches the backend's
+  // setAdminRole rules) -- just never grant Super Admin or touch an
+  // existing Super Admin, and never their own row. See ROLE_OPTIONS below
+  // for the tier-filtering and the disabled-for-self/target check inline.
+  const canManageRoles = isSuperAdmin || me?.adminRole === 'ADMIN';
+  const roleOptions = isSuperAdmin ? ADMIN_ROLES : ADMIN_ROLES.filter((r) => r !== 'SUPER_ADMIN');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -126,7 +132,7 @@ export default function AdminUsersPage() {
                     {u.isSuspended ? 'Unsuspend' : 'Suspend'}
                   </button>
                 </div>
-                {isSuperAdmin && (
+                {canManageRoles && (u.id !== me?.id) && !(u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin) && (
                   <select
                     value={u.adminRole ?? ''}
                     onChange={(e) => handleSetAdminRole(u, e.target.value)}
@@ -134,7 +140,7 @@ export default function AdminUsersPage() {
                     className="mt-2 w-full text-xs border border-[#EBE0D8] rounded-lg px-2 py-1.5 disabled:opacity-40"
                   >
                     <option value="">{u.adminRole ? 'Change admin role…' : 'Grant admin role…'}</option>
-                    {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 )}
               </div>
@@ -191,7 +197,7 @@ export default function AdminUsersPage() {
                         >
                           {u.isSuspended ? 'Unsuspend' : 'Suspend'}
                         </button>
-                        {isSuperAdmin && (
+                        {canManageRoles && (u.id !== me?.id) && !(u.adminRole === 'SUPER_ADMIN' && !isSuperAdmin) && (
                           <select
                             value={u.adminRole ?? ''}
                             onChange={(e) => handleSetAdminRole(u, e.target.value)}
@@ -199,7 +205,7 @@ export default function AdminUsersPage() {
                             className="text-xs border border-[#EBE0D8] rounded-lg px-1.5 py-1 disabled:opacity-40"
                           >
                             <option value="">{u.adminRole ? 'Change role…' : 'Grant admin…'}</option>
-                            {ADMIN_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                            {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
                         )}
                       </div>

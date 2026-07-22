@@ -253,11 +253,30 @@ export class AdminService {
     return user;
   }
 
+  // A Super Admin can grant/revoke any tier, including Super Admin itself.
+  // A regular Admin can manage the scoped tiers (Content Moderator, KYC
+  // Moderator, HR) -- e.g. promoting a Content Moderator to full Admin --
+  // but can never grant Super Admin, and can never touch an existing Super
+  // Admin's access (demoting one is exactly the kind of privilege-escalation
+  // path this exists to prevent). Nobody can change their own admin role,
+  // regardless of tier, mirroring the self-suspend guard on setUserSuspended.
   async setAdminRole(targetUserId: string, adminRole: AdminRole, actingAdminId: string) {
     const actingAdmin = await this.assertAdmin(actingAdminId);
-    if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Only a Super Admin can manage admin roles');
+
+    if (targetUserId === actingAdminId) {
+      throw new ForbiddenException('Cannot change your own admin role');
     }
+
+    if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
+      if (adminRole === 'SUPER_ADMIN') {
+        throw new ForbiddenException('Only a Super Admin can grant Super Admin access');
+      }
+      const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+      if (target?.adminRole === 'SUPER_ADMIN') {
+        throw new ForbiddenException("Only a Super Admin can change another Super Admin's access");
+      }
+    }
+
     // `role` (the marketplace user type) is untouched — admin access is
     // purely a function of adminRole, so granting it never reclassifies
     // what kind of marketplace participant this person is.
