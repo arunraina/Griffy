@@ -268,6 +268,10 @@ model ContractorProfile {
 
   reviews Review[]
 
+  // GIN index on service_cities (array-containment city filter) is applied
+  // via raw migration only, not declarable here -- same as search_vector's
+  // GIN index above, which this repo has never expressed through @@index.
+  @@index([approvalStatus, isAvailable])
   @@map("contractor_profiles")
 }
 
@@ -295,6 +299,7 @@ model LabourProfile {
 
   reviews Review[]
 
+  @@index([approvalStatus, isAvailable])
   @@map("labour_profiles")
 }
 
@@ -323,6 +328,7 @@ model ServiceExpertProfile {
 
   reviews Review[]
 
+  @@index([approvalStatus, isAvailable])
   @@map("service_expert_profiles")
 }
 
@@ -469,6 +475,7 @@ model Material {
   orderItems OrderItem[]
   reviews    Review[]
 
+  @@index([category, subcategory])
   @@map("materials")
 }
 
@@ -498,6 +505,8 @@ model Order {
   refunds      Refund[]
   invoice      Invoice?
 
+  @@index([buyerId])
+  @@index([paymentStatus, createdAt])
   @@map("orders")
 }
 
@@ -674,6 +683,8 @@ model Booking {
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
+  @@index([customerId, status])
+  @@index([providerId, status])
   @@map("bookings")
 }
 
@@ -1129,4 +1140,34 @@ model Report {
   createdAt  DateTime         @default(now()) @map("created_at")
 
   @@map("reports")
+}
+
+// ---------------------------------------------------------------------------
+// Blog — content-SEO infrastructure (CTO optimization pass, Part 2E)
+// ---------------------------------------------------------------------------
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model BlogPost {
+  id              String         @id @default(uuid())
+  slug            String         @unique
+  title           String
+  excerpt         String
+  content         String
+  author          String
+  status          BlogPostStatus @default(DRAFT)
+  publishedAt     DateTime?      @map("published_at")
+  metaTitle       String?        @map("meta_title")
+  metaDescription String?        @map("meta_description")
+  tags            String[]       @default([])
+  featuredImage   String?        @map("featured_image")
+  readTimeMinutes Int?           @map("read_time_minutes")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
 }
