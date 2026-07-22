@@ -1,15 +1,19 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ImpersonatedBy } from '../auth/impersonated-by.decorator';
 import { AdminService, type ContentType } from './admin.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReportsService } from '../reports/reports.service';
 import { ApprovalStatus, ProjectStatus, User, UserRole, KycStatus, PaymentStatus, RefundStatus, ReportStatus } from '@prisma/client';
-import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto } from './dto/admin.dto';
+import { RejectProfileDto, ModerateProjectDto, ModerateContentDto, CreateRefundDto, CreateUserDto, SetAdminRoleDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
 import { RejectKycDto } from '../kyc/dto/kyc.dto';
 import { UpdateReportStatusDto } from '../reports/dto/report.dto';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
+import { CreateProjectDto } from '../projects/dto/project.dto';
+import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard)
@@ -177,6 +181,12 @@ export class AdminController {
     return this.admin.getUserDetail(id);
   }
 
+  @Patch('users/:id/profile')
+  async updateUserProfile(@CurrentUser() user: User, @Param('id') id: string, @Body() body: UpdateAdminProfileDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.updateUserProfile(id, body, user.id);
+  }
+
   @Post('users/:id/portfolio-items')
   async createPortfolioItemFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreatePortfolioItemDto) {
     await this.admin.assertAdminSection(user.id, 'USERS');
@@ -187,6 +197,18 @@ export class AdminController {
   async createServiceItemFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreateServiceItemDto) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     return this.admin.createServiceItemFor(id, body, user.id);
+  }
+
+  @Get('users/:id/projects')
+  async getUserProjects(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getUserProjects(id);
+  }
+
+  @Post('users/:id/projects')
+  async createProjectFor(@CurrentUser() user: User, @Param('id') id: string, @Body() body: CreateProjectDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createProjectFor(id, body, user.id);
   }
 
   @Get('users/:id/bookings')
@@ -201,17 +223,47 @@ export class AdminController {
     return this.admin.getProviderReviewsByUserId(id);
   }
 
+  @Post('reviews')
+  async createReview(@CurrentUser() user: User, @Body() body: AdminCreateReviewDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.createAdminReview(body, user.id);
+  }
+
+  @Patch('reviews/:id')
+  async updateReview(@CurrentUser() user: User, @Param('id') id: string, @Body() body: AdminUpdateReviewDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.updateAdminReview(id, body, user.id);
+  }
+
+  @Delete('reviews/:id')
+  async deleteReview(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.deleteAdminReview(id, user.id);
+  }
+
   @Patch('users/:id/suspend')
   async suspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
     if (id === user.id) throw new ForbiddenException('Cannot suspend your own account');
-    return this.admin.setUserSuspended(id, true);
+    return this.admin.setUserSuspended(id, true, user.id);
   }
 
   @Patch('users/:id/unsuspend')
   async unsuspendUser(@CurrentUser() user: User, @Param('id') id: string) {
     await this.admin.assertAdminSection(user.id, 'USERS');
-    return this.admin.setUserSuspended(id, false);
+    return this.admin.setUserSuspended(id, false, user.id);
+  }
+
+  @Patch('users/:id/status')
+  async setAccountStatus(@CurrentUser() user: User, @Param('id') id: string, @Body() body: SetAccountStatusDto) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.setAccountStatus(id, body, user.id);
+  }
+
+  @Get('users/:id/status-history')
+  async getStatusHistory(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.getStatusHistory(id);
   }
 
   // Tiered — AdminService.setAdminRole enforces exactly who can grant what.
@@ -240,5 +292,22 @@ export class AdminController {
   ) {
     await this.admin.assertAdminSection(user.id, 'KYC');
     return this.admin.setKycStatus(userId, KycStatus.REJECTED, body.reason);
+  }
+
+  @Post('users/:id/impersonate')
+  async startImpersonation(@CurrentUser() user: User, @Param('id') id: string, @Req() req: Request) {
+    await this.admin.assertAdminSection(user.id, 'USERS');
+    return this.admin.startImpersonation(id, user.id, req.ip);
+  }
+
+  // Not gated by assertAdminSection -- during impersonation, @CurrentUser()
+  // resolves to the impersonated *target*, who may not be an admin at all.
+  // ImpersonatedBy() is only ever populated by AuthGuard for a token it
+  // verified as a genuine impersonation token, so there's nothing here for a
+  // non-impersonated caller to spoof by passing an arbitrary body/header.
+  @Delete('impersonate/end')
+  async endImpersonation(@CurrentUser() user: User, @ImpersonatedBy() impersonatedBy?: string) {
+    if (!impersonatedBy) throw new BadRequestException('Not currently impersonating');
+    return this.admin.endImpersonation(user.id, impersonatedBy);
   }
 }

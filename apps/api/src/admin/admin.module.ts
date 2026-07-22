@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminHierarchyService } from './admin-hierarchy.service';
+import { AccountStatusExpiryCron } from './account-status-expiry.cron';
 import { KycModule } from '../kyc/kyc.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -12,14 +14,15 @@ import { PortfolioModule } from '../portfolio/portfolio.module';
 import { ServiceItemsModule } from '../service-items/service-items.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { ReviewsModule } from '../reviews/reviews.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
     KycModule, NotificationsModule, PaymentsModule, ReportsModule,
     MaterialsModule, LandsModule, PropertiesModule, PortfolioModule, ServiceItemsModule,
-    BookingsModule, ReviewsModule,
+    BookingsModule, ReviewsModule, ProjectsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, AdminHierarchyService, AccountStatusExpiryCron],
 })
 export class AdminModule {}

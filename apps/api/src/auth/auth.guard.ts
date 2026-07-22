@@ -7,9 +7,35 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
+import { ImpersonationService } from './impersonation.service';
+
+// Route prefixes gated by RESTRICTED_LISTING -- a supplier/provider can still
+// browse and transact as a customer, just not publish or edit their own
+// listings while restricted.
+const LISTING_PATH_PREFIXES = [
+  '/api/v1/materials',
+  '/api/v1/service-items',
+  '/api/v1/properties',
+  '/api/v1/lands',
+  '/api/v1/contractor-profiles',
+  '/api/v1/labour-profiles',
+  '/api/v1/service-expert-profiles',
+];
+
+// The one write RESTRICTED_EXPLORE/PENDING_REVIEW still allow -- editing your
+// own basic profile (name/city/phone/etc, see UsersController.updateMe).
+// Narrower than "any profile edit": per-role listing profiles (contractor-
+// profiles/:id etc.) are still writes and stay blocked under these statuses.
+function isOwnProfileUpdate(path: string, method: string): boolean {
+  return method === 'PATCH' && path === '/api/v1/users/me';
+}
+
+function matchesAnyPrefix(path: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
 
 // Signup writes role/pro_label into Supabase user_metadata using its own
 // legacy scheme (CUSTOMER/SERVICE_PROVIDER/...), not the real Prisma
@@ -56,6 +82,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly impersonation: ImpersonationService,
   ) {
     const supabaseUrl = config.getOrThrow('SUPABASE_URL');
     this.jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
@@ -67,6 +94,9 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
     let user: VerifiedSupabaseUser;
+    let dbUser: User;
+    let impersonatedBy: string | undefined;
+
     try {
       const { payload } = await jwtVerify(token, this.jwks);
       user = {
@@ -75,19 +105,103 @@ export class AuthGuard implements CanActivate {
         phone: payload.phone as string | undefined,
         user_metadata: payload.user_metadata as Record<string, unknown> | undefined,
       };
+
+      const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
+      dbUser = await this.upsertUser(user, referredById);
     } catch {
-      throw new UnauthorizedException('Invalid token');
+      // Not a Supabase-issued token (wrong signature scheme entirely, since
+      // Supabase signs asymmetrically and impersonation tokens are HS256) --
+      // check whether it's one of our own before giving up.
+      const target = await this.tryVerifyImpersonationToken(token);
+      if (!target) throw new UnauthorizedException('Invalid token');
+      dbUser = target.user;
+      impersonatedBy = target.impersonatedBy;
+      user = { id: dbUser.id, email: dbUser.email, phone: dbUser.phone ?? undefined };
     }
 
-    const referredById = await this.resolveReferrer(user.user_metadata?.referral_code as string | undefined);
+    const response = context.switchToHttp().getResponse<Response>();
+    this.enforceAccountStatus(dbUser, request, response);
 
-    const dbUser = await this.upsertUser(user, referredById);
-
-    if (dbUser.isSuspended) throw new ForbiddenException('This account has been suspended');
-
-    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).supabaseUser = user;
-    (request as Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User }).dbUser = dbUser;
+    type AuthedRequest = Request & { supabaseUser: VerifiedSupabaseUser; dbUser: User; impersonatedBy?: string };
+    (request as AuthedRequest).supabaseUser = user;
+    (request as AuthedRequest).dbUser = dbUser;
+    (request as AuthedRequest).impersonatedBy = impersonatedBy;
     return true;
+  }
+
+  // Impersonation never runs upsertUser/trackLogin -- the target is always
+  // an existing real user (impersonate-creation already verified that), and
+  // an admin viewing as them shouldn't bump their login count or referral
+  // resolution, which are both real signup/session semantics.
+  private async tryVerifyImpersonationToken(token: string): Promise<{ user: User; impersonatedBy: string } | null> {
+    try {
+      const payload = this.impersonation.verify(token);
+      if (!payload.isImpersonation) return null;
+      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+      if (!user) return null;
+      return { user, impersonatedBy: payload.impersonatedBy };
+    } catch {
+      return null;
+    }
+  }
+
+  // Enforced on every authenticated request, not just the ones each
+  // restriction targets -- a suspended/restricted account's *read* access is
+  // fine (or fully blocked, for SUSPENDED/TEMP_SUSPENDED), but nothing here
+  // resembles a per-route guard: it's one status check central to every
+  // request, mirroring how `isSuspended` worked before AccountStatus existed.
+  private enforceAccountStatus(dbUser: User, request: Request, response: Response): void {
+    const status = dbUser.accountStatus;
+    const path = request.path;
+    const method = request.method;
+    const isWrite = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+
+    if (status === 'SUSPENDED') {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Your account has been suspended. Contact support@griffy.in if you believe this is an error.',
+      });
+    }
+
+    if (status === 'TEMP_SUSPENDED') {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_TEMP_SUSPENDED',
+        message: `Your account is temporarily suspended until ${dbUser.statusExpiresAt?.toISOString()}.`,
+        expiresAt: dbUser.statusExpiresAt,
+      });
+    }
+
+    if (status === 'RESTRICTED_LISTING' && isWrite && matchesAnyPrefix(path, LISTING_PATH_PREFIXES)) {
+      throw new ForbiddenException({
+        code: 'LISTING_RESTRICTED',
+        message: 'Your listing privileges are temporarily restricted.',
+      });
+    }
+
+    if (status === 'RESTRICTED_BOOKING' && matchesAnyPrefix(path, ['/api/v1/bookings'])) {
+      const isIncomingList = method === 'GET' && path.startsWith('/api/v1/bookings/incoming');
+      const isNewBooking = method === 'POST' && path === '/api/v1/bookings';
+      if (isIncomingList || isNewBooking) {
+        throw new ForbiddenException({
+          code: 'BOOKING_RESTRICTED',
+          message: 'You will not receive new booking requests temporarily.',
+        });
+      }
+    }
+
+    if ((status === 'RESTRICTED_EXPLORE' || status === 'PENDING_REVIEW') && isWrite && !isOwnProfileUpdate(path, method)) {
+      throw new ForbiddenException({
+        code: status === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : 'EXPLORE_ONLY',
+        message:
+          status === 'PENDING_REVIEW'
+            ? 'Your account is under review by our team. You can still browse the platform.'
+            : 'Your account is in explore-only mode and cannot make changes right now.',
+      });
+    }
+
+    if (status === 'PENDING_REVIEW') {
+      response.setHeader('X-Account-Status', 'pending_review');
+    }
   }
 
   // A brand-new user's very first authenticated request often isn't alone —

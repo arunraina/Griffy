@@ -1,23 +1,53 @@
+import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsPositive,
   IsString,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { ProjectStatus, UserRole, AdminRole } from '@prisma/client';
+import { ProjectStatus, UserRole, AdminRole, AccountStatus } from '@prisma/client';
 
 export class SetAdminRoleDto {
+  // null removes admin access entirely, reverting the person to acting like
+  // a plain marketplace user -- IsOptional skips validation for null/
+  // undefined, which is exactly the case we want to allow here.
+  @IsOptional()
   @IsEnum(AdminRole)
-  adminRole!: AdminRole;
+  adminRole!: AdminRole | null;
+}
+
+export class SetAccountStatusDto {
+  @IsEnum(AccountStatus)
+  status!: AccountStatus;
+
+  // Required for every status except ACTIVE (restoring access needs no
+  // justification); enforced here rather than just in the service so bad
+  // requests fail fast with a clear validation error.
+  @ValidateIf((o) => o.status !== 'ACTIVE')
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason?: string;
+
+  @ValidateIf((o) => o.status === 'TEMP_SUSPENDED')
+  @IsDateString()
+  expiresAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyUser?: boolean;
 }
 
 // Union of every field any of the 8 supply-side ProfileType tables accepts —
@@ -44,6 +74,24 @@ export class CreateUserProfileDto {
   @IsOptional() @IsString() registrationNumber?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) specializations?: string[];
   @IsOptional() @IsString() agencyName?: string;
+}
+
+// Admin's "edit this person's profile" form -- covers both the User-level
+// fields (name/phone/city/state/avatarUrl, same as the self-serve profile
+// edit screen) and every profile-specific field CreateUserProfileDto already
+// validates, plus the few fields creation never needed (portfolioImages,
+// isAvailable, govtIdVerified). AdminService.updateUserProfile() picks the
+// subset relevant to the target's actual profile type.
+export class UpdateAdminProfileDto extends PartialType(CreateUserProfileDto) {
+  @IsOptional() @IsString() @MaxLength(150) name?: string;
+  @IsOptional() @IsString() @MaxLength(20) phone?: string;
+  @IsOptional() @IsString() @MaxLength(100) city?: string;
+  @IsOptional() @IsString() @MaxLength(100) state?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true }) portfolioImages?: string[];
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+  @IsOptional() @IsBoolean() govtIdVerified?: boolean;
 }
 
 export class CreateUserDto {

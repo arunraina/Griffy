@@ -5,21 +5,87 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
-  fetchAdminUserBookings, fetchAdminUserReviews,
-  type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview,
+  fetchAdminUserBookings, fetchAdminUserReviews, updateAdminUserProfile,
+  createAdminReview, updateAdminReview, deleteAdminReview, startImpersonation,
+  fetchAdminStatusHistory, fetchAdminUserProjects, createAdminProject,
+  PROFILE_TYPE_TO_REVIEW_TARGET_TYPE, REVIEW_SOURCES,
+  type AdminUserDetail, type AdminProviderBooking, type AdminProviderReview, type AdminUser,
+  type AdminStatusHistoryEntry, type AdminProject,
 } from '@/lib/admin';
 import { SkeletonListRows } from '@/components/Skeleton';
+import { useAuth } from '@/lib/auth-provider';
+import { beginImpersonation } from '@/lib/impersonation';
 
 const PRICE_UNITS = ['FIXED', 'PER_HOUR', 'PER_DAY', 'PER_POINT', 'PER_SQFT', 'PER_VISIT'] as const;
 type PriceUnit = typeof PRICE_UNITS[number];
 
-// Profile rows we don't want in the generic key/value dump below — either
-// redundant with the header (name lives on User, not the profile row) or
-// internal bookkeeping the admin doesn't need to see here.
-const HIDDEN_PROFILE_FIELDS = new Set([
-  'id', 'userId', 'createdAt', 'updatedAt', 'approvalStatus', 'approvedBy', 'approvedAt',
-  'rejectionReason', 'portfolioImages', 'avgRating', 'totalReviews', 'totalOrders', 'user',
-]);
+// Mirrors AdminService.PROFILE_FIELDS_BY_TYPE on the backend — only real
+// columns on each profile type's Prisma model, nothing invented.
+type FieldType = 'text' | 'textarea' | 'number' | 'array' | 'boolean';
+interface FieldConfig { key: string; label: string; type: FieldType; }
+
+const PROFILE_FIELD_CONFIG: Record<string, FieldConfig[]> = {
+  contractor: [
+    { key: 'contractorType', label: 'Contractor Type', type: 'text' },
+    { key: 'tradeSkills', label: 'Trade Skills (comma-separated)', type: 'array' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'licenseNumber', label: 'License Number', type: 'text' },
+    { key: 'dailyRate', label: 'Daily Rate (₹)', type: 'number' },
+    { key: 'projectRate', label: 'Project Rate (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  labour: [
+    { key: 'skillType', label: 'Skill Type', type: 'text' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'dailyRate', label: 'Daily Rate (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  'service-expert': [
+    { key: 'expertiseType', label: 'Expertise Type', type: 'text' },
+    { key: 'qualifications', label: 'Qualifications (comma-separated)', type: 'array' },
+    { key: 'experience', label: 'Experience', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'consultationFee', label: 'Consultation Fee (₹)', type: 'number' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available for work', type: 'boolean' },
+  ],
+  'material-supplier': [
+    { key: 'businessName', label: 'Business Name', type: 'text' },
+    { key: 'gstNumber', label: 'GST Number', type: 'text' },
+    { key: 'businessAddress', label: 'Business Address', type: 'textarea' },
+    { key: 'deliveryCities', label: 'Delivery Cities (comma-separated)', type: 'array' },
+    { key: 'isAvailable', label: 'Currently supplying', type: 'boolean' },
+  ],
+  'land-owner': [
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+    { key: 'govtIdVerified', label: 'Govt ID Verified', type: 'boolean' },
+  ],
+  'property-seller': [
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+    { key: 'govtIdVerified', label: 'Govt ID Verified', type: 'boolean' },
+  ],
+  builder: [
+    { key: 'companyName', label: 'Company Name', type: 'text' },
+    { key: 'registrationNumber', label: 'Registration Number', type: 'text' },
+    { key: 'specializations', label: 'Specializations (comma-separated)', type: 'array' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+  ],
+  'property-agent': [
+    { key: 'agencyName', label: 'Agency Name', type: 'text' },
+    { key: 'licenseNumber', label: 'License Number', type: 'text' },
+    { key: 'serviceCities', label: 'Service Cities (comma-separated)', type: 'array' },
+    { key: 'bio', label: 'Bio', type: 'textarea' },
+    { key: 'isAvailable', label: 'Available', type: 'boolean' },
+  ],
+};
 
 // Keyed by LabourProfile.skillType / ServiceExpertProfile.expertiseType (see
 // featureFlags.ts's labour/service_experts subcategories — these are the
@@ -94,16 +160,6 @@ const QUICK_ADD_SERVICES: Record<string, { name: string; category: string; unit:
   ],
 };
 
-function formatFieldName(key: string) {
-  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
-}
-
-function formatFieldValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-  return String(value);
-}
-
 type Tab = 'profile' | 'listings' | 'bookings' | 'reviews';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
@@ -115,6 +171,8 @@ const TABS: { id: Tab; label: string }[] = [
 export default function AdminUserDetailPage() {
   const params = useParams();
   const userId = params.id as string;
+  const { me } = useAuth();
+  const isSuperAdmin = me?.adminRole === 'SUPER_ADMIN';
 
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,6 +180,10 @@ export default function AdminUserDetailPage() {
   const [tab, setTab] = useState<Tab>('profile');
   const [showAddPortfolio, setShowAddPortfolio] = useState(false);
   const [showAddService, setShowAddService] = useState(false);
+  const [reviewSlideOver, setReviewSlideOver] = useState<{ mode: 'create' } | { mode: 'edit'; review: AdminProviderReview } | null>(null);
+  const [showImpersonateConfirm, setShowImpersonateConfirm] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateError, setImpersonateError] = useState('');
 
   const [bookings, setBookings] = useState<AdminProviderBooking[] | null>(null);
   const [reviews, setReviews] = useState<AdminProviderReview[] | null>(null);
@@ -167,8 +229,30 @@ export default function AdminUserDetailPage() {
   const { user, profileType, profile, portfolio, services } = detail;
   const canHavePortfolio = profileType === 'contractor' || profileType === 'labour' || profileType === 'service-expert';
   const canHaveServices = profileType === 'labour' || profileType === 'service-expert';
+  // Verification-badge toggle ships for the hands-on trade professions
+  // first; material suppliers/builders/property agents are a follow-up.
+  const isServiceProfessional = profileType === 'contractor' || profileType === 'labour' || profileType === 'service-expert';
+  const isHomeowner = user.role === 'HOMEOWNER';
   const skillKey = (profile?.skillType ?? profile?.expertiseType) as string | undefined;
   const quickAdd = skillKey ? QUICK_ADD_SERVICES[skillKey.toLowerCase().replace(/\s+/g, '_')] : undefined;
+  const canImpersonate = isSuperAdmin && user.id !== me?.id && user.adminRole !== 'SUPER_ADMIN';
+
+  async function handleImpersonate() {
+    setImpersonating(true);
+    setImpersonateError('');
+    try {
+      const { impersonationToken, targetUser } = await startImpersonation(user.id);
+      beginImpersonation(impersonationToken, { id: targetUser.id, name: targetUser.name, role: targetUser.role });
+      // Hard navigation, not router.push() -- the root layout (and
+      // ImpersonationBanner's mount-only sessionStorage read) doesn't
+      // remount on client-side navigation, so a soft nav would leave the
+      // banner not knowing impersonation just started.
+      window.location.href = '/dashboard/home';
+    } catch (e) {
+      setImpersonateError(e instanceof Error ? e.message : 'Failed to start impersonation');
+      setImpersonating(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -176,8 +260,16 @@ export default function AdminUserDetailPage() {
         ← Back to Users
       </Link>
 
-      <div className="bg-[#F3E8FF] border border-[#E4CCFF] rounded-xl px-4 py-2.5 text-sm text-[#6B2FB3] font-medium">
-        ⚙️ Managing on behalf of {user.name}
+      <div className="bg-[#F3E8FF] border border-[#E4CCFF] rounded-xl px-4 py-2.5 text-sm text-[#6B2FB3] font-medium flex items-center justify-between gap-3 flex-wrap">
+        <span>⚙️ Managing on behalf of {user.name}</span>
+        {canImpersonate && (
+          <button
+            onClick={() => setShowImpersonateConfirm(true)}
+            className="text-xs font-semibold bg-white border border-[#E4CCFF] text-[#6B2FB3] px-3 py-1.5 rounded-lg hover:bg-[#F3E8FF]"
+          >
+            👁️ Act as User
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
@@ -195,6 +287,37 @@ export default function AdminUserDetailPage() {
         </div>
       </div>
 
+      {showImpersonateConfirm && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => !impersonating && setShowImpersonateConfirm(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+              <p className="text-sm text-[#2C1810]">
+                You are about to view Griffy as <span className="font-semibold">{user.name}</span> ({user.role}).
+                Your admin session will be preserved. All actions you take will be logged.
+              </p>
+              {impersonateError && <p className="text-xs text-red-600 mt-3">{impersonateError}</p>}
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={() => setShowImpersonateConfirm(false)}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold text-[#6B5248] border border-[#EBE0D8] px-4 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImpersonate}
+                  disabled={impersonating}
+                  className="flex-1 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg"
+                >
+                  {impersonating ? 'Starting…' : `Confirm — View as ${user.name}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex gap-1 border-b border-[#EBE0D8]">
         {TABS.map((t) => (
           <button
@@ -204,35 +327,26 @@ export default function AdminUserDetailPage() {
               tab === t.id ? 'border-[#C0593A] text-[#C0593A]' : 'border-transparent text-[#A08070] hover:text-[#6B5248]'
             }`}
           >
-            {t.label}
+            {t.id === 'listings' && isHomeowner ? 'Projects' : t.label}
           </button>
         ))}
       </div>
 
       {tab === 'profile' && (
-        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
-          {!profileType && (
-            <p className="text-sm text-[#A08070]">This role has no professional profile to manage.</p>
-          )}
-          {profileType && !profile && (
-            <p className="text-sm text-[#A08070]">No {profileType} profile found for this user.</p>
-          )}
-          {profile && (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              {Object.entries(profile)
-                .filter(([key]) => !HIDDEN_PROFILE_FIELDS.has(key))
-                .map(([key, value]) => (
-                  <div key={key}>
-                    <p className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">{formatFieldName(key)}</p>
-                    <p className="text-sm text-[#2C1810] mt-0.5">{formatFieldValue(value)}</p>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
+        <ProfileEditForm
+          userId={userId}
+          user={user}
+          profileType={profileType}
+          profile={profile}
+          onSaved={load}
+        />
       )}
 
-      {tab === 'listings' && (
+      {tab === 'listings' && isHomeowner && (
+        <ProjectsSection userId={userId} />
+      )}
+
+      {tab === 'listings' && !isHomeowner && (
         <>
           {canHavePortfolio && (
             <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
@@ -333,6 +447,18 @@ export default function AdminUserDetailPage() {
 
       {tab === 'reviews' && (
         <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-[#2C1810]">Reviews</h2>
+            {profileType && PROFILE_TYPE_TO_REVIEW_TARGET_TYPE[profileType] && profile && (
+              <button
+                onClick={() => setReviewSlideOver({ mode: 'create' })}
+                className="text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] text-white px-3 py-1.5 rounded-lg"
+              >
+                + Add Review
+              </button>
+            )}
+          </div>
+
           {reviews === null ? (
             <SkeletonListRows count={3} />
           ) : reviews.length === 0 ? (
@@ -342,16 +468,56 @@ export default function AdminUserDetailPage() {
               {reviews.map((r) => (
                 <div key={r.id} className="border border-[#EBE0D8] rounded-xl px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer?.name ?? 'Anonymous'}</p>
+                    <p className="text-sm font-semibold text-[#2C1810]">{r.reviewer?.name ?? r.reviewerName ?? 'Anonymous'}</p>
                     <p className="text-sm font-semibold text-[#C0593A]">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</p>
                   </div>
                   {r.comment && <p className="text-sm text-[#6B5248] mt-1">{r.comment}</p>}
-                  <p className="text-xs text-[#A08070] mt-1">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-[#A08070]">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      {r.isVerified && (
+                        <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">
+                          ✓ {r.isAdminAdded ? 'Verified by Griffy team' : 'Verified purchase'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isServiceProfessional && (
+                        <VerifiedToggle
+                          reviewId={r.id}
+                          isVerified={r.isVerified}
+                          onToggled={(updated) => setReviews((prev) => (prev ?? []).map((x) => (x.id === updated.id ? updated : x)))}
+                        />
+                      )}
+                      <button onClick={() => setReviewSlideOver({ mode: 'edit', review: r })} className="text-xs font-semibold text-[#6B5248] hover:text-[#C0593A]">Edit</button>
+                      <DeleteReviewButton id={r.id} onDeleted={() => setReviews((prev) => (prev ?? []).filter((x) => x.id !== r.id))} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {reviewSlideOver && profileType && profile && (
+        <ReviewSlideOver
+          state={reviewSlideOver}
+          targetType={PROFILE_TYPE_TO_REVIEW_TARGET_TYPE[profileType]!}
+          targetId={profile.id as string}
+          onClose={() => setReviewSlideOver(null)}
+          onSaved={(saved) => {
+            setReviews((prev) => {
+              if (!prev) return [saved];
+              const idx = prev.findIndex((x) => x.id === saved.id);
+              if (idx === -1) return [saved, ...prev];
+              const next = [...prev];
+              next[idx] = saved;
+              return next;
+            });
+            setReviewSlideOver(null);
+          }}
+        />
       )}
 
       {showAddService && canHaveServices && (
@@ -517,5 +683,526 @@ function ServiceSlideOver({
         </div>
       </div>
     </>
+  );
+}
+
+// Two independently-saveable sections rather than one giant form: Basic Info
+// (User-level, every role has it) and Professional Details (profile-type-
+// specific, absent for HOMEOWNER). Each section tracks its own edit state so
+// saving one doesn't require touching the other's fields.
+function ProfileEditForm({
+  userId, user, profileType, profile, onSaved,
+}: {
+  userId: string;
+  user: AdminUser;
+  profileType: string | null;
+  profile: Record<string, unknown> | null;
+  onSaved: () => void;
+}) {
+  const fields = profileType ? (PROFILE_FIELD_CONFIG[profileType] ?? []) : [];
+
+  return (
+    <div className="space-y-6">
+      <BasicInfoSection userId={userId} user={user} onSaved={onSaved} />
+      {profileType && !profile && (
+        <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+          <p className="text-sm text-[#A08070]">No {profileType} profile found for this user yet.</p>
+        </div>
+      )}
+      {profileType && profile && fields.length > 0 && (
+        <ProfessionalDetailsSection userId={userId} profile={profile} fields={fields} onSaved={onSaved} />
+      )}
+      <StatusHistorySection userId={userId} />
+    </div>
+  );
+}
+
+function StatusHistorySection({ userId }: { userId: string }) {
+  const [history, setHistory] = useState<AdminStatusHistoryEntry[] | null>(null);
+
+  useEffect(() => {
+    fetchAdminStatusHistory(userId).then(setHistory).catch(() => setHistory([]));
+  }, [userId]);
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Status History</h2>
+      {history === null ? (
+        <SkeletonListRows count={2} />
+      ) : history.length === 0 ? (
+        <p className="text-sm text-[#A08070]">No status changes recorded yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {history.map((h) => (
+            <div key={h.id} className="border-l-2 border-[#EBE0D8] pl-4 pb-1">
+              <p className="text-sm text-[#2C1810]">
+                <span className="font-semibold">{new Date(h.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                {' — Changed from '}<span className="font-medium">{h.previousStatus}</span>{' to '}<span className="font-medium">{h.newStatus}</span>
+                {h.changedBy && <> by {h.changedBy.name}</>}
+              </p>
+              <p className="text-xs text-[#6B5248] mt-0.5">Reason: &ldquo;{h.reason}&rdquo;</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function arrayToText(value: unknown): string {
+  return Array.isArray(value) ? value.join(', ') : '';
+}
+
+function textToArray(value: string): string[] {
+  return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function BasicInfoSection({ userId, user, onSaved }: { userId: string; user: AdminUser; onSaved: () => void }) {
+  const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phone ?? '');
+  const [city, setCity] = useState(user.city ?? '');
+  const [state, setState] = useState(user.state ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await updateAdminUserProfile(userId, {
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+      });
+      setSaved(true);
+      onSaved();
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Basic Info</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Full Name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Phone</label>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">City</label>
+          <input value={city} onChange={(e) => setCity(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">State</label>
+          <input value={state} onChange={(e) => setState(e.target.value)}
+            className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        </div>
+      </div>
+      {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+      {saved && <p className="text-xs text-green-700 mt-3">✓ Saved</p>}
+      <button type="submit" disabled={saving}
+        className="mt-4 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Save Changes'}
+      </button>
+    </form>
+  );
+}
+
+function ProfessionalDetailsSection({
+  userId, profile, fields, onSaved,
+}: { userId: string; profile: Record<string, unknown>; fields: FieldConfig[]; onSaved: () => void }) {
+  const [values, setValues] = useState<Record<string, string | boolean>>(() => {
+    const init: Record<string, string | boolean> = {};
+    for (const f of fields) {
+      const raw = profile[f.key];
+      if (f.type === 'boolean') init[f.key] = Boolean(raw);
+      else if (f.type === 'array') init[f.key] = arrayToText(raw);
+      else init[f.key] = raw === null || raw === undefined ? '' : String(raw);
+    }
+    return init;
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  function setValue(key: string, value: string | boolean) {
+    setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const patch: Record<string, unknown> = {};
+      for (const f of fields) {
+        const raw = values[f.key];
+        if (f.type === 'boolean') patch[f.key] = Boolean(raw);
+        else if (f.type === 'array') patch[f.key] = textToArray(String(raw));
+        else if (f.type === 'number') patch[f.key] = raw === '' ? undefined : Number(raw);
+        else patch[f.key] = String(raw).trim() || undefined;
+      }
+      await updateAdminUserProfile(userId, patch);
+      setSaved(true);
+      onSaved();
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <h2 className="font-semibold text-[#2C1810] mb-4">Professional Details</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {fields.map((f) => (
+          <div key={f.key} className={f.type === 'textarea' ? 'col-span-2' : ''}>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">{f.label}</label>
+            {f.type === 'boolean' ? (
+              <div className="mt-1.5">
+                <input type="checkbox" checked={Boolean(values[f.key])}
+                  onChange={(e) => setValue(f.key, e.target.checked)} className="w-4 h-4" />
+              </div>
+            ) : f.type === 'textarea' ? (
+              <textarea value={String(values[f.key] ?? '')} onChange={(e) => setValue(f.key, e.target.value)}
+                rows={3} className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+            ) : (
+              <input
+                type={f.type === 'number' ? 'number' : 'text'}
+                value={String(values[f.key] ?? '')}
+                onChange={(e) => setValue(f.key, e.target.value)}
+                className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+      {saved && <p className="text-xs text-green-700 mt-3">✓ Saved</p>}
+      <button type="submit" disabled={saving}
+        className="mt-4 text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Save Changes'}
+      </button>
+    </form>
+  );
+}
+
+// Two-step inline confirm instead of window.confirm() -- a native confirm()
+// blocks all further page script until dismissed, which is exactly the kind
+// of dialog browser-automation testing can't safely drive through.
+function DeleteReviewButton({ id, onDeleted }: { id: string; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm() {
+    setDeleting(true);
+    try {
+      await deleteAdminReview(id);
+      onDeleted();
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
+
+  if (confirming) {
+    return (
+      <span className="flex items-center gap-2">
+        <span className="text-xs text-[#6B5248]">Delete this review?</span>
+        <button onClick={handleConfirm} disabled={deleting} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50">
+          {deleting ? 'Deleting…' : 'Yes'}
+        </button>
+        <button onClick={() => setConfirming(false)} disabled={deleting} className="text-xs font-semibold text-[#A08070] hover:underline">No</button>
+      </span>
+    );
+  }
+
+  return (
+    <button onClick={() => setConfirming(true)} className="text-xs font-semibold text-red-600 hover:underline">Delete</button>
+  );
+}
+
+type ReviewSlideOverState = { mode: 'create' } | { mode: 'edit'; review: AdminProviderReview };
+
+// Same form for adding a brand-new offline review and editing an existing
+// one — reviewer name/phone/source only apply to admin-added rows (a real
+// customer's own review keeps its own reviewer identity), so those fields
+// are hidden when editing a non-admin-added review.
+function ReviewSlideOver({
+  state, targetType, targetId, onClose, onSaved,
+}: {
+  state: ReviewSlideOverState;
+  targetType: string;
+  targetId: string;
+  onClose: () => void;
+  onSaved: (review: AdminProviderReview) => void;
+}) {
+  const editing = state.mode === 'edit' ? state.review : null;
+  const isAdminAddedOrNew = editing ? editing.isAdminAdded : true;
+
+  const [rating, setRating] = useState(editing?.rating ?? 5);
+  const [comment, setComment] = useState(editing?.comment ?? '');
+  const [reviewerName, setReviewerName] = useState(editing?.reviewerName ?? '');
+  const [reviewerPhone, setReviewerPhone] = useState('');
+  const [source, setSource] = useState(editing?.source ?? 'phone_feedback');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (comment.trim().length < 20) {
+      setError('Review text must be at least 20 characters.');
+      return;
+    }
+    if (isAdminAddedOrNew && !reviewerName.trim()) {
+      setError('Reviewer name is required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      if (state.mode === 'create') {
+        const saved = await createAdminReview({
+          targetType, targetId, rating, comment: comment.trim(),
+          reviewerName: reviewerName.trim(), reviewerPhone: reviewerPhone.trim() || undefined, source,
+        });
+        onSaved(saved);
+      } else {
+        const saved = await updateAdminReview(state.review.id, {
+          rating, comment: comment.trim(),
+          ...(isAdminAddedOrNew ? { reviewerName: reviewerName.trim(), source } : {}),
+        });
+        onSaved(saved);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save review');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#EBE0D8] sticky top-0 bg-white">
+          <h2 className="font-semibold text-[#2C1810]">{state.mode === 'create' ? 'Add Review' : 'Edit Review'}</h2>
+          <button onClick={onClose} className="text-[#A08070] hover:text-[#C0593A] text-xl leading-none">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Rating</label>
+            <div className="flex gap-1 mt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" onClick={() => setRating(n)}
+                  className={`text-2xl leading-none ${n <= rating ? 'text-[#C0593A]' : 'text-[#E4D5CC]'}`}>
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {isAdminAddedOrNew && (
+            <div>
+              <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Reviewer Name</label>
+              <input value={reviewerName} onChange={(e) => setReviewerName(e.target.value)}
+                className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Review Text (min 20 chars)</label>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={500}
+              className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+          </div>
+
+          {isAdminAddedOrNew && (
+            <>
+              <div>
+                <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Source</label>
+                <select value={source ?? 'phone_feedback'} onChange={(e) => setSource(e.target.value)}
+                  className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2">
+                  {REVIEW_SOURCES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              {state.mode === 'create' && (
+                <div>
+                  <label className="text-[11px] font-semibold text-[#A08070] uppercase tracking-wide">Reviewer Phone (optional, not displayed)</label>
+                  <input value={reviewerPhone} onChange={(e) => setReviewerPhone(e.target.value)}
+                    className="w-full mt-1 text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+                </div>
+              )}
+            </>
+          )}
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button type="submit" disabled={saving}
+            className="w-full text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2.5 rounded-lg">
+            {saving ? 'Saving…' : state.mode === 'create' ? 'Add Review' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}
+
+function VerifiedToggle({
+  reviewId, isVerified, onToggled,
+}: { reviewId: string; isVerified: boolean; onToggled: (updated: AdminProviderReview) => void }) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleClick() {
+    setSaving(true);
+    try {
+      const updated = await updateAdminReview(reviewId, { isVerified: !isVerified });
+      onToggled(updated);
+    } catch { /* retry available */ } finally { setSaving(false); }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={saving}
+      className={`text-xs font-semibold hover:underline disabled:opacity-40 ${isVerified ? 'text-[#9E3F24]' : 'text-[#A08070]'}`}
+    >
+      {isVerified ? 'Unverify' : 'Verify'}
+    </button>
+  );
+}
+
+// Homeowners have no supply-side profile to manage -- their equivalent of
+// "listings" is the projects they post looking for contractor bids, so this
+// replaces the Portfolio/Services blocks entirely for that role.
+function ProjectsSection({ userId }: { userId: string }) {
+  const [projects, setProjects] = useState<AdminProject[] | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = useCallback(() => {
+    fetchAdminUserProjects(userId).then(setProjects).catch(() => setProjects([]));
+  }, [userId]);
+
+  useEffect(load, [load]);
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-[#2C1810]">Posted Projects</h2>
+        <button
+          onClick={() => setShowAdd((s) => !s)}
+          className="text-sm font-semibold text-[#C0593A] border border-[#C0593A] px-3 py-1.5 rounded-lg hover:bg-[#FAEEE9]"
+        >
+          {showAdd ? 'Cancel' : '+ Add Project'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <AddProjectForm userId={userId} onCreated={() => { setShowAdd(false); load(); }} />
+      )}
+
+      {projects === null ? (
+        <SkeletonListRows count={2} />
+      ) : projects.length === 0 ? (
+        <p className="text-sm text-[#A08070]">No projects posted yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {projects.map((p) => (
+            <div key={p.id} className="border border-[#EBE0D8] rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#2C1810]">{p.title}</p>
+                <span className="text-[10px] font-semibold text-[#9E3F24] bg-[#FAEEE9] px-1.5 py-0.5 rounded">{p.status}</span>
+              </div>
+              <p className="text-xs text-[#A08070] mt-0.5">
+                {p.projectType} · {p.city}, {p.state} · ₹{Number(p.budgetMin).toLocaleString('en-IN')}–₹{Number(p.budgetMax).toLocaleString('en-IN')}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddProjectForm({ userId, onCreated }: { userId: string; onCreated: () => void }) {
+  const [projectType, setProjectType] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [timeline, setTimeline] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const min = Number(budgetMin);
+    const max = Number(budgetMax);
+    if (!projectType.trim() || !title.trim() || !description.trim() || !city.trim() || !state.trim() || !timeline.trim() || !min || !max) {
+      setError('All fields are required, and budget must be greater than 0.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      await createAdminProject(userId, {
+        projectType: projectType.trim(), title: title.trim(), description: description.trim(),
+        city: city.trim(), state: state.trim(), budgetMin: min, budgetMax: max, timeline: timeline.trim(),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add project');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-[#FAEEE9] rounded-xl p-4 mb-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <input value={projectType} onChange={(e) => setProjectType(e.target.value)} placeholder="Project type (e.g. Renovation)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={timeline} onChange={(e) => setTimeline(e.target.value)} placeholder="Timeline (e.g. 2 weeks)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
+        className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" rows={3}
+        className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      <div className="grid grid-cols-2 gap-3">
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <input value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} type="number" min="1" placeholder="Budget min (₹)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+        <input value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} type="number" min="1" placeholder="Budget max (₹)"
+          className="text-sm border border-[#EBE0D8] rounded-lg px-3 py-2" />
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <button type="submit" disabled={saving}
+        className="text-sm font-semibold bg-[#C0593A] hover:bg-[#9E3F24] disabled:opacity-60 text-white px-4 py-2 rounded-lg">
+        {saving ? 'Saving…' : 'Add Project'}
+      </button>
+    </form>
   );
 }

@@ -25,7 +25,8 @@ export type NotificationEvent =
   | 'milestone.approved'
   | 'milestone.changes_requested'
   | 'milestone.paid'
-  | 'milestone.payment_failed';
+  | 'milestone.payment_failed'
+  | 'account.status_changed';
 
 export interface RenderedNotification {
   title: string;
@@ -182,6 +183,48 @@ const templates: Record<NotificationEvent, (payload: Payload, appBaseUrl: string
     emailSubject: 'Your Griffy milestone payment did not go through',
     linkUrl: `${base}/turnkey-projects/${p.projectId}`,
   }),
+  'account.status_changed': (p, base) => {
+    const reasonLine = p.reason ? `\nReason: ${p.reason}` : '';
+    const copy: Record<string, { title: string; body: string; emailSubject: string }> = {
+      SUSPENDED: {
+        title: '⛔ Account suspended',
+        body: `Your account has been suspended.${reasonLine}\nContact support@griffy.in if you believe this is an error.`,
+        emailSubject: 'Your Griffy account has been suspended',
+      },
+      TEMP_SUSPENDED: {
+        title: '⏸️ Account temporarily suspended',
+        body: `Your account is temporarily suspended${p.expiresAt ? ` until ${new Date(p.expiresAt).toLocaleDateString('en-IN')}` : ''}.${reasonLine}\nYour access will be automatically restored after this period.`,
+        emailSubject: 'Your Griffy account is temporarily suspended',
+      },
+      RESTRICTED_LISTING: {
+        title: '⚠️ Listing privileges restricted',
+        body: `Your listing privileges have been temporarily restricted.${reasonLine}\nYou can still browse and use the platform. Contact support to resolve this.`,
+        emailSubject: 'Your Griffy listing privileges are restricted',
+      },
+      RESTRICTED_BOOKING: {
+        title: '⚠️ Booking requests paused',
+        body: `You will not receive new booking requests temporarily.${reasonLine}`,
+        emailSubject: 'Your Griffy booking requests are paused',
+      },
+      RESTRICTED_EXPLORE: {
+        title: '👁️ Explore-only mode',
+        body: `Your account has been set to explore-only mode temporarily.${reasonLine}`,
+        emailSubject: 'Your Griffy account is in explore-only mode',
+      },
+      PENDING_REVIEW: {
+        title: '🔍 Account under review',
+        body: 'Your account is under review by our team. This usually takes 1-2 business days. You can still browse the platform.',
+        emailSubject: 'Your Griffy account is under review',
+      },
+      ACTIVE: {
+        title: '✅ Account access restored',
+        body: 'Your account access has been fully restored. Welcome back to Griffy!',
+        emailSubject: 'Your Griffy account access has been restored',
+      },
+    };
+    const entry = copy[p.status] ?? copy.ACTIVE;
+    return { ...entry, linkUrl: `${base}/dashboard/home` };
+  },
 };
 
 export function renderNotification(event: NotificationEvent, payload: Payload, appBaseUrl: string): RenderedNotification {

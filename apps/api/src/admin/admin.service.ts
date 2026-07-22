@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType } from '@prisma/client';
+import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType, AccountStatus, Prisma } from '@prisma/client';
 import { KycService } from '../kyc/kyc.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
@@ -10,7 +10,12 @@ import { BookingsService } from '../bookings/bookings.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { CreatePortfolioItemDto } from '../portfolio/dto/portfolio-item.dto';
 import { CreateServiceItemDto } from '../service-items/dto/service-item.dto';
-import { CreateUserDto, CreateUserProfileDto } from './dto/admin.dto';
+import { AdminCreateReviewDto, AdminUpdateReviewDto } from '../reviews/dto/review.dto';
+import { ImpersonationService } from '../auth/impersonation.service';
+import { ProjectsService } from '../projects/projects.service';
+import { CreateProjectDto } from '../projects/dto/project.dto';
+import { CreateUserDto, CreateUserProfileDto, SetAccountStatusDto, UpdateAdminProfileDto } from './dto/admin.dto';
+import { AdminHierarchyService } from './admin-hierarchy.service';
 
 export type AdminSection =
   | 'APPROVALS'
@@ -91,6 +96,9 @@ export class AdminService {
     private readonly serviceItems: ServiceItemsService,
     private readonly bookings: BookingsService,
     private readonly reviews: ReviewsService,
+    private readonly hierarchy: AdminHierarchyService,
+    private readonly impersonation: ImpersonationService,
+    private readonly projects: ProjectsService,
   ) {}
 
   getProviderBookings(userId: string) {
@@ -106,6 +114,61 @@ export class AdminService {
     const profile = await this.getProfileByUserId(profileType, userId);
     if (!profile) return [];
     return this.reviews.findByTarget(targetType, profile.id);
+  }
+
+  async createAdminReview(dto: AdminCreateReviewDto, adminId: string) {
+    const review = await this.reviews.adminCreate(dto, adminId);
+    await this.logAction(adminId, 'CREATE_ADMIN_REVIEW', 'review', review.id);
+    return review;
+  }
+
+  async updateAdminReview(id: string, dto: AdminUpdateReviewDto, adminId: string) {
+    const review = await this.reviews.adminUpdate(id, dto);
+    await this.logAction(adminId, 'UPDATE_ADMIN_REVIEW', 'review', id);
+    return review;
+  }
+
+  async deleteAdminReview(id: string, adminId: string) {
+    await this.reviews.adminDelete(id);
+    await this.logAction(adminId, 'DELETE_REVIEW', 'review', id);
+    return { success: true };
+  }
+
+  // Super-Admin-only, and never against another Super Admin -- isProtected()
+  // is the same "untouchable" rule that already governs suspend/status
+  // changes, applied here to the highest-privilege action of all.
+  async startImpersonation(targetUserId: string, actingAdminId: string, ipAddress?: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    if (actingAdmin.adminRole !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Only a Super Admin can impersonate users');
+    }
+    if (targetUserId === actingAdminId) {
+      throw new ForbiddenException('Cannot impersonate yourself');
+    }
+
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('User not found');
+    if (this.hierarchy.isProtected(target)) {
+      throw new ForbiddenException('Cannot impersonate a Super Admin');
+    }
+
+    await this.prisma.adminImpersonation.create({
+      data: { adminId: actingAdminId, targetUserId, ipAddress },
+    });
+    const impersonationToken = this.impersonation.sign(targetUserId, actingAdminId);
+    await this.logAction(actingAdminId, 'START_IMPERSONATION', 'user', targetUserId);
+    return { impersonationToken, targetUser: target };
+  }
+
+  async endImpersonation(targetUserId: string, adminId: string) {
+    const record = await this.prisma.adminImpersonation.findFirst({
+      where: { adminId, targetUserId, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (record) {
+      await this.prisma.adminImpersonation.update({ where: { id: record.id }, data: { endedAt: new Date() } });
+    }
+    return { success: true };
   }
 
   // Which listing types a curator can manage on behalf of this profile type
@@ -139,6 +202,75 @@ export class AdminService {
     return { user: targetUser, profileType, profile, portfolio, services };
   }
 
+  // Only the fields that are real columns on each profile type's Prisma model
+  // -- deliberately narrower than what an idealized admin form might want
+  // (e.g. no "RERA number" or "delivery radius", since those columns don't
+  // exist yet). Add a field here only once it's actually on the schema.
+  private static readonly PROFILE_FIELDS_BY_TYPE: Record<ProfileType, (keyof UpdateAdminProfileDto)[]> = {
+    contractor: ['contractorType', 'tradeSkills', 'experience', 'serviceCities', 'licenseNumber', 'dailyRate', 'projectRate', 'bio', 'portfolioImages', 'isAvailable'],
+    labour: ['skillType', 'experience', 'serviceCities', 'dailyRate', 'bio', 'portfolioImages', 'isAvailable'],
+    'service-expert': ['expertiseType', 'qualifications', 'experience', 'serviceCities', 'consultationFee', 'bio', 'portfolioImages', 'isAvailable'],
+    'material-supplier': ['businessName', 'gstNumber', 'businessAddress', 'deliveryCities', 'isAvailable'],
+    'land-owner': ['bio', 'isAvailable', 'govtIdVerified'],
+    'property-seller': ['bio', 'isAvailable', 'govtIdVerified'],
+    builder: ['companyName', 'registrationNumber', 'specializations', 'serviceCities', 'bio', 'portfolioImages', 'isAvailable'],
+    'property-agent': ['agencyName', 'licenseNumber', 'serviceCities', 'bio', 'isAvailable'],
+  };
+
+  // Admin edit of "this person" as a whole -- User-level fields (name/phone/
+  // city/state/avatarUrl) plus whatever their profile type actually has,
+  // in one transaction. Mirrors the self-serve profile edit screens rather
+  // than the spec's idealized field list (see PROFILE_FIELDS_BY_TYPE above).
+  async updateUserProfile(userId: string, dto: UpdateAdminProfileDto, actingAdminId: string) {
+    await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!target) throw new NotFoundException('User not found');
+
+    const userData: Record<string, unknown> = {};
+    for (const key of ['name', 'phone', 'city', 'state', 'avatarUrl'] as const) {
+      if (dto[key] !== undefined) userData[key] = dto[key];
+    }
+
+    const profileType = ROLE_TO_PROFILE_TYPE[target.role];
+    const profileData: Record<string, unknown> = {};
+    if (profileType) {
+      for (const key of AdminService.PROFILE_FIELDS_BY_TYPE[profileType]) {
+        if (dto[key] !== undefined) profileData[key] = dto[key];
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userData).length > 0) {
+        await tx.user.update({ where: { id: userId }, data: userData });
+      }
+      if (profileType && Object.keys(profileData).length > 0) {
+        await this.updateProfileByType(tx, profileType, userId, profileData);
+      }
+    });
+
+    await this.logAction(actingAdminId, 'UPDATE_PROFILE', 'user', userId);
+    return this.getUserDetail(userId);
+  }
+
+  private updateProfileByType(
+    tx: Prisma.TransactionClient,
+    type: ProfileType,
+    userId: string,
+    data: Record<string, unknown>,
+  ) {
+    switch (type) {
+      case 'contractor': return tx.contractorProfile.update({ where: { userId }, data });
+      case 'labour': return tx.labourProfile.update({ where: { userId }, data });
+      case 'service-expert': return tx.serviceExpertProfile.update({ where: { userId }, data });
+      case 'material-supplier': return tx.materialSupplierProfile.update({ where: { userId }, data });
+      case 'land-owner': return tx.landOwnerProfile.update({ where: { userId }, data });
+      case 'property-seller': return tx.propertySellerProfile.update({ where: { userId }, data });
+      case 'builder': return tx.builderProfile.update({ where: { userId }, data });
+      case 'property-agent': return tx.propertyAgentProfile.update({ where: { userId }, data });
+      default: throw new BadRequestException('Invalid profile type');
+    }
+  }
+
   async createPortfolioItemFor(targetUserId: string, dto: CreatePortfolioItemDto, adminId: string) {
     const item = await this.portfolio.create(targetUserId, dto);
     await this.logAction(adminId, 'CREATE_PORTFOLIO_ITEM', 'portfolio-item', item.id);
@@ -149,6 +281,20 @@ export class AdminService {
     const item = await this.serviceItems.create(targetUserId, dto);
     await this.logAction(adminId, 'CREATE_SERVICE_ITEM', 'service-item', item.id);
     return item;
+  }
+
+  // Homeowners have no supply-side profile/listing to manage (that's what
+  // the Portfolio/Services blocks are for) -- their equivalent is the
+  // projects they post looking for bids, so this is what the "listings" tab
+  // manages on their behalf instead.
+  getUserProjects(userId: string) {
+    return this.prisma.project.findMany({ where: { ownerId: userId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  async createProjectFor(targetUserId: string, dto: CreateProjectDto, adminId: string) {
+    const project = await this.projects.create(targetUserId, dto);
+    await this.logAction(adminId, 'CREATE_PROJECT', 'project', project.id);
+    return project;
   }
 
   private logAction(adminId: string, action: string, targetType: string, targetId: string) {
@@ -260,7 +406,7 @@ export class AdminService {
   // Admin's access (demoting one is exactly the kind of privilege-escalation
   // path this exists to prevent). Nobody can change their own admin role,
   // regardless of tier, mirroring the self-suspend guard on setUserSuspended.
-  async setAdminRole(targetUserId: string, adminRole: AdminRole, actingAdminId: string) {
+  async setAdminRole(targetUserId: string, adminRole: AdminRole | null, actingAdminId: string) {
     const actingAdmin = await this.assertAdmin(actingAdminId);
 
     if (targetUserId === actingAdminId) {
@@ -429,8 +575,84 @@ export class AdminService {
     });
   }
 
-  setUserSuspended(id: string, isSuspended: boolean) {
-    return this.prisma.user.update({ where: { id }, data: { isSuspended } });
+  async setUserSuspended(id: string, isSuspended: boolean, actingAdminId: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
+    if (!this.hierarchy.canSuspend(actingAdmin, target)) {
+      throw new ForbiddenException("You don't have permission to change this user's status");
+    }
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        isSuspended,
+        accountStatus: isSuspended ? 'SUSPENDED' : 'ACTIVE',
+      },
+    });
+  }
+
+  // The richer status control behind the "Change Status" admin UI — unlike
+  // setUserSuspended (a simple boolean toggle kept for backward compat),
+  // this supports the full restriction spectrum and records history.
+  async setAccountStatus(targetUserId: string, dto: SetAccountStatusDto, actingAdminId: string) {
+    const actingAdmin = await this.assertAdmin(actingAdminId);
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('User not found');
+    if (!this.hierarchy.canSuspend(actingAdmin, target)) {
+      throw new ForbiddenException("You don't have permission to change this user's status");
+    }
+
+    const previousStatus = target.accountStatus;
+    const isSuspendedLike = dto.status === 'SUSPENDED' || dto.status === 'TEMP_SUSPENDED';
+    const wasSuspendedLike = previousStatus === 'SUSPENDED' || previousStatus === 'TEMP_SUSPENDED';
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          accountStatus: dto.status,
+          statusReason: dto.status === 'ACTIVE' ? null : dto.reason,
+          statusExpiresAt: dto.status === 'TEMP_SUSPENDED' ? new Date(dto.expiresAt!) : null,
+          statusUpdatedAt: new Date(),
+          statusUpdatedById: actingAdminId,
+          isSuspended: isSuspendedLike,
+          ...(isSuspendedLike && !wasSuspendedLike ? { suspensionCount: { increment: 1 } } : {}),
+        },
+      });
+
+      await tx.userStatusHistory.create({
+        data: {
+          userId: targetUserId,
+          previousStatus,
+          newStatus: dto.status,
+          reason: dto.reason ?? 'Restored to active',
+          changedById: actingAdminId,
+          expiresAt: dto.status === 'TEMP_SUSPENDED' ? new Date(dto.expiresAt!) : null,
+        },
+      });
+
+      return user;
+    });
+
+    await this.logAction(actingAdminId, 'SET_ACCOUNT_STATUS', 'user', targetUserId);
+
+    if (dto.notifyUser !== false) {
+      await this.notifications.notify(targetUserId, 'account.status_changed', {
+        status: dto.status,
+        reason: dto.reason,
+        expiresAt: updated.statusExpiresAt,
+      });
+    }
+
+    return updated;
+  }
+
+  getStatusHistory(userId: string) {
+    return this.prisma.userStatusHistory.findMany({
+      where: { userId },
+      include: { changedBy: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   // Manually seeds a supply-side user (e.g. an electrician the team recruited

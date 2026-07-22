@@ -1,8 +1,12 @@
 import { createClient } from './supabase';
+import { getImpersonationToken } from './impersonation';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function getAuthHeader(): Promise<Record<string, string>> {
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) return { Authorization: `Bearer ${impersonationToken}` };
+
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return {};

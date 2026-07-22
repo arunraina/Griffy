@@ -1,9 +1,18 @@
 import { createClient } from './supabase';
 import { NotAuthenticatedError } from './users';
+import { getImpersonationToken, type ImpersonationTarget } from './impersonation';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 async function authHeaders(): Promise<Record<string, string>> {
+  // The only admin.ts call expected to fire during active impersonation is
+  // endImpersonation() itself -- the backend needs the impersonation token
+  // to know which admin/target pair to close out.
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) {
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${impersonationToken}` };
+  }
+
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new NotAuthenticatedError();
@@ -13,14 +22,29 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
+export async function startImpersonation(userId: string): Promise<{ impersonationToken: string; targetUser: ImpersonationTarget }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/impersonate`, { method: 'POST', headers });
+  if (!res.ok) throw new Error('Failed to start impersonation');
+  return res.json();
+}
+
+export async function endImpersonation(): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/impersonate/end`, { method: 'DELETE', headers });
+  if (!res.ok) throw new Error('Failed to end impersonation');
+}
+
 export interface AdminProject {
   id: string;
   title: string;
+  description?: string;
   projectType: string;
   city: string;
   state: string;
   budgetMin: string;
   budgetMax: string;
+  timeline?: string;
   status: 'OPEN' | 'AWARDED' | 'CLOSED';
   createdAt: string;
   owner?: { name: string; email: string };
@@ -31,6 +55,25 @@ export async function fetchAdminProjects(status?: string): Promise<AdminProject[
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/projects${status ? `?status=${status}` : ''}`, { headers });
   if (!res.ok) throw new Error('Failed to load projects');
+  return res.json();
+}
+
+export interface CreateAdminProjectPayload {
+  projectType: string; title: string; description: string; city: string; state: string;
+  budgetMin: number; budgetMax: number; timeline: string;
+}
+
+export async function fetchAdminUserProjects(userId: string): Promise<AdminProject[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/projects`, { headers });
+  if (!res.ok) throw new Error('Failed to load projects');
+  return res.json();
+}
+
+export async function createAdminProject(userId: string, payload: CreateAdminProjectPayload): Promise<AdminProject> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${userId}/projects`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to create project');
   return res.json();
 }
 
@@ -194,16 +237,24 @@ export async function fetchEarlyAccessSignups(): Promise<AdminEarlyAccessSignup[
 
 // ── Users (search / suspend) ─────────────────────────────────────────────────
 
+export const ACCOUNT_STATUSES = [
+  'ACTIVE', 'SUSPENDED', 'TEMP_SUSPENDED', 'RESTRICTED_LISTING',
+  'RESTRICTED_BOOKING', 'RESTRICTED_EXPLORE', 'PENDING_REVIEW',
+] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+
 export interface AdminUser {
   id: string; userNumber: number; name: string; email: string; phone: string | null;
   city: string | null; state: string | null;
   role: string; adminRole: string | null; isSuspended: boolean; isFirstParty: boolean; createdAt: string;
+  accountStatus: AccountStatus; statusReason: string | null; statusExpiresAt: string | null;
 }
 
 export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'CONTENT_MODERATOR', 'KYC_MODERATOR', 'HR'] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-export async function setAdminRole(id: string, adminRole: AdminRole): Promise<AdminUser> {
+// adminRole: null removes admin access entirely (reverts to a plain user).
+export async function setAdminRole(id: string, adminRole: AdminRole | null): Promise<AdminUser> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/admin/users/${id}/admin-role`, {
     method: 'PATCH',
@@ -211,6 +262,33 @@ export async function setAdminRole(id: string, adminRole: AdminRole): Promise<Ad
     body: JSON.stringify({ adminRole }),
   });
   if (!res.ok) throw new Error('Failed to update admin role');
+  return res.json();
+}
+
+export interface SetAccountStatusPayload {
+  status: AccountStatus; reason?: string; expiresAt?: string; notifyUser?: boolean;
+}
+
+export async function setAccountStatus(id: string, payload: SetAccountStatusPayload): Promise<AdminUser> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/status`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.message?.[0] ?? 'Failed to change status');
+  return res.json();
+}
+
+export interface AdminStatusHistoryEntry {
+  id: string; previousStatus: AccountStatus; newStatus: AccountStatus; reason: string;
+  expiresAt: string | null; createdAt: string; changedBy: { name: string; email: string } | null;
+}
+
+export async function fetchAdminStatusHistory(id: string): Promise<AdminStatusHistoryEntry[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/status-history`, { headers });
+  if (!res.ok) throw new Error('Failed to load status history');
   return res.json();
 }
 
@@ -264,6 +342,18 @@ export async function fetchAdminUserDetail(id: string): Promise<AdminUserDetail>
   return res.json();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateAdminUserProfile(id: string, patch: Record<string, any>): Promise<AdminUserDetail> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/users/${id}/profile`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error('Failed to update profile');
+  return res.json();
+}
+
 export interface AdminProviderBooking {
   id: string; status: string; scheduledAt: string; amount: string;
   customer?: { id: string; name: string; phone: string | null; email: string };
@@ -278,7 +368,54 @@ export async function fetchAdminUserBookings(id: string): Promise<AdminProviderB
 
 export interface AdminProviderReview {
   id: string; rating: number; comment: string | null; createdAt: string;
-  reviewer?: { name: string; avatarUrl: string | null };
+  reviewer?: { name: string; avatarUrl: string | null } | null;
+  reviewerName: string | null;
+  isAdminAdded: boolean;
+  isVerified: boolean;
+  source: string | null;
+}
+
+// Mirrors AdminService.PROFILE_TYPE_TO_REVIEW_TARGET on the backend — only
+// the profile types that have a real review target.
+export const PROFILE_TYPE_TO_REVIEW_TARGET_TYPE: Partial<Record<ProfileType, string>> = {
+  contractor: 'CONTRACTOR',
+  labour: 'LABOUR',
+  'service-expert': 'SERVICE_EXPERT',
+  'material-supplier': 'MATERIAL_SUPPLIER',
+  builder: 'BUILDER',
+  'property-agent': 'PROPERTY_AGENT',
+};
+
+export const REVIEW_SOURCES = [
+  { value: 'phone_feedback', label: 'Phone feedback' },
+  { value: 'whatsapp_feedback', label: 'WhatsApp feedback' },
+  { value: 'in_person', label: 'In-person feedback' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export interface CreateAdminReviewPayload {
+  targetType: string; targetId: string; rating: number; comment: string;
+  reviewerName: string; reviewerPhone?: string; source?: string;
+}
+
+export async function createAdminReview(payload: CreateAdminReviewPayload): Promise<AdminProviderReview> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Failed to add review');
+  return res.json();
+}
+
+export async function updateAdminReview(id: string, patch: Partial<CreateAdminReviewPayload> & { isVerified?: boolean }): Promise<AdminProviderReview> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews/${id}`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
+  if (!res.ok) throw new Error('Failed to update review');
+  return res.json();
+}
+
+export async function deleteAdminReview(id: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/reviews/${id}`, { method: 'DELETE', headers });
+  if (!res.ok) throw new Error('Failed to delete review');
 }
 
 export async function fetchAdminUserReviews(id: string): Promise<AdminProviderReview[]> {

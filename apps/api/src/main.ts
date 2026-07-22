@@ -16,6 +16,10 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
     credentials: true,
+    // X-Account-Status drives the PENDING_REVIEW banner (AuthGuard sets it);
+    // custom response headers are invisible to browser JS unless listed here,
+    // even same-response, per the fetch spec's "simple response header" rule.
+    exposedHeaders: ['X-Account-Status'],
   });
 
   await app.listen(process.env.PORT ?? 3001);

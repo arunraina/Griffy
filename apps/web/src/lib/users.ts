@@ -1,4 +1,5 @@
 import { createClient } from './supabase';
+import { getImpersonationToken } from './impersonation';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -13,6 +14,10 @@ export class NotAuthenticatedError extends Error {
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) {
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${impersonationToken}` };
+  }
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new NotAuthenticatedError();
