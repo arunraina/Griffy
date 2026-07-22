@@ -610,3 +610,69 @@ export async function createRefund(orderId: string, reason: string, amount?: num
   }
   return res.json();
 }
+
+// ── Blog ──────────────────────────────────────────────────────────────────────
+
+export interface AdminBlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  author: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  publishedAt: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  tags: string[];
+  featuredImage: string | null;
+  readTimeMinutes: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogPostPayload {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  author: string;
+  status?: 'DRAFT' | 'PUBLISHED';
+  metaTitle?: string;
+  metaDescription?: string;
+  tags?: string[];
+  readTimeMinutes?: number;
+}
+
+export async function fetchAdminBlogPosts(): Promise<AdminBlogPost[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/blog`, { headers });
+  if (!res.ok) throw new Error('Failed to load blog posts');
+  return res.json();
+}
+
+export async function createBlogPost(payload: BlogPostPayload): Promise<AdminBlogPost> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/blog`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to create post');
+  }
+  return res.json();
+}
+
+export async function updateBlogPost(id: string, payload: Partial<BlogPostPayload>): Promise<AdminBlogPost> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/blog/${id}`, { method: 'PATCH', headers, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? 'Failed to update post');
+  }
+  return res.json();
+}
+
+export async function deleteBlogPost(id: string): Promise<void> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/admin/blog/${id}`, { method: 'DELETE', headers });
+  if (!res.ok) throw new Error('Failed to delete post');
+}

@@ -15,6 +15,7 @@ const NAV = [
   { href: '/admin/approvals',    icon: '✅', label: 'Profile Approvals',   sections: 'ALL' as const },
   { href: '/admin/kyc',          icon: '🪪', label: 'KYC Review',          sections: ['KYC'] },
   { href: '/admin/moderation',   icon: '🚩', label: 'Content Moderation',  sections: ['CONTENT_MODERATION'] },
+  { href: '/admin/blog',         icon: '📝', label: 'Blog',                sections: ['CONTENT_MODERATION'] },
   { href: '/admin/reports',      icon: '⚑', label: 'User Reports',        sections: ['CONTENT_MODERATION', 'REPORTS'] },
   { href: '/admin/users',        icon: '👥', label: 'Users',               sections: 'ALL' as const },
   { href: '/admin/orders',       icon: '📦', label: 'Orders & Refunds',    sections: 'ALL' as const },
