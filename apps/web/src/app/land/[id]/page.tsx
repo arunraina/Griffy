@@ -5,7 +5,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchLand(id: string): Promise<any | null> {
   try {
-    const res = await fetch(`${API_BASE}/lands/${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/lands/${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }

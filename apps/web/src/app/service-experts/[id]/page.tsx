@@ -5,7 +5,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchProfile(id: string): Promise<any | null> {
   try {
-    const res = await fetch(`${API_BASE}/service-expert-profiles/${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/service-expert-profiles/${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -14,7 +14,7 @@ async function fetchProfile(id: string): Promise<any | null> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchReviews(id: string): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}/reviews?targetType=SERVICE_EXPERT&targetId=${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/reviews?targetType=SERVICE_EXPERT&targetId=${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];

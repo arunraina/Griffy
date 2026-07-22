@@ -38,7 +38,7 @@ function mapMaterial(m: any): Product {
 
 async function fetchMaterials(): Promise<Product[]> {
   try {
-    const res = await fetch(`${API_BASE}/materials`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/materials`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return (data ?? []).map(mapMaterial);

@@ -78,7 +78,7 @@ function mapProperty(p: any): Property {
 
 async function fetchProperties(): Promise<Property[]> {
   try {
-    const res = await fetch(`${API_BASE}/properties`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/properties`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return (data ?? []).map(mapProperty);
