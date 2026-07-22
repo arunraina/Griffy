@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { LandsService } from './lands.service';
@@ -10,6 +10,7 @@ export class LandsController {
   constructor(private readonly lands: LandsService) {}
 
   @Get()
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findAll(@Query('city') city?: string, @Query('landType') landType?: LandType) {
     return this.lands.findAll(city, landType);
   }
@@ -21,6 +22,7 @@ export class LandsController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findOne(@Param('id') id: string) {
     return this.lands.findOne(id);
   }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { MaterialsService } from './materials.service';
@@ -10,6 +10,7 @@ export class MaterialsController {
   constructor(private readonly materials: MaterialsService) {}
 
   @Get()
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findAll(
     @Query('search') search?: string,
     @Query('category') category?: string,
@@ -19,6 +20,7 @@ export class MaterialsController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findOne(@Param('id') id: string) {
     return this.materials.findOne(id);
   }

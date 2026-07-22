@@ -30,6 +30,16 @@ async function bootstrap() {
   });
 
   await app.listen(process.env.PORT ?? 3001);
+
+  // Railway's edge proxy keeps connections alive for ~60s. Node's default
+  // keepAliveTimeout (5s) is shorter than that, so under load the proxy can
+  // send a request on a socket the app has already started closing --
+  // sporadic ECONNRESET on the client side. Raising both past the proxy's
+  // window (headersTimeout must exceed keepAliveTimeout, per Node's docs)
+  // avoids that race.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
 }
 
 bootstrap();

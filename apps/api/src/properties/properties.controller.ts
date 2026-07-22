@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PropertiesService } from './properties.service';
@@ -10,6 +10,7 @@ export class PropertiesController {
   constructor(private readonly properties: PropertiesService) {}
 
   @Get()
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findAll(@Query('city') city?: string, @Query('propertyType') propertyType?: PropertyType) {
     return this.properties.findAll(city, propertyType);
   }
@@ -21,6 +22,7 @@ export class PropertiesController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findOne(@Param('id') id: string) {
     return this.properties.findOne(id);
   }

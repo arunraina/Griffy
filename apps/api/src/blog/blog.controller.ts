@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '@prisma/client';
@@ -11,11 +11,13 @@ export class BlogController {
   constructor(private readonly blog: BlogService) {}
 
   @Get()
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
   findPublished() {
     return this.blog.findPublished();
   }
 
   @Get(':slug')
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
   findBySlug(@Param('slug') slug: string) {
     return this.blog.findPublishedBySlug(slug);
   }
