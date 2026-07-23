@@ -139,7 +139,7 @@ export default function Navbar() {
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
                       <span className="text-base">📦</span> Orders
                     </Link>
-                    <Link href="/dashboard/home" onClick={() => setAccountOpen(false)}
+                    <Link href="/home" onClick={() => setAccountOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
                       <span className="text-base">📊</span> Dashboard
                     </Link>
@@ -275,7 +275,7 @@ export default function Navbar() {
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Orders
                   </Link>
-                  <Link href="/dashboard/home" onClick={() => setMenuOpen(false)}
+                  <Link href="/home" onClick={() => setMenuOpen(false)}
                     className="text-sm font-semibold text-[#C0593A] py-1">
                     Dashboard
                   </Link>

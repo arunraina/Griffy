@@ -70,14 +70,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (checking) return;
     if (!me?.adminRole) {
-      router.replace('/dashboard/home');
+      router.replace('/home');
       return;
     }
     // A scoped admin (e.g. KYC Moderator) hitting a section they can't use
     // — including the default '/admin' dashboard, which is full-access-only
     // — lands on their first permitted page instead.
     if (!nav.some((item) => isNavItemActive(item.href, pathname))) {
-      router.replace(nav[0]?.href ?? '/dashboard/home');
+      router.replace(nav[0]?.href ?? '/home');
     }
   }, [checking]); // eslint-disable-line react-hooks/exhaustive-deps
 

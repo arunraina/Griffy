@@ -19,7 +19,7 @@ export default function HomeHero() {
   // decided by the fast check has no such window.
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard/home');
+      router.replace('/home');
     }
   }, [loading, user, router]);
 

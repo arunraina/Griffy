@@ -1,4 +1,19 @@
+import { createClient } from './supabase';
+import { getImpersonationToken } from './impersonation';
+import { NotAuthenticatedError } from './users';
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const impersonationToken = getImpersonationToken();
+  if (impersonationToken) {
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${impersonationToken}` };
+  }
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new NotAuthenticatedError();
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` };
+}
 
 export interface PublicServiceItem {
   id: string;
@@ -37,4 +52,29 @@ export async function fetchPublicServiceItems(
   } catch {
     return [];
   }
+}
+
+export interface CreateServiceItemInput {
+  profileType: 'contractor' | 'labour' | 'service-expert';
+  name: string;
+  category: string;
+  price: number; // paise
+  priceUnit: PublicServiceItem['priceUnit'];
+}
+
+// Self-serve -- the server resolves profileId from the caller's own
+// profile, same route the admin panel's quick-add already writes to.
+export async function createMyServiceItem(input: CreateServiceItemInput): Promise<PublicServiceItem> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/service-items`, { method: 'POST', headers, body: JSON.stringify(input) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to add service (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function deleteMyServiceItem(id: string): Promise<void> {
+  const headers = await authHeaders();
+  await fetch(`${API}/service-items/${id}`, { method: 'DELETE', headers });
 }

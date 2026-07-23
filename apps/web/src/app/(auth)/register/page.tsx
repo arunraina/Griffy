@@ -13,7 +13,7 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.auth.signUp({ email, password });
-    if (!error) router.push('/dashboard/home');
+    if (!error) router.push('/home');
   }
 
   return (

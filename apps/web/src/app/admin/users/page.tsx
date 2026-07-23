@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
     try {
       const { impersonationToken, targetUser } = await startImpersonation(impersonateTarget.id);
       beginImpersonation(impersonationToken, { id: targetUser.id, name: targetUser.name, role: targetUser.role });
-      window.location.href = '/dashboard/home';
+      window.location.href = '/home';
     } catch (e) {
       setImpersonateError(e instanceof Error ? e.message : 'Failed to start impersonation');
       setImpersonating(false);

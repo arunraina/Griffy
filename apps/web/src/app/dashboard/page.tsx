@@ -79,7 +79,7 @@ function DashboardPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, me, loading, meLoading } = useAuth();
-  // Lets cards elsewhere (e.g. /dashboard/home) deep-link straight into a
+  // Lets cards elsewhere (e.g. /home) deep-link straight into a
   // specific tab, e.g. /dashboard?tab=bookings — falls back to the default
   // Overview tab when absent or unrecognized.
   const [tab, setTab] = useState(searchParams.get('tab') || 'overview');
