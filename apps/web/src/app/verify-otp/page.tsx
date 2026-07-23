@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
-import { verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp } from '@/lib/auth';
+import { verifyEmailOtp } from '@/lib/auth';
+import { sendPhoneOtp, verifyPhoneOtp } from '@/lib/phone-auth';
 
 type Mode = 'email' | 'wp-phone' | 'wp-otp';
 

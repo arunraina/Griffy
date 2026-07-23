@@ -4,7 +4,8 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
-import { signInWithGoogle, signInWithEmail, sendEmailOtp, sendPhoneOtp } from '@/lib/auth';
+import { signInWithGoogle, signInWithEmail, sendEmailOtp } from '@/lib/auth';
+import { sendPhoneOtp } from '@/lib/phone-auth';
 
 type Tab = 'mobile' | 'email';
 type EmailSubTab = 'magic' | 'password';
