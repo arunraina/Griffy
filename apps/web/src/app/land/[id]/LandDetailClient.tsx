@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { shareOrCopyLink } from '@/lib/share';
+import { createEnquiry } from '@/lib/enquiries';
 import ReportModal from '@/components/ReportModal';
 
 interface LandListing {
@@ -70,10 +71,19 @@ export default function LandDetailClient({ listing: l, openContact }: Props) {
   const postedDaysAgo = Math.max(0, Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000));
   const pricePerSqft  = l.areaSqFt > 0 ? Math.round(l.price / l.areaSqFt) : 0;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     trackEvent('generate_lead', { item_id: l.id, item_category: 'land' });
+    try {
+      await createEnquiry({
+        targetType: 'LAND',
+        landId: l.id,
+        message: message || `Interested in this land. Contact: ${name}, ${phone}`,
+      });
+    } catch {
+      // Best-effort -- see PropertyDetailClient.tsx's identical handling.
+    }
   }
 
   useEffect(() => {

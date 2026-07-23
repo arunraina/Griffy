@@ -40,6 +40,7 @@ export class LandsService {
       include: { owner: { select: { user: { select: { name: true, phone: true } } } } },
     });
     if (!land || land.isHidden) throw new NotFoundException('Land listing not found');
+    this.prisma.land.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
     return land;
   }
 

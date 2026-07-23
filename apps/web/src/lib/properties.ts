@@ -22,18 +22,56 @@ export interface PropertyListing {
   id: string;
   title: string;
   propertyType: string;
+  furnishing: string;
   areaSqFt: string;
   price: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
   city: string;
   state: string;
   listingType: string;
   isAvailable: boolean;
+  viewCount: number;
   createdAt: string;
+}
+
+export interface CreatePropertyInput {
+  title: string;
+  description?: string;
+  propertyType: string;
+  furnishing: string;
+  areaSqFt: number;
+  price: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  location: string;
+  city: string;
+  state: string;
 }
 
 export async function fetchMyProperties(): Promise<PropertyListing[]> {
   const headers = await authHeaders();
   const res = await fetch(`${API}/properties/mine`, { headers });
   if (!res.ok) return [];
+  return res.json();
+}
+
+export async function createMyProperty(input: CreatePropertyInput): Promise<PropertyListing> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/properties`, { method: 'POST', headers, body: JSON.stringify(input) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to create listing (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function updateMyProperty(id: string, input: Partial<CreatePropertyInput> & { isAvailable?: boolean }): Promise<PropertyListing> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API}/properties/${id}`, { method: 'PATCH', headers, body: JSON.stringify(input) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? `Failed to update listing (${res.status})`);
+  }
   return res.json();
 }

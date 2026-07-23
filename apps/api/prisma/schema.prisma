@@ -192,6 +192,7 @@ model User {
   turnkeyProjectsAsProvider TurnkeyProject[] @relation("TurnkeyProjectProvider")
   kycDetail                 KycDetail?
   refundsInitiated          Refund[]
+  enquiriesMade             Enquiry[]
   conversationsAsUserA      Conversation[]   @relation("ConversationUserA")
   conversationsAsUserB      Conversation[]   @relation("ConversationUserB")
   messagesSent              Message[]        @relation("MessageSender")
@@ -716,6 +717,7 @@ model Land {
   longitude      Float?
   imageUrls      String[]                 @map("image_urls")
   isAvailable    Boolean                  @default(true) @map("is_available")
+  viewCount      Int                      @default(0) @map("view_count")
   isHidden       Boolean                  @default(false) @map("is_hidden")
   isDemoted      Boolean                  @default(false) @map("is_demoted")
   moderationNote String?                  @map("moderation_note")
@@ -723,7 +725,8 @@ model Land {
   updatedAt      DateTime                 @updatedAt @map("updated_at")
   searchVector   Unsupported("tsvector")? @map("search_vector")
 
-  reviews Review[]
+  reviews   Review[]
+  enquiries Enquiry[]
 
   @@map("lands")
 }
@@ -752,6 +755,7 @@ model Property {
   imageUrls      String[]                 @map("image_urls")
   listingType    String                   @default("buy") @map("listing_type")
   isAvailable    Boolean                  @default(true) @map("is_available")
+  viewCount      Int                      @default(0) @map("view_count")
   isHidden       Boolean                  @default(false) @map("is_hidden")
   isDemoted      Boolean                  @default(false) @map("is_demoted")
   moderationNote String?                  @map("moderation_note")
@@ -759,9 +763,49 @@ model Property {
   updatedAt      DateTime                 @updatedAt @map("updated_at")
   searchVector   Unsupported("tsvector")? @map("search_vector")
 
-  reviews Review[]
+  reviews   Review[]
+  enquiries Enquiry[]
 
   @@map("properties")
+}
+
+// ---------------------------------------------------------------------------
+// Enquiry — someone expressing interest in a Property/Land listing.
+// Distinct from Booking (hiring a service provider) and Project/Bid (open
+// RFQ) -- shared across the Property Seller, Property Agent and Land Owner
+// dashboards rather than built three times.
+// ---------------------------------------------------------------------------
+
+enum EnquiryTargetType {
+  PROPERTY
+  LAND
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  NEGOTIATING
+  CLOSED
+}
+
+model Enquiry {
+  id         String            @id @default(uuid())
+  enquirerId String            @map("enquirer_id")
+  enquirer   User              @relation(fields: [enquirerId], references: [id])
+  targetType EnquiryTargetType @map("target_type")
+  propertyId String?           @map("property_id")
+  property   Property?         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  landId     String?           @map("land_id")
+  land       Land?             @relation(fields: [landId], references: [id], onDelete: Cascade)
+  message    String
+  status     EnquiryStatus     @default(NEW)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  @@index([propertyId])
+  @@index([landId])
+  @@map("enquiries")
 }
 
 // ---------------------------------------------------------------------------

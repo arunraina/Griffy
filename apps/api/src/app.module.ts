@@ -40,6 +40,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ServiceItemsModule } from './service-items/service-items.module';
 import { BlogModule } from './blog/blog.module';
 import { ProfileLookupModule } from './profile-lookup/profile-lookup.module';
+import { EnquiriesModule } from './enquiries/enquiries.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -98,6 +99,7 @@ import { AppController } from './app.controller';
     ReportsModule,
     DashboardModule,
     ServiceItemsModule,
+    EnquiriesModule,
     BlogModule,
     ProfileLookupModule,
   ],

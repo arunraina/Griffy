@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 import { shareOrCopyLink } from '@/lib/share';
+import { createEnquiry } from '@/lib/enquiries';
 import ReportModal from '@/components/ReportModal';
 
 interface PropertyListing {
@@ -109,10 +110,21 @@ export default function PropertyDetailClient({ listing: l }: Props) {
                  : isNew  ? { label: 'New Project', color: 'bg-purple-50 text-purple-700 border-purple-200' }
                  :          { label: 'For Sale', color: 'bg-green-50 text-green-700 border-green-200' };
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     trackEvent('generate_lead', { item_id: l.id, item_category: 'property', listing_type: l.listingType });
+    try {
+      await createEnquiry({
+        targetType: 'PROPERTY',
+        propertyId: l.id,
+        message: message || `Interested in this property. Contact: ${name}, ${phone}`,
+      });
+    } catch {
+      // Enquiry persistence is best-effort here -- the seller's phone/name
+      // were already captured above, and the visible "submitted" state
+      // (contact-shortly copy) doesn't depend on this succeeding.
+    }
   }
 
   useEffect(() => {

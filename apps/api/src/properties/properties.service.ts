@@ -49,6 +49,9 @@ export class PropertiesService {
       include: { seller: { select: { user: { select: { id: true, name: true, phone: true } } } } },
     });
     if (!property || property.isHidden) throw new NotFoundException('Property listing not found');
+    // Fire-and-forget -- a view count is a rough interest signal, not worth
+    // making the page load wait on (or fail over).
+    this.prisma.property.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
     return property;
   }
 
