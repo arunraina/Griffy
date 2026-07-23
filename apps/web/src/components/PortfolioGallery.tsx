@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { fetchPortfolio, type PortfolioItem, type PortfolioProfileType } from '@/lib/portfolio';
 
 export default function PortfolioGallery({ profileType, profileId }: { profileType: PortfolioProfileType; profileId: string }) {
@@ -31,8 +32,7 @@ export default function PortfolioGallery({ profileType, profileId }: { profileTy
             onClick={() => setActive({ item, imageIndex: 0 })}
             className="relative rounded-xl overflow-hidden aspect-video group"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.imageUrls[0]} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <Image src={item.imageUrls[0]} alt={item.title} fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover group-hover:scale-105 transition-transform" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end p-2">
               <p className="text-white text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity truncate">{item.title}</p>
             </div>
@@ -52,6 +52,11 @@ export default function PortfolioGallery({ profileType, profileId }: { profileTy
         >
           <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
             <div className="relative bg-black rounded-xl overflow-hidden">
+              {/* Left as a plain <img>: this box sizes itself to the photo's
+                  own natural aspect ratio (arbitrary per portfolio item), which
+                  next/image's fill/width+height modes can't express without
+                  either guessing dimensions or forcing every photo into one
+                  fixed ratio -- not a safe swap here. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={active.item.imageUrls[active.imageIndex]}

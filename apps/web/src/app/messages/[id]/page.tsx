@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { fetchConversation, fetchMessages, sendChatMessage, markConversationRead, type Message } from '@/lib/chat';
 import { fetchMe, NotAuthenticatedError } from '@/lib/users';
@@ -88,8 +89,9 @@ export default function ConversationPage() {
         <div className="flex items-center gap-3 mb-4">
           <Link href="/messages" className="text-[#A08070] hover:text-[#C0593A] text-lg">←</Link>
           {otherAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={otherAvatar} alt={otherName} className="w-9 h-9 rounded-xl object-cover" />
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden">
+              <Image src={otherAvatar} alt={otherName} fill sizes="36px" className="object-cover" />
+            </div>
           ) : (
             <div className="w-9 h-9 rounded-xl bg-[#FAEEE9] text-[#C0593A] text-xs font-bold flex items-center justify-center">
               {initials}

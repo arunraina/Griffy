@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { trackEvent } from '@/lib/analytics';
@@ -129,8 +130,7 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
               {/* Main image */}
               <div className="relative bg-gray-50 flex items-center justify-center" style={{ minHeight: 320 }}>
                 {m.imageUrls.length > 0 ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.imageUrls[activeImage]} alt={m.name} className="max-h-80 w-full object-contain p-6" />
+                  <Image src={m.imageUrls[activeImage]} alt={m.name} fill sizes="(max-width: 768px) 100vw, 640px" className="object-contain p-6" />
                 ) : (
                   <div className="flex flex-col items-center gap-2 py-16">
                     <span className="text-6xl">🏗️</span>
@@ -147,9 +147,8 @@ export default function MaterialDetailClient({ material: m, reviews }: Props) {
                 <div className="flex gap-2 px-6 pb-4 overflow-x-auto">
                   {m.imageUrls.map((url, i) => (
                     <button key={i} onClick={() => setActiveImage(i)}
-                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${activeImage === i ? 'border-[#C0593A]' : 'border-gray-200 hover:border-[#C0593A]/50'}`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`${m.name} ${i + 1}`} className="w-full h-full object-cover" />
+                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${activeImage === i ? 'border-[#C0593A]' : 'border-gray-200 hover:border-[#C0593A]/50'}`}>
+                      <Image src={url} alt={`${m.name} ${i + 1}`} fill sizes="64px" className="object-cover" />
                     </button>
                   ))}
                 </div>

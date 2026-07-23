@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import {
   fetchPortfolio, createPortfolioItem, updatePortfolioItem, deletePortfolioItem,
   type PortfolioItem, type PortfolioProfileType,
@@ -100,8 +101,9 @@ export default function PortfolioTab({ role }: { role: string }) {
             <div key={item.id} className="bg-white rounded-2xl border border-[#EBE0D8] shadow-sm overflow-hidden">
               <div className="grid grid-cols-3 gap-0.5">
                 {item.imageUrls.slice(0, 3).map((url, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={url} alt="" className="w-full aspect-square object-cover" />
+                  <div key={i} className="relative w-full aspect-square">
+                    <Image src={url} alt="" fill sizes="150px" className="object-cover" />
+                  </div>
                 ))}
               </div>
               <div className="p-3">
@@ -222,8 +224,7 @@ function PortfolioItemForm({
         <div className="grid grid-cols-4 gap-2 mb-2">
           {imageUrls.map((url) => (
             <div key={url} className="relative aspect-square">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="w-full h-full object-cover rounded-lg" />
+              <Image src={url} alt="" fill sizes="100px" className="object-cover rounded-lg" />
               <button
                 onClick={() => removeImage(url)}
                 className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"

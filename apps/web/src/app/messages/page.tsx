@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { fetchConversations, type Conversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
@@ -79,8 +80,9 @@ export default function MessagesPage() {
                 <Link key={c.id} href={`/messages/${c.id}`}
                   className="flex items-center gap-4 bg-white rounded-2xl border border-[#EBE0D8] shadow-sm p-4 hover:border-[#D8B8A8] transition-colors">
                   {c.otherUser.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.otherUser.avatarUrl} alt={c.otherUser.name} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden flex-shrink-0">
+                      <Image src={c.otherUser.avatarUrl} alt={c.otherUser.name} fill sizes="44px" className="object-cover" />
+                    </div>
                   ) : (
                     <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] text-[#C0593A] text-sm font-bold flex items-center justify-center flex-shrink-0">
                       {initials}

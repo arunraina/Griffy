@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   fetchAdminUserDetail, createAdminPortfolioItem, createAdminServiceItem,
@@ -375,8 +376,9 @@ export default function AdminUserDetailPage() {
                   {portfolio.map((p) => (
                     <div key={p.id} className="border border-[#EBE0D8] rounded-xl overflow-hidden">
                       {p.imageUrls[0] && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imageUrls[0]} alt={p.title} className="w-full h-24 object-cover" />
+                        <div className="relative w-full h-24">
+                          <Image src={p.imageUrls[0]} alt={p.title} fill sizes="200px" className="object-cover" />
+                        </div>
                       )}
                       <div className="p-2">
                         <p className="text-xs font-semibold text-[#2C1810] truncate">{p.title}</p>
