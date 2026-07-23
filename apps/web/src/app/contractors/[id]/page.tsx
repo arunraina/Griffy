@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import ContractorDetailClient from './ContractorDetailClient';
 import { buildMetadata } from '@/lib/seo';
+import { fetchPublicServiceItems } from '@/lib/serviceItems';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -45,9 +46,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function ContractorDetailPage({ params }: { params: { id: string } }) {
-  const [raw, reviews] = await Promise.all([
+  const [raw, reviews, serviceItems] = await Promise.all([
     fetchProfile(params.id),
     fetchReviews(params.id),
+    fetchPublicServiceItems('contractor', params.id),
   ]);
 
   if (!raw) {
@@ -117,7 +119,7 @@ export default async function ContractorDetailPage({ params }: { params: { id: s
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ContractorDetailClient profile={profile} reviews={reviews} />
+      <ContractorDetailClient profile={profile} reviews={reviews} serviceItems={serviceItems} />
     </>
   );
 }

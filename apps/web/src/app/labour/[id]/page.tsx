@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import LabourDetailClient from './LabourDetailClient';
 import { buildMetadata } from '@/lib/seo';
+import { fetchPublicServiceItems } from '@/lib/serviceItems';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -42,9 +43,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function LabourDetailPage({ params }: { params: { id: string } }) {
-  const [raw, reviews] = await Promise.all([
+  const [raw, reviews, serviceItems] = await Promise.all([
     fetchProfile(params.id),
     fetchReviews(params.id),
+    fetchPublicServiceItems('labour', params.id),
   ]);
 
   if (!raw) {
@@ -113,7 +115,7 @@ export default async function LabourDetailPage({ params }: { params: { id: strin
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <LabourDetailClient profile={profile} reviews={reviews} />
+      <LabourDetailClient profile={profile} reviews={reviews} serviceItems={serviceItems} />
     </>
   );
 }

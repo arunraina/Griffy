@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createBooking } from '@/lib/bookings';
 import { trackEvent } from '@/lib/analytics';
 
@@ -11,17 +11,27 @@ interface Props {
   providerId: string;
   providerRole: string;
   ctaLabel?: string;
+  // Prefills the description when opened for a specific listed service item
+  // (e.g. "Regarding: AC Installation — ₹500/visit") rather than a blank
+  // generic request -- the booking itself still has no service-item link in
+  // the schema, so this is carried as plain text in notes, same as the
+  // location/description fields already are.
+  initialDescription?: string;
 }
 
 const inp = 'w-full bg-[#FDF8F5] border border-[#EBE0D8] rounded-lg px-4 py-3 text-sm text-[#2C1810] placeholder-[#A08070] outline-none focus:border-[#C0593A] transition-colors';
 
-export default function BookingModal({ open, onClose, providerName, providerId, providerRole, ctaLabel = 'Send Request' }: Props) {
+export default function BookingModal({ open, onClose, providerName, providerId, providerRole, ctaLabel = 'Send Request', initialDescription = '' }: Props) {
   const [date,        setDate]        = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(initialDescription);
   const [location,    setLocation]    = useState('');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
   const [success,     setSuccess]     = useState(false);
+
+  useEffect(() => {
+    if (open) setDescription(initialDescription);
+  }, [open, initialDescription]);
 
   if (!open) return null;
 

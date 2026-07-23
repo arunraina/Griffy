@@ -16,6 +16,7 @@ import { checkReviewEligibility, type ReviewEligibility } from '@/lib/reviews';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 import { shareOrCopyLink } from '@/lib/share';
+import { formatServiceItemPrice, type PublicServiceItem } from '@/lib/serviceItems';
 
 interface Review {
   id: string;
@@ -49,13 +50,20 @@ interface ContractorProfile {
 interface Props {
   profile: ContractorProfile;
   reviews: Review[];
+  serviceItems: PublicServiceItem[];
 }
 
-export default function ContractorDetailClient({ profile: p, reviews }: Props) {
+export default function ContractorDetailClient({ profile: p, reviews, serviceItems }: Props) {
   const router = useRouter();
   const [bioExpanded,    setBioExpanded]    = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [modalOpen,      setModalOpen]      = useState(false);
+  const [bookingPrefill, setBookingPrefill] = useState('');
+
+  function openBookingFor(item?: PublicServiceItem) {
+    setBookingPrefill(item ? `Regarding: ${item.name} — ${formatServiceItemPrice(item)}` : '');
+    setModalOpen(true);
+  }
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [eligibility,    setEligibility]    = useState<ReviewEligibility | null>(null);
   const [messaging,      setMessaging]      = useState(false);
@@ -229,6 +237,29 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
               </Section>
             )}
 
+            {/* Services Offered */}
+            {serviceItems.length > 0 && (
+              <Section title="Services Offered">
+                <div className="space-y-3">
+                  {serviceItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-4 border border-[#EBE0D8] rounded-xl p-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#2C1810]">{item.name}</p>
+                        {item.description && <p className="text-xs text-[#6B5248] mt-0.5">{item.description}</p>}
+                        <p className="text-sm font-bold text-[#C0593A] mt-1">{formatServiceItemPrice(item)}</p>
+                      </div>
+                      <button
+                        onClick={() => openBookingFor(item)}
+                        className="shrink-0 bg-[#C0593A] hover:bg-[#9E3F24] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+                      >
+                        Book This
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {/* Portfolio */}
             <Section title="Portfolio">
               <PortfolioGallery profileType="contractor" profileId={p.id} />
@@ -341,7 +372,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
                 </div>
               )}
 
-              <button onClick={() => setModalOpen(true)}
+              <button onClick={() => openBookingFor()}
                 className="w-full bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold py-3.5 rounded-xl transition-colors text-sm">
                 Request Quote
               </button>
@@ -389,7 +420,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
               {rate && rate > 0 ? `₹${rate.toLocaleString('en-IN')}/${p.projectRate ? 'project' : 'day'}` : 'Rate on request'}
             </p>
           </div>
-          <button onClick={() => setModalOpen(true)}
+          <button onClick={() => openBookingFor()}
             className="bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
             Request Quote
           </button>
@@ -404,6 +435,7 @@ export default function ContractorDetailClient({ profile: p, reviews }: Props) {
         providerId={p.userId}
         providerRole="CONTRACTOR"
         ctaLabel="Send Request"
+        initialDescription={bookingPrefill}
       />
       <WriteReviewModal
         open={reviewModalOpen}
