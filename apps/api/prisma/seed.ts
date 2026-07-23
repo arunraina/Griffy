@@ -21,6 +21,7 @@ const IDS = {
     'c0000002-0000-0000-0000-000000000003',
     'c0000002-0000-0000-0000-000000000004',
     'c0000002-0000-0000-0000-000000000005',
+    'c0000002-0000-0000-0000-000000000006',
   ],
   serviceExperts: [
     'c0000003-0000-0000-0000-000000000001',
@@ -138,13 +139,17 @@ async function main() {
       user: { id: IDS.labour[4], name: 'Savita Sharma', email: 'savita.sharma@seed.griffy.dev', phone: '+919419000015', role: UserRole.LABOUR },
       profile: { skillType: 'Painter', experience: '6 years', serviceCities: ['Jammu', 'Srinagar'], dailyRate: 800, isAvailable: true, bio: 'Skilled painter based in Jammu. Specializes in interior painting, decorative finishes, and anti-fungal coatings suitable for J&K\'s seasonal humidity.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.5, totalReviews: 15 },
     },
+    {
+      user: { id: IDS.labour[5], name: 'Bashir Ahmad Ganie', email: 'bashir.ganie@seed.griffy.dev', phone: '+919419000016', role: UserRole.LABOUR },
+      profile: { skillType: 'Agricultural & Farm Labour', experience: '11 years', serviceCities: ['Anantnag', 'Baramulla', 'Srinagar'], dailyRate: 700, isAvailable: true, bio: 'Experienced farm labourer from Anantnag available for seasonal agricultural work across the Kashmir valley — paddy field preparation and puddling, wheat harvesting, orchard maintenance, and general farm labour.', approvalStatus: ApprovalStatus.APPROVED, approvedAt: NOW, avgRating: 4.6, totalReviews: 8 },
+    },
   ];
 
   for (const { user, profile } of labourProfiles) {
     await prisma.user.upsert({ where: { id: user.id }, update: {}, create: user });
     await prisma.labourProfile.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id, ...profile } });
   }
-  console.log('✅ 5 labour profiles seeded');
+  console.log('✅ 6 labour profiles seeded');
 
   // ── Reviews for Ghulam Nabi Sofi (labour[0]) ─────────────────────────────
   const ghulamnProfile = await prisma.labourProfile.findUnique({ where: { userId: IDS.labour[0] } });

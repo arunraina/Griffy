@@ -47,17 +47,20 @@ export const FEATURE_FLAGS: Record<string, CategoryFlag> = {
     description: 'Hire masons, carpenters, painters & daily workers',
     icon: '👷',
     subcategories: {
-      mason:       { enabled: true,  name: 'Mason / Mistri',        icon: '🧱' },
-      carpenter:   { enabled: true,  name: 'Carpenter',             icon: '🪚' },
-      painter:     { enabled: true,  name: 'Painter',               icon: '🎨' },
-      tile_fixer:  { enabled: true,  name: 'Tile Fixer',            icon: '🪟' },
-      helper:      { enabled: true,  name: 'Helper / General Labour',icon: '👷' },
-      welder:      { enabled: true, name: 'Welder',                icon: '🔧' },
-      scaffolding: { enabled: true, name: 'Scaffolding Worker',    icon: '🪜' },
-      // Day-rate hire, distinct from the Service Experts category below
-      // (bookable specialists) — same trade, different engagement model.
-      electrician: { enabled: true, name: 'Electrician',           icon: '⚡' },
-      plumber:     { enabled: true, name: 'Plumber',                icon: '🔧' },
+      mason:                { enabled: true, name: 'Mason / Mistri',            icon: '🧱' },
+      carpenter:            { enabled: true, name: 'Carpenter',                 icon: '🪚' },
+      painter:              { enabled: true, name: 'Painter',                  icon: '🎨' },
+      tile_fixer:           { enabled: true, name: 'Tile Fixer',                icon: '🪟' },
+      helper:               { enabled: true, name: 'Helper / General Labour',   icon: '👷' },
+      welder:               { enabled: true, name: 'Welder',                   icon: '🔧' },
+      scaffolding:          { enabled: true, name: 'Scaffolding Worker',        icon: '🪜' },
+      grass_cutting:        { enabled: true, name: 'Grass Cutting & Gardening', icon: '🌱' },
+      loading_labour:       { enabled: true, name: 'Loading & Unloading',       icon: '📦' },
+      general_construction: { enabled: true, name: 'General Construction Labour', icon: '🚧' },
+      house_cleaning:       { enabled: true, name: 'House Cleaning',            icon: '🧹' },
+      agricultural_labour:  { enabled: true, name: 'Agricultural & Farm Labour', icon: '🌾' },
+      // Electrician/Plumber deliberately excluded here -- those are bookable
+      // Service Experts specialists (below), not day-rate labour hire.
     },
   },
 

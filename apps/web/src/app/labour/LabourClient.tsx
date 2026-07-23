@@ -50,9 +50,15 @@ function LabourInner({ profiles }: { profiles: LabourProfile[] }) {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen]   = useState(false);
 
-  // Matches the `labour` category's subcategories in lib/featureFlags.ts.
-  // Electrical/Plumbing are deliberately excluded — those are Service Experts, not Labour.
-  const SKILLS = ['Mason', 'Carpenter', 'Painter', 'Tile Fixer', 'Helper', 'Welder', 'Scaffolding'];
+  // Manually kept in sync with the `labour` category's subcategories in
+  // lib/featureFlags.ts -- NOT derived from TRADE_SKILLS/getEnabledSubs on
+  // purpose. The filter below matches via `skillType.includes(chip)` against
+  // the raw seeded skillType string (e.g. "Mason"), but TRADE_SKILLS' names
+  // carry suffixes ("Helper / General Labour") that a plain skillType would
+  // never contain -- switching this to a derivation would silently break
+  // filtering for most subcategories. Electrical/Plumbing are deliberately
+  // excluded — those are Service Experts, not Labour.
+  const SKILLS = ['Mason', 'Carpenter', 'Painter', 'Tile Fixer', 'Helper', 'Welder', 'Scaffolding', 'Grass Cutting', 'Loading', 'Construction Labour', 'House Cleaning', 'Agricultural'];
 
   function toggleSkill(s: string) {
     setSelectedSkills(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);

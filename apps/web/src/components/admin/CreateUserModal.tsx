@@ -13,7 +13,7 @@ interface Props {
 
 const ROLE_LABELS: Record<string, string> = {
   CONTRACTOR: 'Contractor',
-  LABOUR: 'Labour (electrician, plumber, mason...)',
+  LABOUR: 'Labour (mason, carpenter, cleaning, gardening, farm work...)',
   SERVICE_EXPERT: 'Service Expert',
   MATERIAL_SUPPLIER: 'Material Supplier',
   LAND_OWNER: 'Land Owner',

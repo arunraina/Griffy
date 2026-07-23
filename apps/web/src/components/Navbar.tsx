@@ -210,7 +210,7 @@ export default function Navbar() {
                       <Link href="/signup?type=professional"
                         onClick={() => setSignupOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
-                        <span className="text-base">💼</span>
+                        <span className="text-base">🏗️</span>
                         <div>
                           <p className="font-semibold text-xs">Professional</p>
                           <p className="text-[11px] text-[#A08070]">Work & sell on Griffy</p>
@@ -302,7 +302,7 @@ export default function Navbar() {
                   </Link>
                   <Link href="/signup?type=professional" onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2 text-sm font-semibold border-2 border-[#C0593A] text-[#C0593A] px-4 py-2.5 rounded-lg">
-                    💼 Sign up as Professional
+                    🏗️ Sign up as Professional
                   </Link>
                 </>
               )}

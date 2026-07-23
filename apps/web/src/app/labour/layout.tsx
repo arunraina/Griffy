@@ -3,7 +3,7 @@ import { SEO_KEYWORDS } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Hire Skilled Labour & Mistri Near You | Griffy',
-  description: 'Hire masons, carpenters, electricians, plumbers, and daily wage labour near you. Verified skilled workers across India with ratings and reviews.',
+  description: 'Hire masons, carpenters, painters, cleaners, gardeners and daily wage labour near you. Verified skilled workers across India with ratings and reviews.',
   keywords: [
     ...SEO_KEYWORDS.global,
     ...SEO_KEYWORDS.labour,

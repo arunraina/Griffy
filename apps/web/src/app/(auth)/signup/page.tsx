@@ -227,7 +227,7 @@ function SignupInner() {
               onClick={() => selectSide('homeowner')}
             />
             <SideCard
-              icon="💼"
+              icon="🏗️"
               title="I want to Work & Sell"
               subtitle="I'm a Professional or Supplier"
               desc="Offer services, sell materials, list land or find construction work"
