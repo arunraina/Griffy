@@ -55,6 +55,15 @@ export class MaterialsService {
     return material;
   }
 
+  async findMine(userId: string) {
+    const supplier = await this.prisma.materialSupplierProfile.findUnique({ where: { userId } });
+    if (!supplier) return [];
+    return this.prisma.material.findMany({
+      where: { supplierId: supplier.id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async create(userId: string, data: CreateDto) {
     const supplier = await this.prisma.materialSupplierProfile.findUnique({ where: { userId } });
     if (!supplier) throw new ForbiddenException('No supplier profile found');

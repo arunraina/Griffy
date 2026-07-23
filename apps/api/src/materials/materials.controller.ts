@@ -19,6 +19,12 @@ export class MaterialsController {
     return this.materials.findAll(search, category, subcategory);
   }
 
+  @Get('mine')
+  @UseGuards(AuthGuard)
+  findMine(@CurrentUser() user: User) {
+    return this.materials.findMine(user.id);
+  }
+
   @Get(':id')
   @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findOne(@Param('id') id: string) {

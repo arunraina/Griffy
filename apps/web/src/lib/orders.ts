@@ -24,7 +24,7 @@ export interface OrderItem {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
-  material?: { name: string; imageUrls: string[] };
+  material?: { name: string; imageUrls: string[]; supplierId?: string };
 }
 
 export type OrderStatusValue = 'PLACED' | 'ACCEPTED' | 'REJECTED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
