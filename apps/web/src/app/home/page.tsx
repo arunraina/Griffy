@@ -10,6 +10,7 @@ import NewHomeownerWelcome from '@/components/dashboard/NewHomeownerWelcome';
 import IdleHomeownerDashboard from '@/components/dashboard/IdleHomeownerDashboard';
 import ActiveHomeownerDashboard from '@/components/dashboard/ActiveHomeownerDashboard';
 import LabourDashboardRouter from '@/components/dashboard/labour/LabourDashboardRouter';
+import ServiceExpertDashboardRouter from '@/components/dashboard/serviceExpert/ServiceExpertDashboardRouter';
 
 export default function HomePage() {
   const router = useRouter();
@@ -44,6 +45,10 @@ export default function HomePage() {
 
   if (state.role === 'LABOUR') {
     return <LabourDashboardRouter state={state} me={me} />;
+  }
+
+  if (state.role === 'SERVICE_EXPERT') {
+    return <ServiceExpertDashboardRouter state={state} me={me} />;
   }
 
   // Every other role still falls back to the existing tabbed /dashboard
