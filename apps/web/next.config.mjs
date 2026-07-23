@@ -1,4 +1,5 @@
 import bundleAnalyzer from '@next/bundle-analyzer';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -17,4 +18,15 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+// Wrapping is always applied (matches the standard Sentry setup), but every
+// step that needs credentials (source-map upload, release creation) is
+// silently skipped when SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT are
+// unset -- true in every environment today, so this changes nothing about
+// the actual build output until Sentry is configured.
+export default withSentryConfig(withBundleAnalyzer(nextConfig), {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  webpack: { treeshake: { removeDebugLogging: true } },
+});

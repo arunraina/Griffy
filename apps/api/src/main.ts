@@ -1,7 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import compression from 'compression';
+import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
+
+// Unset in every environment today -- a pure no-op until SENTRY_DSN is set
+// (same prep pattern as CacheService/PrismaService.read).
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
