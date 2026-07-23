@@ -18,6 +18,10 @@ const GREETING: Message = {
 
 const FALLBACK = "I don't have an answer for that yet. Try rephrasing, browse the full Help Center, or reach our team directly.";
 
+// Temporarily disabled in production by request -- flip back to true to
+// re-enable, no other changes needed.
+const CHAT_WIDGET_ENABLED = false;
+
 export default function ChatWidget() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -29,7 +33,7 @@ export default function ChatWidget() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, open]);
 
-  if (!user) return null;
+  if (!CHAT_WIDGET_ENABLED || !user) return null;
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();

@@ -68,7 +68,7 @@ export default function BookingModal({ open, onClose, providerName, providerId, 
                 className="flex-1 border border-[#EBE0D8] text-[#6B5248] hover:bg-[#FDF8F5] font-medium py-3 rounded-xl text-sm transition-colors">
                 Close
               </button>
-              <a href="/dashboard"
+              <a href="/dashboard/home"
                 className="flex-1 text-center bg-[#C0593A] hover:bg-[#9E3F24] text-white font-bold py-3 rounded-xl text-sm transition-colors">
                 View Dashboard
               </a>

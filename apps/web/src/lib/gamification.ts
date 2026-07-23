@@ -53,7 +53,9 @@ export interface Badge {
 
 export function getBadges(opts: { verified: boolean; completedJobs: number; rating: number; reviewCount: number }): Badge[] {
   const badges: Badge[] = [];
-  if (opts.verified) badges.push({ id: 'verified', label: 'Verified', emoji: '✅', description: 'Verified by Griffy' });
+  // Verification already has its own dedicated checkmark badge everywhere this
+  // renders (avatar overlay on listing cards, inline badge on detail pages) --
+  // including it here too duplicated the same signal a second or third time.
   if (opts.completedJobs >= 1) badges.push({ id: 'first_job', label: 'First Job', emoji: '🎯', description: 'Completed their first job' });
   if (opts.completedJobs >= 100) badges.push({ id: 'century', label: 'Century Club', emoji: '💯', description: '100+ jobs completed' });
   if (opts.rating >= 4.8 && opts.reviewCount >= 10) badges.push({ id: 'top_rated', label: 'Top Rated', emoji: '⭐', description: 'Rating 4.8+ with 10+ reviews' });

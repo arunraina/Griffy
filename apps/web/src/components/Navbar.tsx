@@ -141,7 +141,7 @@ export default function Navbar() {
                     </Link>
                     <Link href="/dashboard/home" onClick={() => setAccountOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FAEEE9] hover:text-[#C0593A] transition-colors">
-                      <span className="text-base">🏠</span> Home
+                      <span className="text-base">📊</span> Dashboard
                     </Link>
                     {isAdmin && (
                       <Link href="/admin" onClick={() => setAccountOpen(false)}
@@ -277,7 +277,7 @@ export default function Navbar() {
                   </Link>
                   <Link href="/dashboard/home" onClick={() => setMenuOpen(false)}
                     className="text-sm font-semibold text-[#C0593A] py-1">
-                    Home
+                    Dashboard
                   </Link>
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setMenuOpen(false)}

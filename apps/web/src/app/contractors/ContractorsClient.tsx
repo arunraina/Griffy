@@ -8,6 +8,8 @@ import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
 import BadgeRow from '@/components/BadgeRow';
 import Avatar from '@/components/Avatar';
+import { StateCitySelect } from '@/components/LocationPicker';
+import { stateForCity } from '@/lib/geoConstants';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 
@@ -88,6 +90,7 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
   const [selectedSkills, setSelectedSkills] = useState<TradeSkill[]>(initialSkills);
   const [experience,     setExperience]     = useState<ExperienceBand>('any');
   const [location,       setLocation]       = useState(params.get('city') ?? '');
+  const [state,          setState]          = useState(() => stateForCity(params.get('city') ?? ''));
   const [availableNow,   setAvailableNow]   = useState(false);
   const [ratingFilter,   setRatingFilter]   = useState<RatingFilter>('any');
   const [search,         setSearch]         = useState('');
@@ -135,7 +138,7 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
   }
   function clearAll() {
     setSelectedTypes([]); setSelectedSkills([]); setExperience('any');
-    setLocation(''); setAvailableNow(false); setRatingFilter('any');
+    setLocation(''); setState(''); setAvailableNow(false); setRatingFilter('any');
   }
 
   const hasFilters = selectedTypes.length || selectedSkills.length || experience !== 'any' ||
@@ -229,9 +232,7 @@ function ContractorsInner({ contractors }: { contractors: Contractor[] }) {
               </FilterSection>
 
               <FilterSection title="Location">
-                <input type="text" value={location} onChange={e => setLocation(e.target.value)}
-                  placeholder="Search by city…"
-                  className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2 outline-none focus:border-[#C0593A]" />
+                <StateCitySelect state={state} city={location} onStateChange={setState} onCityChange={setLocation} />
               </FilterSection>
 
               <FilterSection title="Availability">
@@ -365,7 +366,6 @@ function ContractorCard({ contractor: c, rank }: { contractor: Contractor; rank:
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.available ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-xs text-gray-500">{c.available ? 'Available' : 'Unavailable'}</span>
-            {c.verified && <span className="text-xs text-blue-600 font-medium">✅ Verified</span>}
           </div>
           <div className="mt-1.5">
             <BadgeRow verified={c.verified} completedJobs={c.completedJobs} rating={c.rating} reviewCount={c.reviewCount} />
