@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalStatus, ProjectStatus, UserRole, AdminRole, KycStatus, PaymentStatus, ReviewTargetType, AccountStatus, Prisma } from '@prisma/client';
@@ -86,8 +87,16 @@ interface ModerateContentInput {
   moderationNote?: string;
 }
 
+const PUBLIC_PROFILE_PATH: Partial<Record<ProfileType, string>> = {
+  contractor: '/contractors',
+  labour: '/labour',
+  'service-expert': '/service-experts',
+};
+
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly kyc: KycService,
@@ -99,7 +108,29 @@ export class AdminService {
     private readonly hierarchy: AdminHierarchyService,
     private readonly impersonation: ImpersonationService,
     private readonly projects: ProjectsService,
+    private readonly config: ConfigService,
   ) {}
+
+  // Fire-and-forget: an admin edit should never fail or feel slow because the
+  // web app's revalidate endpoint is unreachable. Without this, a change here
+  // takes up to 5 minutes (the public page's ISR revalidate window) to show
+  // up -- this cuts that to effectively immediate for the one page it's on.
+  private async revalidatePublicProfile(profileType: ProfileType, profileId: string) {
+    const path = PUBLIC_PROFILE_PATH[profileType];
+    const secret = this.config.get<string>('REVALIDATE_SECRET');
+    if (!path || !secret) return;
+
+    const webUrl = this.config.get<string>('APP_BASE_URL') ?? 'http://localhost:3000';
+    try {
+      await fetch(`${webUrl}/api/revalidate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: `${path}/${profileId}`, secret }),
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to revalidate ${path}/${profileId}: ${(err as Error).message}`);
+    }
+  }
 
   getProviderBookings(userId: string) {
     return this.bookings.findByProvider(userId);
@@ -249,7 +280,14 @@ export class AdminService {
     });
 
     await this.logAction(actingAdminId, 'UPDATE_PROFILE', 'user', userId);
-    return this.getUserDetail(userId);
+    const detail = await this.getUserDetail(userId);
+    if (profileType && detail.profile) {
+      // Don't await -- the admin's save shouldn't wait on the web app's
+      // response, and a slow/unreachable revalidate call must never turn
+      // into a slow/failed profile update.
+      void this.revalidatePublicProfile(profileType, detail.profile.id);
+    }
+    return detail;
   }
 
   private updateProfileByType(

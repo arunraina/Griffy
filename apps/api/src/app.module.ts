@@ -39,6 +39,7 @@ import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ServiceItemsModule } from './service-items/service-items.module';
 import { BlogModule } from './blog/blog.module';
+import { ProfileLookupModule } from './profile-lookup/profile-lookup.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -98,6 +99,7 @@ import { AppController } from './app.controller';
     DashboardModule,
     ServiceItemsModule,
     BlogModule,
+    ProfileLookupModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
 import TierBadge from '@/components/TierBadge';
 import BadgeRow from '@/components/BadgeRow';
+import { StateCitySelect } from '@/components/LocationPicker';
+import { stateForCity } from '@/lib/geoConstants';
 import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 
@@ -44,6 +46,7 @@ function ServiceExpertsInner({ profiles }: { profiles: ServiceExpertProfile[] })
   const [sort, setSort]                 = useState<SortKey>('relevance');
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('any');
   const [location, setLocation]         = useState(params.get('city') ?? '');
+  const [state, setState]               = useState(() => stateForCity(params.get('city') ?? ''));
   const [availableNow, setAvailableNow] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen]   = useState(false);
@@ -77,7 +80,7 @@ function ServiceExpertsInner({ profiles }: { profiles: ServiceExpertProfile[] })
   }, [profiles, search, sort, ratingFilter, location, availableNow, selectedTypes]);
 
   function clearAll() {
-    setSearch(''); setRatingFilter('any'); setLocation('');
+    setSearch(''); setRatingFilter('any'); setLocation(''); setState('');
     setAvailableNow(false); setSelectedTypes([]);
   }
 
@@ -146,9 +149,7 @@ function ServiceExpertsInner({ profiles }: { profiles: ServiceExpertProfile[] })
 
               <div>
                 <p className="text-xs font-bold text-[#6B5248] uppercase tracking-widest mb-3">Location</p>
-                <input type="text" value={location} onChange={e => setLocation(e.target.value)}
-                  placeholder="Search by city…"
-                  className="w-full text-sm border border-[#EBE0D8] rounded-lg px-3 py-2 outline-none focus:border-[#C0593A]" />
+                <StateCitySelect state={state} city={location} onStateChange={setState} onCityChange={setLocation} />
               </div>
 
               <div>
@@ -264,7 +265,6 @@ function ExpertCard({ profile: p, rank }: { profile: ServiceExpertProfile; rank:
           <div className="flex items-center gap-1.5 mt-1">
             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.available ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-xs text-gray-500">{p.available ? 'Available' : 'Unavailable'}</span>
-            {p.verified && <span className="text-xs text-blue-600 font-medium">✅ Verified</span>}
           </div>
           <div className="mt-1.5">
             <BadgeRow verified={p.verified} completedJobs={p.completedJobs} rating={p.rating} reviewCount={p.reviewCount} />

@@ -42,3 +42,13 @@ export const INDIAN_STATES = Object.keys(CITIES_BY_STATE);
 export function citiesForState(state: string): string[] {
   return CITIES_BY_STATE[state] ?? [];
 }
+
+// Reverse lookup for deep links that only carry a city name (e.g. `?city=
+// Baramulla` from the homepage or a /cities/[city] page) -- lets a filter UI
+// pre-select the right state instead of showing city alone with no state.
+export function stateForCity(city: string): string {
+  const match = Object.entries(CITIES_BY_STATE).find(([, cities]) =>
+    cities.some((c) => c.toLowerCase() === city.toLowerCase())
+  );
+  return match?.[0] ?? '';
+}
