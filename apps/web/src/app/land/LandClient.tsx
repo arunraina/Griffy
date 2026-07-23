@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { isSubEnabled } from '@/lib/featureFlags';
 import SaveButton from '@/components/SaveButton';
@@ -427,9 +428,9 @@ function LandCard({ listing: l }: { listing: LandListing }) {
     }`}>
       {/* Image */}
       <div className="relative rounded-t-2xl overflow-hidden" style={{ height: '180px' }}>
-        {!imgFailed ? (
-          <img src={l.imageUrl} alt={l.title} className="w-full h-full object-cover"
-            onError={() => setImgFailed(true)} />
+        {!imgFailed && l.imageUrl ? (
+          <Image src={l.imageUrl} alt={l.title} fill sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover" onError={() => setImgFailed(true)} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#FAEEE9] to-[#F5EDE8] flex items-center justify-center">
             <span className="text-5xl">{l.imageIcon}</span>
