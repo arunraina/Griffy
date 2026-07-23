@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalStatus } from '@prisma/client';
+import { ApprovalStatus, Prisma } from '@prisma/client';
 
 type CreateDto = {
   skillType: string;
@@ -62,6 +62,15 @@ export class LabourProfilesService {
     if (!profile) throw new NotFoundException('Labour profile not found');
     if (profile.userId !== userId) throw new ForbiddenException();
     return this.prisma.labourProfile.update({ where: { id }, data });
+  }
+
+  async setWeeklyAvailability(userId: string, weeklyAvailability: Prisma.InputJsonValue) {
+    const profile = await this.prisma.labourProfile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('Labour profile not found');
+    return this.prisma.labourProfile.update({
+      where: { userId },
+      data: { weeklyAvailability },
+    });
   }
 
   async setApprovalStatus(id: string, status: ApprovalStatus, adminId: string, rejectionReason?: string) {

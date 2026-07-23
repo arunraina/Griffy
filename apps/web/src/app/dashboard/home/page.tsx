@@ -9,6 +9,7 @@ import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import NewHomeownerWelcome from '@/components/dashboard/NewHomeownerWelcome';
 import IdleHomeownerDashboard from '@/components/dashboard/IdleHomeownerDashboard';
 import ActiveHomeownerDashboard from '@/components/dashboard/ActiveHomeownerDashboard';
+import LabourDashboardRouter from '@/components/dashboard/labour/LabourDashboardRouter';
 
 export default function DashboardHomePage() {
   const router = useRouter();
@@ -41,8 +42,12 @@ export default function DashboardHomePage() {
 
   if (!me || !state) return <DashboardSkeleton />;
 
-  // This pass only builds the homeowner states — every other role falls back
-  // to the existing tabbed /dashboard until Phase 2 lands their variants.
+  if (state.role === 'LABOUR') {
+    return <LabourDashboardRouter state={state} me={me} />;
+  }
+
+  // Every other role still falls back to the existing tabbed /dashboard
+  // until their own stage lands (see the 9-stage supply-side journey plan).
   if (state.role !== 'HOMEOWNER') {
     router.replace('/dashboard');
     return <DashboardSkeleton />;

@@ -3,7 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { LabourProfilesService } from './labour-profiles.service';
 import { User } from '@prisma/client';
-import { CreateLabourProfileDto, UpdateLabourProfileDto } from './dto/labour-profile.dto';
+import { CreateLabourProfileDto, UpdateLabourProfileDto, SetWeeklyAvailabilityDto } from './dto/labour-profile.dto';
 
 @Controller('labour-profiles')
 export class LabourProfilesController {
@@ -31,6 +31,12 @@ export class LabourProfilesController {
   @UseGuards(AuthGuard)
   create(@CurrentUser() user: User, @Body() body: CreateLabourProfileDto) {
     return this.service.create(user.id, body);
+  }
+
+  @Patch('me/weekly-availability')
+  @UseGuards(AuthGuard)
+  setWeeklyAvailability(@CurrentUser() user: User, @Body() body: SetWeeklyAvailabilityDto) {
+    return this.service.setWeeklyAvailability(user.id, { ...body.weeklyAvailability });
   }
 
   @Patch(':id')

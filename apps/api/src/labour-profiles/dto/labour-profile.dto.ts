@@ -1,5 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, Min, MaxLength, ValidateNested } from 'class-validator';
 
 export class CreateLabourProfileDto {
   @IsString()
@@ -35,3 +36,19 @@ export class CreateLabourProfileDto {
 }
 
 export class UpdateLabourProfileDto extends PartialType(CreateLabourProfileDto) {}
+
+export class WeeklyAvailabilityDto {
+  @IsBoolean() mon!: boolean;
+  @IsBoolean() tue!: boolean;
+  @IsBoolean() wed!: boolean;
+  @IsBoolean() thu!: boolean;
+  @IsBoolean() fri!: boolean;
+  @IsBoolean() sat!: boolean;
+  @IsBoolean() sun!: boolean;
+}
+
+export class SetWeeklyAvailabilityDto {
+  @ValidateNested()
+  @Type(() => WeeklyAvailabilityDto)
+  weeklyAvailability!: WeeklyAvailabilityDto;
+}

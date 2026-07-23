@@ -16,6 +16,7 @@ import { startConversation } from '@/lib/chat';
 import { NotAuthenticatedError } from '@/lib/users';
 import { shareOrCopyLink } from '@/lib/share';
 import { formatServiceItemPrice, type PublicServiceItem } from '@/lib/serviceItems';
+import { formatWeeklyAvailability, type WeeklyAvailability } from '@/lib/labourProfiles';
 
 interface Review {
   id: string;
@@ -36,6 +37,7 @@ interface LabourProfile {
   serviceCities: string[];
   dailyRate: number | null;
   availability: boolean;
+  weeklyAvailability: WeeklyAvailability | null;
   bio: string | null;
   portfolioImages: string[];
   govtIdVerified: boolean;
@@ -162,6 +164,9 @@ export default function LabourDetailClient({ profile: p, reviews, serviceItems }
                     ? <span className="text-xs text-green-600 font-medium">🟢 Available</span>
                     : <span className="text-xs text-gray-400 font-medium">🔴 Unavailable</span>
                   }
+                  {p.availability && (
+                    <span className="text-xs text-[#6B5248]">{formatWeeklyAvailability(p.weeklyAvailability)}</span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-[#6B5248]">
                   {p.avgRating > 0 && (

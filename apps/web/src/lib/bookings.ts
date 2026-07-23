@@ -28,6 +28,7 @@ export interface Booking {
   notes: string | null;
   amount: string;
   createdAt: string;
+  updatedAt: string;
   provider?: { id: string; name: string; avatarUrl: string | null; phone: string | null };
   customer?: { id: string; name: string; phone: string | null; email: string };
 }

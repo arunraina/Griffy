@@ -284,6 +284,10 @@ model LabourProfile {
   serviceCities   String[]                 @map("service_cities")
   dailyRate       Decimal?                 @map("daily_rate") @db.Decimal(10, 2)
   isAvailable     Boolean                  @default(true) @map("is_available")
+  // Day-of-week display status (mon..sun -> boolean), e.g. {"mon":true,...}.
+  // Null means "all days available" -- display-only for now, not queryable
+  // scheduling data, so a JSON column is enough (no join, no new table).
+  weeklyAvailability Json?                 @map("weekly_availability")
   bio             String?
   portfolioImages String[]                 @map("portfolio_images")
   approvalStatus  ApprovalStatus           @default(PENDING) @map("approval_status")
