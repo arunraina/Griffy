@@ -15,6 +15,7 @@ type CreateDto = {
   isAvailable?: boolean;
   bio?: string;
   portfolioImages?: string[];
+  urgentAvailableUntil?: string | null;
 };
 
 type UpdateDto = Partial<CreateDto>;

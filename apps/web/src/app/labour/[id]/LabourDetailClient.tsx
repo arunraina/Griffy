@@ -38,6 +38,7 @@ interface LabourProfile {
   dailyRate: number | null;
   availability: boolean;
   weeklyAvailability: WeeklyAvailability | null;
+  urgentAvailableUntil: string | null;
   bio: string | null;
   portfolioImages: string[];
   govtIdVerified: boolean;
@@ -166,6 +167,11 @@ export default function LabourDetailClient({ profile: p, reviews, serviceItems }
                   }
                   {p.availability && (
                     <span className="text-xs text-[#6B5248]">{formatWeeklyAvailability(p.weeklyAvailability)}</span>
+                  )}
+                  {p.urgentAvailableUntil && new Date(p.urgentAvailableUntil) > new Date() && (
+                    <span className="text-xs bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+                      ⚡ Available for urgent work
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-[#6B5248]">

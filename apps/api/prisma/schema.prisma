@@ -288,6 +288,10 @@ model LabourProfile {
   // Null means "all days available" -- display-only for now, not queryable
   // scheduling data, so a JSON column is enough (no join, no new table).
   weeklyAvailability Json?                 @map("weekly_availability")
+  // L3 dry-spell "mark available for urgent work" flag -- a future date
+  // means "show as urgent-available on the public profile until then";
+  // null/past means the flag isn't active. No separate boolean needed.
+  urgentAvailableUntil DateTime?           @map("urgent_available_until")
   bio             String?
   portfolioImages String[]                 @map("portfolio_images")
   approvalStatus  ApprovalStatus           @default(PENDING) @map("approval_status")

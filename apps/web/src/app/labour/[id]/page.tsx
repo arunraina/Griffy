@@ -72,6 +72,7 @@ export default async function LabourDetailPage({ params }: { params: { id: strin
     dailyRate:       raw.dailyRate != null ? Number(raw.dailyRate) : null,
     availability:    raw.availability ?? true,
     weeklyAvailability: raw.weeklyAvailability ?? null,
+    urgentAvailableUntil: raw.urgentAvailableUntil ?? null,
     bio:             raw.bio ?? null,
     portfolioImages: raw.portfolioImages ?? [],
     govtIdVerified:  raw.govtIdVerified ?? false,
