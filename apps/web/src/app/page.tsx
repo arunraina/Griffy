@@ -20,9 +20,22 @@ export const metadata: Metadata = {
   ],
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Griffy',
+  url: 'https://griffy.in',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: 'https://griffy.in/search?q={query}',
+    'query-input': 'required name=query',
+  },
+};
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#FDF8F5]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       {/* ── SECTION 1: HERO ── */}
       <section className="bg-white border-b border-[#EBE0D8] px-6 py-20 text-center">

@@ -69,7 +69,7 @@ function mapLand(l: any): LandListing {
 
 async function fetchLands(): Promise<LandListing[]> {
   try {
-    const res = await fetch(`${API_BASE}/lands`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/lands`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return (data ?? []).map(mapLand);

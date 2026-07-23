@@ -1,14 +1,30 @@
+import type { Metadata } from 'next';
 import LandDetailClient from './LandDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchLand(id: string): Promise<any | null> {
   try {
-    const res = await fetch(`${API_BASE}/lands/${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/lands/${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchLand(params.id);
+  if (!raw) return buildMetadata({ title: 'Land listing not found', description: 'This listing may have been removed or is unavailable.', path: `/land/${params.id}` });
+
+  const price = raw.price != null ? `₹${Number(raw.price).toLocaleString('en-IN')}` : null;
+  const area = raw.areaSqFt ? `${Number(raw.areaSqFt).toLocaleString('en-IN')} sqft` : null;
+
+  return buildMetadata({
+    title: `${raw.title} — ${raw.landType ?? 'Land'} in ${raw.city ?? 'India'}`,
+    description: `${raw.title}${area ? `, ${area}` : ''}${price ? ` for ${price}` : ''} in ${raw.city ?? ''}${raw.state ? `, ${raw.state}` : ''}. ${raw.description ?? ''}`.trim(),
+    path: `/land/${params.id}`,
+  });
 }
 
 export default async function LandDetailPage({ params, searchParams }: { params: { id: string }; searchParams: { contact?: string } }) {

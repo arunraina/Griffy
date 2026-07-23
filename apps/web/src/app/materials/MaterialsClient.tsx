@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
@@ -241,196 +242,6 @@ const PRICE_TICKER_BASE = [
   { label: 'Havells Wire 2.5', base: 1950,  suffix: '/roll',  change: '-₹50',  up: false },
   { label: 'UPVC Window 4×4',  base: 12000, suffix: '/pc',    change: '0',     up: null  },
   { label: 'Century Ply 18mm', base: 1850,  suffix: '/sheet', change: '+₹50',  up: true  },
-];
-
-// ── Image URLs (Unsplash — matched to material type) ─────────────────────────
-
-const I = {
-  // Structure
-  cement:        'https://images.unsplash.com/photo-1504307651254-35680f356dfd',
-  cement2:       'https://images.unsplash.com/photo-1590644454956-90c86f0e3fbc',
-  steel:         'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39',
-  steel2:        'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261',
-  bricks:        'https://images.unsplash.com/photo-1587293852726-70cdb56c2866',
-  sand:          'https://images.unsplash.com/photo-1499336315816-097655dcfbda',
-  aggregate:     'https://images.unsplash.com/photo-1578662996442-48f60103fc96',
-  // Tiles
-  tile_gvt:      'https://images.unsplash.com/photo-1519389950473-47ba0277781c',
-  tile_large:    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
-  tile_wall:     'https://images.unsplash.com/photo-1584622650111-993a426fbf0a',
-  tile_antiskid: 'https://images.unsplash.com/photo-1552321554-5fbe4093e25c',
-  tile_mosaic:   'https://images.unsplash.com/photo-1484154218962-a197022b5858',
-  marble:        'https://images.unsplash.com/photo-1531971543417-edf4c9a47f40',
-  marble_floor:  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
-  granite:       'https://images.unsplash.com/photo-1533090161767-e6ffed986c88',
-  kota:          'https://images.unsplash.com/photo-1573935448851-e6e8a5f621f4',
-  // Washroom
-  wc:            'https://images.unsplash.com/photo-1585771724684-38269d6639fd',
-  basin:         'https://images.unsplash.com/photo-1552321554-5fbe4093e25c',
-  shower:        'https://images.unsplash.com/photo-1550009158-9ebf69173e03',
-  faucet:        'https://images.unsplash.com/photo-1535732759880-bbd5c7265e3f',
-  bath_acc:      'https://images.unsplash.com/photo-1552321554-5fbe4093e25c',
-  exhaust:       'https://images.unsplash.com/photo-1621905251189-08b45d6a269e',
-  // Kitchen
-  kitchen:       'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136',
-  sink_ss:       'https://images.unsplash.com/photo-1556682671-8dc0a532c38e',
-  ktap:          'https://images.unsplash.com/photo-1535732759880-bbd5c7265e3f',
-  chimney:       'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136',
-  counter_gran:  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
-  // Electricals
-  wire:          'https://images.unsplash.com/photo-1621905251189-08b45d6a269e',
-  switch:        'https://images.unsplash.com/photo-1558612522-5e88dfd1cf2a',
-  led_panel:     'https://images.unsplash.com/photo-1547036967-23d11aacaee0',
-  led_strip:     'https://images.unsplash.com/photo-1558612522-5e88dfd1cf2a',
-  mcb:           'https://images.unsplash.com/photo-1621905251189-08b45d6a269e',
-  // Paints
-  paint:         'https://images.unsplash.com/photo-1562259929-b4e1fd3aef09',
-  paint_wall:    'https://images.unsplash.com/photo-1589939705384-5185137a7f0f',
-  paint_ext:     'https://images.unsplash.com/photo-1562259929-b4e1fd3aef09',
-  waterproof:    'https://images.unsplash.com/photo-1585773690140-cd4d3573ddcd',
-  // Wood & Boards
-  plywood:       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
-  plywood2:      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
-  laminate_fl:   'https://images.unsplash.com/photo-1547393379-958b9e0b83f3',
-  mdf:           'https://images.unsplash.com/photo-1558618666-fcd25c85cd64',
-  lam_sheet:     'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136',
-  // Doors & Windows
-  door_main:     'https://images.unsplash.com/photo-1558369671-2de5f506c859',
-  door_int:      'https://images.unsplash.com/photo-1558369671-2de5f506c859',
-  window:        'https://images.unsplash.com/photo-1528908929786-ee3b3a33d5c7',
-  glass_t:       'https://images.unsplash.com/photo-1579621970588-a35d0e7ab9b6',
-  // Ceiling
-  gypsum:        'https://images.unsplash.com/photo-1563061629-f6a8c5a59b67',
-  // Stairs
-  stairs:        'https://images.unsplash.com/photo-1589939705384-5185137a7f0f',
-  railing:       'https://images.unsplash.com/photo-1518998053901-5348d3961a04',
-  // Roofing / Exterior
-  roofing:       'https://images.unsplash.com/photo-1518780664697-55e3ad937233',
-  acp:           'https://images.unsplash.com/photo-1518780664697-55e3ad937233',
-  // Kashmir
-  timber:        'https://images.unsplash.com/photo-1541123437800-1bb1317badc2',
-  insulation:    'https://images.unsplash.com/photo-1585773690140-cd4d3573ddcd',
-  chemical:      'https://images.unsplash.com/photo-1609659640218-cef3cf0d0d6f',
-};
-
-// ── Products ──────────────────────────────────────────────────────────────────
-
-const P = (o: Product) => o; // identity helper for type-checking
-
-const PRODUCTS: Product[] = [
-
-  // ─── CEMENT ──────────────────────────────────────────────────────────────────
-  P({ id:'c1', name:'UltraTech OPC 53 Grade', brand:'UltraTech', categoryId:'structure', subcategoryId:'cement', type:'OPC 53', price:380, unit:'per 50kg bag', minOrder:'10 bags', inStock:true, isi:true, rating:4.8, reviewCount:1240, sellerName:'BuildMart', sellerCity:'Delhi', roomTypes:['structure'], imageUrl:I.cement, imageIcon:'🧱', bulkDiscount:'3% off 50+ bags' }),
-  P({ id:'c2', name:'ACC Gold PPC Cement', brand:'ACC', categoryId:'structure', subcategoryId:'cement', type:'PPC', price:360, unit:'per 50kg bag', minOrder:'5 bags', inStock:true, isi:true, rating:4.6, reviewCount:820, sellerName:'Metro Cement', sellerCity:'Mumbai', roomTypes:['structure'], imageUrl:I.cement2, imageIcon:'🧱' }),
-  P({ id:'c3', name:'Ambuja Plus 43 Grade', brand:'Ambuja', categoryId:'structure', subcategoryId:'cement', type:'OPC 43', price:370, unit:'per 50kg bag', inStock:true, isi:true, rating:4.7, reviewCount:534, sellerName:'Ambuja Depot', sellerCity:'Bangalore', roomTypes:['structure'], imageUrl:I.cement, imageIcon:'🧱' }),
-  P({ id:'c4', name:'M-Sand Manufactured', brand:'Local Supply', categoryId:'structure', subcategoryId:'sand', type:'M-Sand', price:45, unit:'per cft', minOrder:'100 cft', inStock:true, isi:false, rating:4.3, reviewCount:156, sellerName:'Sand Depot', sellerCity:'Bangalore', roomTypes:['structure'], imageUrl:I.sand, imageIcon:'🪨' }),
-  P({ id:'c5', name:'20mm Stone Aggregate', brand:'Local Supply', categoryId:'structure', subcategoryId:'aggregate', type:'20mm Aggregate', price:38, unit:'per cft', minOrder:'200 cft', inStock:true, isi:false, rating:4.2, reviewCount:88, sellerName:'Stone Yard', sellerCity:'Hyderabad', roomTypes:['structure'], imageUrl:I.aggregate, imageIcon:'🪨' }),
-  P({ id:'c6', name:'Fly Ash Brick 9×4×3"', brand:'LocalBricks', categoryId:'structure', subcategoryId:'bricks', type:'Fly Ash Brick', price:8, unit:'per piece', minOrder:'500 pcs', inStock:true, isi:false, rating:4.4, reviewCount:412, sellerName:'Brick Factory', sellerCity:'Delhi', roomTypes:['structure'], imageUrl:I.bricks, imageIcon:'🧱', bulkDiscount:'5% off 1000+' }),
-  P({ id:'c7', name:'AAC Block 600×200×200mm', brand:'Siporex', categoryId:'structure', subcategoryId:'bricks', type:'AAC Block', price:52, unit:'per piece', minOrder:'100 pcs', inStock:true, isi:true, rating:4.5, reviewCount:287, sellerName:'Siporex Depot', sellerCity:'Delhi', roomTypes:['structure'], imageUrl:I.bricks, imageIcon:'🧱' }),
-
-  // ─── STEEL / TMT ─────────────────────────────────────────────────────────────
-  P({ id:'s1', name:'Tata Tiscon 8mm Fe500D', brand:'Tata Tiscon', categoryId:'steel', subcategoryId:'tmt', type:'8mm Fe500D', price:65, unit:'per kg', minOrder:'100 kg', inStock:true, isi:true, rating:4.9, reviewCount:2310, sellerName:'Tata Steel Depot', sellerCity:'Hyderabad', roomTypes:['structure','stairs'], imageUrl:I.steel, imageIcon:'🔩', bulkDiscount:'2% off 500kg+' }),
-  P({ id:'s2', name:'Tata Tiscon 12mm Fe550D', brand:'Tata Tiscon', categoryId:'steel', subcategoryId:'tmt', type:'12mm Fe500D', price:67, unit:'per kg', minOrder:'50 kg', inStock:true, isi:true, rating:4.9, reviewCount:1870, sellerName:'Tata Steel Depot', sellerCity:'Delhi', roomTypes:['structure','stairs'], imageUrl:I.steel, imageIcon:'🔩' }),
-  P({ id:'s3', name:'Jindal Panther TMT 10mm Fe500D', brand:'Jindal Panther', categoryId:'steel', subcategoryId:'tmt', type:'10mm Fe500D', price:64, unit:'per kg', minOrder:'100 kg', inStock:true, isi:true, rating:4.7, reviewCount:940, sellerName:'Jindal Steel Hub', sellerCity:'Delhi', roomTypes:['structure','stairs'], imageUrl:I.steel2, imageIcon:'🔩', bulkDiscount:'1.5% off 1 tonne+' }),
-  P({ id:'s4', name:'JSW Neo Steel 16mm Fe550D', brand:'JSW', categoryId:'steel', subcategoryId:'tmt', type:'16mm Fe550D', price:69, unit:'per kg', minOrder:'50 kg', inStock:true, isi:true, rating:4.8, reviewCount:720, sellerName:'JSW Steel Store', sellerCity:'Bangalore', roomTypes:['structure'], imageUrl:I.steel2, imageIcon:'🔩' }),
-  P({ id:'s5', name:'SAIL TMT 25mm Fe600', brand:'SAIL', categoryId:'steel', subcategoryId:'tmt', type:'25mm Fe600', price:72, unit:'per kg', minOrder:'200 kg', inStock:true, isi:true, rating:4.7, reviewCount:380, sellerName:'SAIL Distributor', sellerCity:'Kolkata', roomTypes:['structure'], imageUrl:I.steel, imageIcon:'🔩' }),
-
-  // ─── TILES — LIVING ROOM ─────────────────────────────────────────────────────
-  P({ id:'t1', name:'Kajaria Eternity GVT 600×600', brand:'Kajaria', categoryId:'tiles', subcategoryId:'vitrified', type:'GVT', price:48, unit:'per sqft', inStock:true, isi:false, rating:4.6, reviewCount:890, sellerName:'Kajaria Studio', sellerCity:'Delhi', roomTypes:['living_room','bedroom'], imageUrl:I.tile_gvt, imageIcon:'🪟', originalPrice:55 }),
-  P({ id:'t2', name:'Kajaria Alpine Large Format 800×800', brand:'Kajaria', categoryId:'tiles', subcategoryId:'vitrified', type:'Large Format 800x800', price:72, unit:'per sqft', inStock:true, isi:false, rating:4.7, reviewCount:310, sellerName:'Kajaria Studio', sellerCity:'Mumbai', roomTypes:['living_room'], imageUrl:I.tile_large, imageIcon:'🪟' }),
-  P({ id:'t3', name:'Somany Duragres Full Body 600×600', brand:'Somany', categoryId:'tiles', subcategoryId:'vitrified', type:'Full Body', price:42, unit:'per sqft', inStock:true, isi:false, rating:4.5, reviewCount:430, sellerName:'Somany Exclusive', sellerCity:'Pune', roomTypes:['living_room','bedroom'], imageUrl:I.tile_gvt, imageIcon:'🪟' }),
-  P({ id:'t4', name:'Makrana White Marble Slab 2x4ft', brand:'Indian Marble Co', categoryId:'tiles', subcategoryId:'marble_tile', type:'Makrana White', price:180, unit:'per sqft', inStock:true, isi:false, rating:4.8, reviewCount:210, sellerName:'Marble Palace', sellerCity:'Jaipur', roomTypes:['living_room','bedroom'], imageUrl:I.marble_floor, imageIcon:'🪟' }),
-  P({ id:'t5', name:'Italian Statuario Marble', brand:'Italian Marble Co', categoryId:'tiles', subcategoryId:'marble_tile', type:'Italian Statuario', price:480, unit:'per sqft', inStock:true, isi:false, rating:4.9, reviewCount:88, sellerName:'Marble Palace', sellerCity:'Delhi', roomTypes:['living_room'], imageUrl:I.marble, imageIcon:'🪟' }),
-  P({ id:'t6', name:'Kota Stone Flooring 18mm', brand:'Kota Quarries', categoryId:'tiles', subcategoryId:'special_tile', type:'Kota Stone', price:28, unit:'per sqft', minOrder:'50 sqft', inStock:true, isi:false, rating:4.5, reviewCount:520, sellerName:'Kota Stone Depot', sellerCity:'Jaipur', roomTypes:['living_room','exterior','stairs'], imageUrl:I.kota, imageIcon:'🪨' }),
-
-  // ─── TILES — WASHROOM ────────────────────────────────────────────────────────
-  P({ id:'tw1', name:'Johnson Anti-Skid Floor 300×300', brand:'Johnson Tiles', categoryId:'tiles', subcategoryId:'ceramic', type:'Anti-Skid', price:36, unit:'per sqft', inStock:true, isi:false, rating:4.5, reviewCount:670, sellerName:'Johnson Tile Studio', sellerCity:'Mumbai', roomTypes:['washroom','kitchen'], imageUrl:I.tile_antiskid, imageIcon:'🪟' }),
-  P({ id:'tw2', name:'RAK Ceramics Matt Wall 300×600', brand:'RAK Ceramics', categoryId:'tiles', subcategoryId:'ceramic', type:'Wall Tiles 300x600', price:38, unit:'per sqft', inStock:true, isi:false, rating:4.6, reviewCount:440, sellerName:'RAK Tile Studio', sellerCity:'Bangalore', roomTypes:['washroom'], imageUrl:I.tile_wall, imageIcon:'🪟' }),
-  P({ id:'tw3', name:'Kajaria Digital Print Bath 300×600', brand:'Kajaria', categoryId:'tiles', subcategoryId:'ceramic', type:'Wall Tiles 300x600', price:42, unit:'per sqft', inStock:true, isi:false, rating:4.7, reviewCount:280, sellerName:'Kajaria Studio', sellerCity:'Chennai', roomTypes:['washroom'], imageUrl:I.tile_wall, imageIcon:'🪟', originalPrice:50 }),
-
-  // ─── TILES — KITCHEN ─────────────────────────────────────────────────────────
-  P({ id:'tk1', name:'Kajaria Kitchen Floor Matt 600×600', brand:'Kajaria', categoryId:'tiles', subcategoryId:'ceramic', type:'Floor Tiles', price:44, unit:'per sqft', inStock:true, isi:false, rating:4.6, reviewCount:190, sellerName:'Kajaria Studio', sellerCity:'Hyderabad', roomTypes:['kitchen'], imageUrl:I.tile_gvt, imageIcon:'🪟' }),
-  P({ id:'tk2', name:'RAK Subway Mosaic Backsplash', brand:'RAK Ceramics', categoryId:'tiles', subcategoryId:'ceramic', type:'Mosaic', price:55, unit:'per sqft', inStock:true, isi:false, rating:4.5, reviewCount:120, sellerName:'Tile Galaxy', sellerCity:'Pune', roomTypes:['kitchen'], imageUrl:I.tile_mosaic, imageIcon:'🪟' }),
-  P({ id:'tk3', name:'Black Galaxy Granite Counter Slab', brand:'Slab World', categoryId:'tiles', subcategoryId:'granite_tile', type:'Black Galaxy', price:220, unit:'per sqft', minOrder:'10 sqft', inStock:true, isi:false, rating:4.7, reviewCount:310, sellerName:'Granite Palace', sellerCity:'Bangalore', roomTypes:['kitchen','stairs'], imageUrl:I.granite, imageIcon:'🪨' }),
-
-  // ─── TILES — STAIRS ──────────────────────────────────────────────────────────
-  P({ id:'ts1', name:'Absolute Black Granite Stair Tread', brand:'Stone House', categoryId:'tiles', subcategoryId:'special_tile', type:'Stair Tread', price:145, unit:'per sqft', minOrder:'20 sqft', inStock:true, isi:false, rating:4.6, reviewCount:88, sellerName:'Stone House', sellerCity:'Chennai', roomTypes:['stairs'], imageUrl:I.granite, imageIcon:'🪨' }),
-  P({ id:'ts2', name:'Kota Blue Non-Slip Stair Riser', brand:'Kota Quarries', categoryId:'tiles', subcategoryId:'special_tile', type:'Kota Stone', price:32, unit:'per sqft', minOrder:'30 sqft', inStock:true, isi:false, rating:4.4, reviewCount:64, sellerName:'Kota Depot', sellerCity:'Jaipur', roomTypes:['stairs'], imageUrl:I.kota, imageIcon:'🪨' }),
-
-  // ─── WASHROOM / PLUMBING ─────────────────────────────────────────────────────
-  P({ id:'p1', name:'Hindware Rimless WC S-Trap', brand:'Hindware', categoryId:'plumbing', subcategoryId:'wc_toilet', type:'Western WC', price:4800, unit:'per piece', inStock:true, isi:false, rating:4.6, reviewCount:880, sellerName:'Bath World', sellerCity:'Delhi', roomTypes:['washroom'], imageUrl:I.wc, imageIcon:'🚿' }),
-  P({ id:'p2', name:'Kohler Reve Wall-Hung WC', brand:'Kohler', categoryId:'plumbing', subcategoryId:'wc_toilet', type:'Wall-Hung WC', price:28000, unit:'per piece', inStock:true, isi:false, rating:4.9, reviewCount:124, sellerName:'Kohler Studio', sellerCity:'Mumbai', roomTypes:['washroom'], imageUrl:I.wc, imageIcon:'🚿' }),
-  P({ id:'p3', name:'Cera Smart WC with Bidet', brand:'Cera', categoryId:'plumbing', subcategoryId:'wc_toilet', type:'Smart WC Bidet', price:12500, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:210, sellerName:'Cera Gallery', sellerCity:'Bangalore', roomTypes:['washroom'], imageUrl:I.wc, imageIcon:'🚿', originalPrice:15000 }),
-  P({ id:'p4', name:'Parryware Wall Hung Basin 550mm', brand:'Parryware', categoryId:'plumbing', subcategoryId:'basins', type:'Wall Hung', price:3200, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:410, sellerName:'Parryware Gallery', sellerCity:'Chennai', roomTypes:['washroom'], imageUrl:I.basin, imageIcon:'🚿' }),
-  P({ id:'p5', name:'Cera Corner Basin 470mm White', brand:'Cera', categoryId:'plumbing', subcategoryId:'basins', type:'Corner Basin', price:2400, unit:'per piece', inStock:true, isi:false, rating:4.4, reviewCount:180, sellerName:'Bath World', sellerCity:'Delhi', roomTypes:['washroom'], imageUrl:I.basin, imageIcon:'🚿' }),
-  P({ id:'p6', name:'Jaquar Shower Panel 5 Jets', brand:'Jaquar', categoryId:'plumbing', subcategoryId:'shower', type:'Shower Panel', price:18500, unit:'per piece', inStock:true, isi:false, rating:4.8, reviewCount:92, sellerName:'Jaquar Gallery', sellerCity:'Delhi', roomTypes:['washroom'], imageUrl:I.shower, imageIcon:'🚿', originalPrice:22000 }),
-  P({ id:'p7', name:'Kohler Rainhead 200mm Overhead Shower', brand:'Kohler', categoryId:'plumbing', subcategoryId:'shower', type:'Overhead Shower', price:5500, unit:'per piece', inStock:true, isi:false, rating:4.8, reviewCount:310, sellerName:'Kohler Studio', sellerCity:'Mumbai', roomTypes:['washroom'], imageUrl:I.shower, imageIcon:'🚿' }),
-  P({ id:'p8', name:'Jaquar Single Lever Basin Mixer', brand:'Jaquar', categoryId:'plumbing', subcategoryId:'faucets', type:'Basin Mixer', price:2800, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:640, sellerName:'Jaquar Gallery', sellerCity:'Delhi', roomTypes:['washroom','kitchen'], imageUrl:I.faucet, imageIcon:'🚿' }),
-  P({ id:'p9', name:'Hindware 7-Piece Bathroom Accessories', brand:'Hindware', categoryId:'plumbing', subcategoryId:'accessories', type:'Towel Rod', price:3200, unit:'per set', inStock:true, isi:false, rating:4.4, reviewCount:210, sellerName:'Bath World', sellerCity:'Delhi', roomTypes:['washroom'], imageUrl:I.bath_acc, imageIcon:'🚿' }),
-  P({ id:'p10', name:'Havells Ventilair 150mm Exhaust Fan', brand:'Havells', categoryId:'plumbing', subcategoryId:'accessories', type:'Exhaust Fan', price:1200, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:1100, sellerName:'Electrical Hub', sellerCity:'Pune', roomTypes:['washroom','kitchen'], imageUrl:I.exhaust, imageIcon:'🚿' }),
-
-  // ─── KITCHEN ─────────────────────────────────────────────────────────────────
-  P({ id:'k1', name:'Franke Silk Steel 24×18" SS Sink', brand:'Franke', categoryId:'kitchen', subcategoryId:'kitchen_sink', type:'SS Single Bowl', price:6800, unit:'per piece', inStock:true, isi:false, rating:4.8, reviewCount:430, sellerName:'Franke Studio', sellerCity:'Mumbai', roomTypes:['kitchen'], imageUrl:I.sink_ss, imageIcon:'🍳' }),
-  P({ id:'k2', name:'Carysil Double Bowl Granite Sink', brand:'Carysil', categoryId:'kitchen', subcategoryId:'kitchen_sink', type:'Granite Sink', price:9500, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:180, sellerName:'Kitchen World', sellerCity:'Bangalore', roomTypes:['kitchen'], imageUrl:I.sink_ss, imageIcon:'🍳', originalPrice:12000 }),
-  P({ id:'k3', name:'Jaquar Pull-out Kitchen Tap Chrome', brand:'Jaquar', categoryId:'kitchen', subcategoryId:'kitchen_faucet', type:'Pull-out Spray', price:4200, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:320, sellerName:'Jaquar Gallery', sellerCity:'Delhi', roomTypes:['kitchen'], imageUrl:I.ktap, imageIcon:'🍳' }),
-  P({ id:'k4', name:'Faber Auto-Clean Chimney 60cm 1200m³', brand:'Faber', categoryId:'kitchen', subcategoryId:'chimney', type:'Auto-clean 60cm', price:14500, unit:'per piece', inStock:true, isi:false, rating:4.6, reviewCount:780, sellerName:'Faber Studio', sellerCity:'Delhi', roomTypes:['kitchen'], imageUrl:I.chimney, imageIcon:'🍳', originalPrice:18000 }),
-  P({ id:'k5', name:'Elica Auto-Clean T-Shape 90cm', brand:'Elica', categoryId:'kitchen', subcategoryId:'chimney', type:'T-shape Designer', price:19000, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:420, sellerName:'Elica Kitchen', sellerCity:'Mumbai', roomTypes:['kitchen'], imageUrl:I.chimney, imageIcon:'🍳' }),
-  P({ id:'k6', name:'Kashmir White Granite Kitchen Counter', brand:'Slab World', categoryId:'kitchen', subcategoryId:'countertop', type:'Granite Slab', price:195, unit:'per sqft', minOrder:'15 sqft', inStock:true, isi:false, rating:4.7, reviewCount:280, sellerName:'Granite Palace', sellerCity:'Hyderabad', roomTypes:['kitchen'], imageUrl:I.counter_gran, imageIcon:'🍳' }),
-  P({ id:'k7', name:'Century BWR Ply 18mm Kitchen Cabinet', brand:'Century Ply', categoryId:'kitchen', subcategoryId:'kitchen_storage', type:'BWR Plywood 18mm', price:1850, unit:'per sheet', inStock:true, isi:false, rating:4.6, reviewCount:540, sellerName:'Wood Works', sellerCity:'Chennai', roomTypes:['kitchen','bedroom'], imageUrl:I.plywood, imageIcon:'🍳' }),
-
-  // ─── ELECTRICALS ─────────────────────────────────────────────────────────────
-  P({ id:'e1', name:'Havells 2.5mm FRLS Wire 90m', brand:'Havells', categoryId:'electricals', subcategoryId:'wires', type:'2.5mm FRLS', price:1950, unit:'per roll (90m)', inStock:true, isi:true, rating:4.8, reviewCount:1640, sellerName:'Electrical Hub', sellerCity:'Pune', roomTypes:['structure','washroom','kitchen','bedroom','living_room'], imageUrl:I.wire, imageIcon:'⚡' }),
-  P({ id:'e2', name:'Polycab 6mm FR AC Wire 90m', brand:'Polycab', categoryId:'electricals', subcategoryId:'wires', type:'6mm AC Wire', price:3200, unit:'per roll (90m)', inStock:true, isi:true, rating:4.7, reviewCount:520, sellerName:'Polycab Depot', sellerCity:'Delhi', roomTypes:['bedroom','living_room'], imageUrl:I.wire, imageIcon:'⚡' }),
-  P({ id:'e3', name:'Legrand Arteor 6A Modular Switch', brand:'Legrand', categoryId:'electricals', subcategoryId:'switches', type:'Modular Switch 6A', price:180, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:2200, sellerName:'Electrical Hub', sellerCity:'Bangalore', roomTypes:['bedroom','living_room','kitchen','washroom'], imageUrl:I.switch, imageIcon:'⚡' }),
-  P({ id:'e4', name:'Anchor Roma 6A Switch Board 6M', brand:'Anchor', categoryId:'electricals', subcategoryId:'switches', type:'Modular Switch 6A', price:320, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:980, sellerName:'Anchor Store', sellerCity:'Delhi', roomTypes:['bedroom','living_room'], imageUrl:I.switch, imageIcon:'⚡' }),
-  P({ id:'e5', name:'Havells 48W LED Panel 600×600', brand:'Havells', categoryId:'electricals', subcategoryId:'lights', type:'LED Panel 2x2', price:1850, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:740, sellerName:'LED World', sellerCity:'Delhi', roomTypes:['washroom','kitchen','bedroom','living_room'], imageUrl:I.led_panel, imageIcon:'⚡' }),
-  P({ id:'e6', name:'Philips 12W LED Downlight 6"', brand:'Philips', categoryId:'electricals', subcategoryId:'lights', type:'LED Downlight', price:320, unit:'per piece', inStock:true, isi:false, rating:4.6, reviewCount:3100, sellerName:'Lighting Hub', sellerCity:'Mumbai', roomTypes:['living_room','bedroom','washroom'], imageUrl:I.led_panel, imageIcon:'⚡' }),
-  P({ id:'e7', name:'Wipro Garnet LED Strip 5m 24W', brand:'Wipro', categoryId:'electricals', subcategoryId:'lights', type:'LED Strip 5m', price:680, unit:'per set', inStock:true, isi:false, rating:4.5, reviewCount:1420, sellerName:'LED World', sellerCity:'Bangalore', roomTypes:['living_room','stairs','exterior'], imageUrl:I.led_strip, imageIcon:'⚡' }),
-  P({ id:'e8', name:'Schneider Acti9 MCB 20A DP', brand:'Schneider', categoryId:'electricals', subcategoryId:'panels', type:'MCB Double Pole', price:850, unit:'per piece', inStock:true, isi:true, rating:4.8, reviewCount:310, sellerName:'Electrical Hub', sellerCity:'Delhi', roomTypes:['structure'], imageUrl:I.mcb, imageIcon:'⚡' }),
-
-  // ─── PAINTS ──────────────────────────────────────────────────────────────────
-  P({ id:'pa1', name:'Asian Paints Royale Luxury 20L', brand:'Asian Paints', categoryId:'paints', subcategoryId:'interior_paint', type:'Luxury Emulsion', price:5800, unit:'per 20L', inStock:true, isi:false, rating:4.8, reviewCount:2800, sellerName:'Colour World', sellerCity:'Delhi', roomTypes:['living_room','bedroom'], imageUrl:I.paint_wall, imageIcon:'🎨', originalPrice:6400 }),
-  P({ id:'pa2', name:'Berger Silk Premium Interior 20L', brand:'Berger', categoryId:'paints', subcategoryId:'interior_paint', type:'Premium Emulsion', price:4200, unit:'per 20L', inStock:true, isi:false, rating:4.7, reviewCount:1640, sellerName:'Berger Gallery', sellerCity:'Kolkata', roomTypes:['bedroom','living_room'], imageUrl:I.paint_wall, imageIcon:'🎨' }),
-  P({ id:'pa3', name:'Asian Paints Apex Exterior 20L', brand:'Asian Paints', categoryId:'paints', subcategoryId:'exterior_paint', type:'Weatherproof Emulsion', price:3400, unit:'per 20L', inStock:true, isi:false, rating:4.6, reviewCount:1920, sellerName:'Colour World', sellerCity:'Bangalore', roomTypes:['exterior'], imageUrl:I.paint_ext, imageIcon:'🎨', originalPrice:3800 }),
-  P({ id:'pa4', name:'Dulux Weathershield Max 20L', brand:'Dulux', categoryId:'paints', subcategoryId:'exterior_paint', type:'Anti-Dust', price:4100, unit:'per 20L', inStock:true, isi:false, rating:4.7, reviewCount:820, sellerName:'AkzoNobel Store', sellerCity:'Mumbai', roomTypes:['exterior'], imageUrl:I.paint_ext, imageIcon:'🎨' }),
-  P({ id:'pa5', name:'Dr. Fixit Roofseal Roof Waterproofing 4L', brand:'Dr. Fixit', categoryId:'paints', subcategoryId:'waterproofing', type:'Roof Sealant', price:1200, unit:'per 4L', inStock:true, isi:false, rating:4.7, reviewCount:1100, sellerName:'Waterproof Pro', sellerCity:'Mumbai', roomTypes:['exterior','washroom'], imageUrl:I.waterproof, imageIcon:'🎨' }),
-  P({ id:'pa6', name:'Asian Paints SmartCare Damp Proof 4L', brand:'Asian Paints', categoryId:'paints', subcategoryId:'waterproofing', type:'Bathroom Waterproofing', price:880, unit:'per 4L', inStock:true, isi:false, rating:4.5, reviewCount:740, sellerName:'Colour World', sellerCity:'Delhi', roomTypes:['washroom','kitchen'], imageUrl:I.waterproof, imageIcon:'🎨' }),
-
-  // ─── WOOD & BOARDS ───────────────────────────────────────────────────────────
-  P({ id:'w1', name:'Century BWP Plywood 18mm 8×4ft', brand:'Century Ply', categoryId:'wood', subcategoryId:'plywood', type:'BWP Grade', price:1850, unit:'per sheet', inStock:true, isi:false, rating:4.7, reviewCount:1240, sellerName:'Wood Works', sellerCity:'Chennai', roomTypes:['kitchen','bedroom'], imageUrl:I.plywood, imageIcon:'🪵' }),
-  P({ id:'w2', name:'Greenply Platinum Interior 12mm 8×4ft', brand:'Greenply', categoryId:'wood', subcategoryId:'plywood', type:'BWR 12mm', price:980, unit:'per sheet', inStock:true, isi:false, rating:4.6, reviewCount:870, sellerName:'Green Ply Depot', sellerCity:'Bangalore', roomTypes:['bedroom','living_room'], imageUrl:I.plywood2, imageIcon:'🪵' }),
-  P({ id:'w3', name:'MDF Board 18mm 8×4ft', brand:'Durian', categoryId:'wood', subcategoryId:'boards', type:'MDF 18mm', price:720, unit:'per sheet', inStock:true, isi:false, rating:4.4, reviewCount:620, sellerName:'Board World', sellerCity:'Delhi', roomTypes:['bedroom','kitchen'], imageUrl:I.mdf, imageIcon:'🪵' }),
-  P({ id:'w4', name:'Pergo Laminate Flooring Oak 8mm', brand:'Pergo', categoryId:'wood', subcategoryId:'boards', type:'Laminate', price:95, unit:'per sqft', inStock:true, isi:false, rating:4.6, reviewCount:480, sellerName:'Floor Studio', sellerCity:'Delhi', roomTypes:['bedroom','living_room'], imageUrl:I.laminate_fl, imageIcon:'🪵', originalPrice:110 }),
-  P({ id:'w5', name:'Merino Sunmica Decorative Laminate', brand:'Merino', categoryId:'wood', subcategoryId:'laminates', type:'Decorative Laminate', price:180, unit:'per sheet', inStock:true, isi:false, rating:4.5, reviewCount:380, sellerName:'Laminate Hub', sellerCity:'Mumbai', roomTypes:['kitchen','bedroom'], imageUrl:I.lam_sheet, imageIcon:'🪵' }),
-
-  // ─── DOORS & WINDOWS ─────────────────────────────────────────────────────────
-  P({ id:'d1', name:'Teak Burma Teak Main Door 7×3.5ft', brand:'Teak Mart', categoryId:'doors_windows', subcategoryId:'doors', type:'Teak Wood Main Door', price:28000, unit:'per piece', inStock:true, isi:false, rating:4.8, reviewCount:120, sellerName:'Timber House', sellerCity:'Chennai', roomTypes:['living_room'], imageUrl:I.door_main, imageIcon:'🚪' }),
-  P({ id:'d2', name:'Greenply WPC Door 7×3ft Bedroom', brand:'Greenply', categoryId:'doors_windows', subcategoryId:'doors', type:'WPC Door', price:5500, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:320, sellerName:'Door Studio', sellerCity:'Bangalore', roomTypes:['bedroom'], imageUrl:I.door_int, imageIcon:'🚪' }),
-  P({ id:'d3', name:'Godrej Steel Security Door 7×3ft', brand:'Godrej', categoryId:'doors_windows', subcategoryId:'doors', type:'Steel Security Door', price:18000, unit:'per piece', inStock:true, isi:false, rating:4.7, reviewCount:540, sellerName:'Steel Door Hub', sellerCity:'Mumbai', roomTypes:['living_room'], imageUrl:I.door_main, imageIcon:'🚪' }),
-  P({ id:'d4', name:'Aluminium Sliding Window 4×4ft', brand:'Jindal Aluminium', categoryId:'doors_windows', subcategoryId:'windows', type:'Aluminium Sliding', price:4800, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:680, sellerName:'Window World', sellerCity:'Delhi', roomTypes:['bedroom','living_room'], imageUrl:I.window, imageIcon:'🪟' }),
-  P({ id:'d5', name:'Saint-Gobain Toughened Glass 10mm', brand:'Saint-Gobain', categoryId:'doors_windows', subcategoryId:'glass', type:'Toughened', price:85, unit:'per sqft', minOrder:'20 sqft', inStock:true, isi:true, rating:4.8, reviewCount:240, sellerName:'Glass World', sellerCity:'Bangalore', roomTypes:['living_room','washroom'], imageUrl:I.glass_t, imageIcon:'🪟' }),
-
-  // ─── STAIRS ──────────────────────────────────────────────────────────────────
-  P({ id:'st1', name:'SS 304 Glass Railing System 10ft', brand:'Dorset', categoryId:'hardware', subcategoryId:'fasteners', type:'SS Railing', price:8500, unit:'per 10ft set', inStock:true, isi:false, rating:4.7, reviewCount:88, sellerName:'Railing Pro', sellerCity:'Delhi', roomTypes:['stairs'], imageUrl:I.railing, imageIcon:'🪜' }),
-  P({ id:'st2', name:'MS Powder Coated Baluster Set', brand:'MS Decor', categoryId:'hardware', subcategoryId:'fasteners', type:'MS Baluster', price:3200, unit:'per set', inStock:true, isi:false, rating:4.4, reviewCount:54, sellerName:'Iron Art', sellerCity:'Jaipur', roomTypes:['stairs'], imageUrl:I.railing, imageIcon:'🪜' }),
-  P({ id:'st3', name:'GRP Anti-Skid Stair Nosing Strip', brand:'Gripsure', categoryId:'hardware', subcategoryId:'fasteners', type:'Anti-Skid', price:280, unit:'per metre', inStock:true, isi:false, rating:4.3, reviewCount:44, sellerName:'Safety Store', sellerCity:'Delhi', roomTypes:['stairs'], imageUrl:I.stairs, imageIcon:'🪜' }),
-
-  // ─── CEILING / INTERIOR ───────────────────────────────────────────────────────
-  P({ id:'f1', name:'Saint-Gobain Gyproc GN13 Gypsum Board', brand:'Saint-Gobain', categoryId:'roofing', subcategoryId:'false_ceiling', type:'Gyproc Gypsum Board', price:38, unit:'per sqft', inStock:true, isi:false, rating:4.7, reviewCount:640, sellerName:'Gyproc Dealer', sellerCity:'Delhi', roomTypes:['living_room','bedroom'], imageUrl:I.gypsum, imageIcon:'🏗️' }),
-  P({ id:'f2', name:'Armstrong Mineral Fibre Ceiling Tile 2×2', brand:'Armstrong', categoryId:'roofing', subcategoryId:'false_ceiling', type:'Mineral Fibre Tile', price:42, unit:'per sqft', inStock:true, isi:false, rating:4.5, reviewCount:280, sellerName:'Ceiling World', sellerCity:'Mumbai', roomTypes:['washroom','kitchen','living_room'], imageUrl:I.gypsum, imageIcon:'🏗️' }),
-
-  // ─── EXTERIOR / ROOFING ──────────────────────────────────────────────────────
-  P({ id:'r1', name:'Tata Bluescope Zintec Color Roof Sheet', brand:'TATA Bluescope', categoryId:'roofing', subcategoryId:'roof_sheets', type:'PPGI Color', price:92, unit:'per sqft', minOrder:'100 sqft', inStock:true, isi:true, rating:4.7, reviewCount:320, sellerName:'Roofing Pro', sellerCity:'Hyderabad', roomTypes:['exterior'], imageUrl:I.roofing, imageIcon:'🚧' }),
-  P({ id:'r2', name:'Aica Sunmica ACP Sheet 4mm 8×4ft', brand:'Aica', categoryId:'wood', subcategoryId:'laminates', type:'ACP Sheet', price:1200, unit:'per sheet', inStock:true, isi:false, rating:4.5, reviewCount:140, sellerName:'Cladding World', sellerCity:'Mumbai', roomTypes:['exterior'], imageUrl:I.acp, imageIcon:'🏗️' }),
-
-  // ─── KASHMIR SPECIAL ─────────────────────────────────────────────────────────
-  P({ id:'ks1', name:'Deodar Cedar Structural Beam 4×4"', brand:'Kashmir Timber', categoryId:'wood', subcategoryId:'plywood', type:'Deodar Cedar', price:180, unit:'per running ft', minOrder:'20 rft', inStock:true, isi:false, rating:4.9, reviewCount:63, sellerName:'Valley Timber', sellerCity:'Srinagar', roomTypes:['structure','exterior'], regionTag:'kashmir', regionLabel:'🏔️ Local Kashmir Wood', imageUrl:I.timber, imageIcon:'🪵' }),
-  P({ id:'ks2', name:'GI Roofing Sheet 0.6mm Snow Grade', brand:'TATA Bluescope', categoryId:'roofing', subcategoryId:'roof_sheets', type:'GI Sheet 0.6mm Snow Grade', price:95, unit:'per sqft', minOrder:'100 sqft', inStock:true, isi:true, rating:4.8, reviewCount:48, sellerName:'Valley Building Mats', sellerCity:'Srinagar', roomTypes:['exterior'], regionTag:'kashmir', regionLabel:'❄️ Snow Load Rated 150kg/sqm', imageUrl:I.roofing, imageIcon:'🚧' }),
-  P({ id:'ks3', name:'XPS Thermal Insulation Board 50mm', brand:'Dow', categoryId:'roofing', subcategoryId:'roof_sheets', type:'XPS Board', price:65, unit:'per sqft', minOrder:'50 sqft', inStock:true, isi:false, rating:4.6, reviewCount:31, sellerName:'Insulation Pro', sellerCity:'Srinagar', roomTypes:['exterior','structure'], regionTag:'kashmir', regionLabel:'🌡️ Rated to -20°C', imageUrl:I.insulation, imageIcon:'🏔️' }),
-  P({ id:'ks4', name:'UPVC Triple Seal Window 4×4ft', brand:'Fenesta', categoryId:'doors_windows', subcategoryId:'windows', type:'UPVC Triple Seal', price:12000, unit:'per piece', inStock:true, isi:false, rating:4.5, reviewCount:22, sellerName:'Kashmir Windows', sellerCity:'Srinagar', roomTypes:['bedroom','living_room'], regionTag:'kashmir', regionLabel:'❄️ Cold Climate', imageUrl:I.window, imageIcon:'🪟' }),
-  P({ id:'ks5', name:'Anti-freeze Concrete Admixture 5L', brand:'Fosroc', categoryId:'hardware', subcategoryId:'chem', type:'Anti-freeze Admixture', price:850, unit:'per 5L can', inStock:true, isi:false, rating:4.7, reviewCount:57, sellerName:'Chem Solutions', sellerCity:'Srinagar', roomTypes:['structure'], regionTag:'kashmir', regionLabel:'❄️ For temps below 5°C', imageUrl:I.chemical, imageIcon:'🔧' }),
-  P({ id:'ks6', name:'Seismic Grade TMT Fe550D 12mm', brand:'SAIL', categoryId:'steel', subcategoryId:'tmt', type:'Seismic Grade Fe600', price:72, unit:'per kg', minOrder:'100 kg', inStock:true, isi:true, rating:4.8, reviewCount:89, sellerName:'Kashmir Steel Depot', sellerCity:'Jammu', roomTypes:['structure'], regionTag:'kashmir', regionLabel:'🏔️ Zone V Certified', imageUrl:I.steel, imageIcon:'🔩' }),
-
 ];
 
 // ── Chip order per region ─────────────────────────────────────────────────────
@@ -988,9 +799,9 @@ function ProductCard({ product: p, region, priceFactor, warning, cartQty, onAdd,
     }`}>
       {/* Image */}
       <div className="relative rounded-t-2xl overflow-hidden" style={{ height: '180px' }}>
-        {!imgFailed ? (
-          <img src={`${p.imageUrl}?w=480&h=360&fit=crop&q=80&auto=format`} alt={p.name}
-            className="w-full h-full object-cover" onError={() => setImgFailed(true)} />
+        {!imgFailed && p.imageUrl ? (
+          <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover" onError={() => setImgFailed(true)} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#FAEEE9] to-[#F5EDE8] flex items-center justify-center">
             <span className="text-5xl">{p.imageIcon}</span>

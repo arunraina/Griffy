@@ -1,11 +1,13 @@
+import type { Metadata } from 'next';
 import MaterialDetailClient from './MaterialDetailClient';
+import { buildMetadata } from '@/lib/seo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchMaterial(id: string): Promise<any | null> {
   try {
-    const res = await fetch(`${API_BASE}/materials/${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/materials/${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -14,11 +16,26 @@ async function fetchMaterial(id: string): Promise<any | null> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchReviews(id: string): Promise<any[]> {
   try {
-    const res = await fetch(`${API_BASE}/reviews?targetType=MATERIAL&targetId=${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/reviews?targetType=MATERIAL&targetId=${id}`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const raw = await fetchMaterial(params.id);
+  if (!raw) return buildMetadata({ title: 'Material not found', description: 'This listing may have been removed or is unavailable.', path: `/materials/${params.id}` });
+
+  const city = raw.supplier?.deliveryCities?.[0];
+  const price = raw.price != null ? `₹${Number(raw.price).toLocaleString('en-IN')}${raw.unit ? `/${raw.unit}` : ''}` : null;
+
+  return buildMetadata({
+    title: `${raw.name} — ${raw.category ?? 'Material'}${city ? ` in ${city}` : ''}`,
+    description: `Buy ${raw.name}${price ? ` at ${price}` : ''}${city ? ` in ${city}` : ''} on Griffy — India's construction marketplace. ${raw.description ?? ''}`.trim(),
+    path: `/materials/${params.id}`,
+    image: raw.imageUrls?.[0] ?? undefined,
+  });
 }
 
 export default async function MaterialDetailPage({ params }: { params: { id: string } }) {
@@ -68,5 +85,38 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
       : null,
   };
 
-  return <MaterialDetailClient material={material} reviews={reviews} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jsonLd: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: material.name,
+    description: material.description ?? undefined,
+    ...(material.brand ? { brand: { '@type': 'Brand', name: material.brand } } : {}),
+    ...(material.sku ? { sku: material.sku } : {}),
+    ...(material.imageUrls[0] ? { image: material.imageUrls[0] } : {}),
+    offers: {
+      '@type': 'Offer',
+      price: material.price,
+      priceCurrency: 'INR',
+      availability: material.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: { '@type': 'Organization', name: material.supplier?.name ?? 'Griffy' },
+    },
+    ...(material.totalReviews > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: material.avgRating,
+            reviewCount: material.totalReviews,
+            bestRating: 5,
+          },
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <MaterialDetailClient material={material} reviews={reviews} />
+    </>
+  );
 }

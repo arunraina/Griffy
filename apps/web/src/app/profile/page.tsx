@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { updateMe as apiUpdateMe, fetchReferralStats, fetchMyAnalytics, type ReferralStats, type MyAnalytics } from '@/lib/users';
 import { useAuth } from '@/lib/auth-provider';
@@ -147,10 +148,9 @@ export default function ProfilePage() {
             disabled={uploadingAvatar}
             className="relative w-24 h-24 rounded-3xl bg-white border-4 border-white shadow-lg flex items-center justify-center group disabled:opacity-70"
           >
-            <div className="w-full h-full rounded-[18px] overflow-hidden bg-gradient-to-br from-[#C0593A] to-[#9E3F24] flex items-center justify-center">
+            <div className="relative w-full h-full rounded-[18px] overflow-hidden bg-gradient-to-br from-[#C0593A] to-[#9E3F24] flex items-center justify-center">
               {me.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={me.avatarUrl} alt={me.name} className="w-full h-full object-cover" />
+                <Image src={me.avatarUrl} alt={me.name} fill sizes="96px" className="object-cover" />
               ) : (
                 <span className="text-2xl font-extrabold text-white">{initials(me.name)}</span>
               )}

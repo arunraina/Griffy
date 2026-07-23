@@ -56,7 +56,7 @@ function mapProfile(p: any): Contractor {
 async function fetchContractors(): Promise<Contractor[]> {
   try {
     const res = await fetch(`${API_BASE}/contractor-profiles`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
     });
     if (!res.ok) return [];
     const data = await res.json();

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { LabourProfilesService } from './labour-profiles.service';
@@ -10,6 +10,7 @@ export class LabourProfilesController {
   constructor(private readonly service: LabourProfilesService) {}
 
   @Get()
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findAll(@Query('city') city?: string) {
     return this.service.findAll(city);
   }
@@ -21,6 +22,7 @@ export class LabourProfilesController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
   }

@@ -41,7 +41,7 @@ function mapExpert(p: any): ServiceExpertProfile {
 
 async function fetchExperts(): Promise<ServiceExpertProfile[]> {
   try {
-    const res = await fetch(`${API_BASE}/service-expert-profiles`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/service-expert-profiles`, { next: { revalidate: 300 } });
     if (!res.ok) return [];
     const data = await res.json();
     return (data ?? []).map(mapExpert);

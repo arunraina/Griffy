@@ -1,9 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import compression from 'compression';
+import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
+
+// Unset in every environment today -- a pure no-op until SENTRY_DSN is set
+// (same prep pattern as CacheService/PrismaService.read).
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Gzips JSON responses -- list endpoints (contractors, materials, etc.)
+  // routinely run 60-70% smaller over the wire, which is both a Core Web
+  // Vitals win (faster TTFB/LCP on slow J&K connections) and a direct
+  // Railway egress-cost reduction.
+  app.use(compression());
 
   // /media is static file serving (ServeStaticModule), not an API route —
   // excluded so its URLs stay clean and match what StorageService constructs.
@@ -23,6 +37,16 @@ async function bootstrap() {
   });
 
   await app.listen(process.env.PORT ?? 3001);
+
+  // Railway's edge proxy keeps connections alive for ~60s. Node's default
+  // keepAliveTimeout (5s) is shorter than that, so under load the proxy can
+  // send a request on a socket the app has already started closing --
+  // sporadic ECONNRESET on the client side. Raising both past the proxy's
+  // window (headersTimeout must exceed keepAliveTimeout, per Node's docs)
+  // avoids that race.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
 }
 
 bootstrap();

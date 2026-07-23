@@ -6,6 +6,7 @@ import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
+import { CacheModule } from './cache/cache.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ContractorProfilesModule } from './contractor-profiles/contractor-profiles.module';
@@ -37,6 +38,7 @@ import { TurnkeyProjectsModule } from './turnkey-projects/turnkey-projects.modul
 import { ReportsModule } from './reports/reports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ServiceItemsModule } from './service-items/service-items.module';
+import { BlogModule } from './blog/blog.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -63,6 +65,7 @@ import { AppController } from './app.controller';
       { name: 'long', ttl: 3600000, limit: 1000 },
     ]),
     PrismaModule,
+    CacheModule,
     AuthModule,
     UsersModule,
     ContractorProfilesModule,
@@ -94,6 +97,7 @@ import { AppController } from './app.controller';
     ReportsModule,
     DashboardModule,
     ServiceItemsModule,
+    BlogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

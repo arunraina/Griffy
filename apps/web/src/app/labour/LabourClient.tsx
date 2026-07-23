@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SaveButton from '@/components/SaveButton';
@@ -232,8 +233,9 @@ function LabourCard({ profile: p, rank }: { profile: LabourProfile; rank: number
       <div className="flex items-start gap-3">
         <div className="relative flex-shrink-0">
           {p.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.avatarUrl} alt={p.name} className="w-11 h-11 rounded-xl object-cover border border-[#E8C4B0]" />
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-[#E8C4B0]">
+              <Image src={p.avatarUrl} alt={p.name} fill sizes="44px" className="object-cover" />
+            </div>
           ) : (
             <div className="w-11 h-11 rounded-xl bg-[#FAEEE9] border border-[#E8C4B0] flex items-center justify-center text-sm font-bold text-[#9E3F24]">
               {initials}

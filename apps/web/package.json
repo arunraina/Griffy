@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
+    "analyze": "ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
     "test:e2e": "playwright test",
@@ -11,6 +12,7 @@
   },
   "dependencies": {
     "@griffy/shared": "*",
+    "@sentry/nextjs": "^10.67.0",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.0.0",
     "@vercel/analytics": "^2.0.1",
@@ -21,6 +23,7 @@
     "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^14.2.35",
     "@playwright/test": "^1.47.0",
     "@types/node": "^20.0.0",
     "@types/react": "~18.2.0",

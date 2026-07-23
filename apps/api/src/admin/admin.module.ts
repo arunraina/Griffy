@@ -24,5 +24,6 @@ import { ProjectsModule } from '../projects/projects.module';
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminHierarchyService, AccountStatusExpiryCron],
+  exports: [AdminService],
 })
 export class AdminModule {}

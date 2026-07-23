@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { isEnabled } from '@/lib/featureFlags';
-import { signInWithGoogle, signUpWithEmail, sendPhoneOtp } from '@/lib/auth';
+import { signInWithGoogle, signUpWithEmail } from '@/lib/auth';
+import { sendPhoneOtp } from '@/lib/phone-auth';
 
 type Side = 'homeowner' | 'professional' | null;
 type FlowStep = 'side' | 'role' | 'auth';

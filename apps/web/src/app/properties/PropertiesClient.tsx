@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Suspense, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -473,9 +474,10 @@ function PropertyCard({ property: p }: { property: Property }) {
 
       {/* Image */}
       <div className="relative h-48 bg-[#F5EDE8] overflow-hidden">
-        {!imgFailed ? (
-          <img src={p.imageUrl} alt={p.title} onError={() => setImgFailed(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        {!imgFailed && p.imageUrl ? (
+          <Image src={p.imageUrl} alt={p.title} fill sizes="(max-width: 640px) 50vw, 25vw"
+            onError={() => setImgFailed(true)}
+            className="object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl">🏠</div>
         )}
